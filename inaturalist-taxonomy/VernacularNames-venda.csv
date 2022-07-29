@@ -1,0 +1,981 @@
+id,vernacularName,language,locality,countryCode,source,lexicon,contributor,created
+580330,tshalale,und,"","",,Venda,cassi saari,2018-01-04T17:17:41Z
+42149,Mvuvhu,und,"","",,Venda,Bobby McCabe,2018-02-08T15:42:08Z
+43125,Muvhuda,und,"","",,Venda,Bobby McCabe,2018-04-13T15:33:36Z
+43125,Khomu,und,"","",,Venda,Bobby McCabe,2018-04-13T15:33:56Z
+340238,mufhulu,und,"","",,Venda,Pedro Nájera Quezada,2019-03-18T16:26:01Z
+925659,Tsimba,und,"","",,Venda,Bobby McCabe,2020-02-23T04:59:46Z
+41595,Tsimba,und,"","",,Venda,Bobby McCabe,2020-02-23T05:27:16Z
+340010,Muvhungo,und,"","",,Venda,Botswanabugs,2020-03-10T18:14:47Z
+146786,Mukuluvhali,und,"","",,Venda,Botswanabugs,2020-03-10T18:17:39Z
+340245,mufula,und,"","",,Venda,Botswanabugs,2020-03-10T23:35:03Z
+79020,mushakaladza,und,"","",,Venda,Botswanabugs,2020-03-10T23:37:35Z
+588676,muvhumbu,und,"","",,Venda,Botswanabugs,2020-03-10T23:40:27Z
+47649,Nzie,und,"","",,Venda,Dewald du Plessis,2020-03-14T13:39:44Z
+42278,Phala,und,"","",,Venda,Bobby McCabe,2020-03-19T16:08:50Z
+42288,Phithi,und,"","",,Venda,Bobby McCabe,2020-03-19T16:27:39Z
+42288,Tshipiti,und,"","",,Venda,Bobby McCabe,2020-03-19T16:27:52Z
+120407,Shongololo,und,"Soutpansberg, NP, ZA","",,Venda,Dewald du Plessis,2020-03-31T19:00:28Z
+121639,Dambatshekwa,und,"","",,Venda,Dewald du Plessis,2020-04-06T18:45:19Z
+342910,Phuroni,und,"","",,Venda,Dewald du Plessis,2020-04-06T18:57:39Z
+311310,Khireifishi,und,"","",,Venda,Dewald du Plessis,2020-04-07T10:33:25Z
+85493,Dambatshekwa,und,"","",,Venda,Dewald du Plessis,2020-04-07T10:45:25Z
+1,"Phukha, Tshifuwo, Tshipuka",und,"","",,Venda,Dewald du Plessis,2020-04-09T18:03:28Z
+62917,tshithavhamisisi,und,"","",,Venda,Botswanabugs,2020-05-05T03:15:07Z
+128928,murudi,und,"","",,Venda,Botswanabugs,2020-05-05T03:38:00Z
+52351,mutshulwa,und,"","",,Venda,Botswanabugs,2020-05-05T03:50:04Z
+340228,makhalu,und,"","",,Venda,Botswanabugs,2020-05-05T05:05:53Z
+138688,musese,und,"","",,Venda,Botswanabugs,2020-08-07T09:58:40Z
+147002,mulumanama,und,"","",,Venda,Botswanabugs,2020-08-07T10:04:20Z
+340236,mutokota,und,"","",,Venda,Botswanabugs,2020-08-07T10:08:20Z
+428749,mupani,und,"","",,Venda,Botswanabugs,2020-08-07T10:20:08Z
+592162,mukalakata,und,"","",,Venda,Botswanabugs,2020-08-07T10:26:16Z
+129706,murenzhe,und,"","",,Venda,Botswanabugs,2020-08-07T10:32:44Z
+594418,muvundambado,und,"","",,Venda,Botswanabugs,2020-08-07T10:43:27Z
+594427,mukhaya,und,"","",,Venda,Botswanabugs,2020-08-07T10:47:11Z
+348763,munzhelenga,und,"","",,Venda,Botswanabugs,2020-08-07T10:51:42Z
+51672,"Gufha, Tshievhe",und,"","",,Venda,Dewald du Plessis,2020-08-21T11:26:05Z
+51673,"Gufha, Tshievhe",und,"","",,Venda,Dewald du Plessis,2020-08-21T11:36:13Z
+123675,"Gufha, Tshievhe",und,"","",,Venda,Dewald du Plessis,2020-08-21T12:06:35Z
+30488,Phakhuphakhu,und,"","",,Venda,Andrew Durso,2020-08-28T15:41:39Z
+30405,Khangala,und,"","",,Venda,Andrew Durso,2020-08-28T15:54:53Z
+588237,tshirndidza,und,"","",,Venda,Botswanabugs,2020-09-20T11:40:18Z
+340072,Bindamutsho,und,"","",,Venda,Dewald du Plessis,2020-11-09T18:43:22Z
+340072,Tshikhopha,und,"","",,Venda,Dewald du Plessis,2020-11-09T18:43:43Z
+525722,Musenzhe,und,"","",,Venda,Dewald du Plessis,2020-11-09T18:51:13Z
+468538,Munombelo,und,"","",,Venda,Dewald du Plessis,2020-11-09T19:16:05Z
+185371,Muteteneka,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-09T19:24:24Z
+184342,Muvhaha,und,"","",,Venda,Dewald du Plessis,2020-11-09T19:34:16Z
+166935,Mulondwane,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-09T19:39:13Z
+334567,Mulembu,und,"","",,Venda,Dewald du Plessis,2020-11-09T19:46:34Z
+340228,Mukhalu,und,"","",,Venda,Dewald du Plessis,2020-11-12T10:56:52Z
+340228,Mutshetshete,und,"","",,Venda,Dewald du Plessis,2020-11-12T10:57:15Z
+427214,Mukunda-ndou,und,"","",,Venda,Dewald du Plessis,2020-11-12T11:09:59Z
+340324,Muzwilu,und,"","",,Venda,Dewald du Plessis,2020-11-12T11:19:13Z
+191689,Tshiluvhari,und,"","",,Venda,Dewald du Plessis,2020-11-12T11:26:38Z
+429245,Mutasiri,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-12T11:34:16Z
+469308,Muthala,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-12T13:28:03Z
+502780,Muunga,und,"","",,Venda,Dewald du Plessis,2020-11-12T13:32:31Z
+502780,Muunga-ludzi,und,"","",,Venda,Dewald du Plessis,2020-11-12T13:32:57Z
+489282,Munyonga-tshifumbu,und,"","",,Venda,Dewald du Plessis,2020-11-12T13:36:20Z
+527059,Muredwa,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-12T14:48:15Z
+136323,Mufhanza,und,"City of Johannesburg, GT, ZA | Maloti-Drakensberg Park World Heritage Site","",,Venda,Dewald du Plessis,2020-11-12T14:53:14Z
+70279,Mufhanza,und,Maloti-Drakensberg Park World Heritage Site,"",,Venda,Dewald du Plessis,2020-11-12T14:56:47Z
+132930,Muhovho-hovho,und,Maloti-Drakensberg Park World Heritage Site,"",,Venda,Dewald du Plessis,2020-11-12T14:57:43Z
+132930,Mufhanza,und,Maloti-Drakensberg Park World Heritage Site,"",,Venda,Dewald du Plessis,2020-11-12T14:58:02Z
+135389,Muvuvhu,und,"","",,Venda,Dewald du Plessis,2020-11-12T15:12:19Z
+133950,Mumvumvu,und,"","",,Venda,Dewald du Plessis,2020-11-12T15:17:51Z
+594418,Muvunda-mbado,und,"","",,Venda,Dewald du Plessis,2020-11-12T20:11:39Z
+129721,Tshidzungu,und,"","",,Venda,Dewald du Plessis,2020-11-12T20:16:06Z
+521002,Tshididiri,und,"","",,Venda,Dewald du Plessis,2020-11-12T20:22:07Z
+342738,Mugwiti,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-12T20:28:13Z
+57140,Mutwari,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-12T20:39:58Z
+586670,Tshiphandwa,und,"","",,Venda,Dewald du Plessis,2020-11-12T20:46:33Z
+428559,Tshikarharhe,und,"","",,Venda,Dewald du Plessis,2020-11-12T20:54:30Z
+428559,Tshikwakwashi,und,"","",,Venda,Dewald du Plessis,2020-11-12T20:54:53Z
+559229,Muvumba-ngwena,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-13T10:00:21Z
+402272,Murevhe,und,"","",,Venda,Dewald du Plessis,2020-11-13T10:03:30Z
+72354,Mushakaladza,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-13T10:34:40Z
+593873,Mushakaladza,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-13T10:36:46Z
+558688,Mutangule-nyele,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-13T11:11:03Z
+558688,Mutangule,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-13T11:11:54Z
+558688,Munyele,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-13T11:12:24Z
+342039,Muritho,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-13T11:21:28Z
+342039,Mpeta,und,South Africa,ZA,,Venda,Dewald du Plessis,2020-11-13T11:21:49Z
+541445,Munyavhili,und,"","",,Venda,Dewald du Plessis,2020-11-13T11:41:09Z
+590764,Muvuvha,und,"","",,Venda,Dewald du Plessis,2020-11-13T11:48:32Z
+340354,Muthatha-vhanna,und,"","",,Venda,Dewald du Plessis,2020-11-13T11:52:04Z
+346399,Mutepe,und,"","",,Venda,Dewald du Plessis,2020-11-13T11:57:54Z
+362174,Murandela,und,"","",,Venda,Dewald du Plessis,2020-11-13T12:03:45Z
+362174,Munungu,und,"","",,Venda,Dewald du Plessis,2020-11-13T12:04:02Z
+416644,Murambo,und,"","",,Venda,Botswanabugs,2021-02-12T10:06:11Z
+416644,Musuma,und,"","",,Venda,Botswanabugs,2021-02-12T10:07:00Z
+416644,Tshithothonya,und,"","",,Venda,Botswanabugs,2021-02-12T10:08:25Z
+340356,Tshipfure,und,"","",,Venda,Botswanabugs,2021-02-12T10:10:33Z
+516181,Tshikopa,und,"","",,Venda,Botswanabugs,2021-04-11T03:33:02Z
+516181,Chikusha,und,"","",,Venda,Botswanabugs,2021-04-11T03:34:03Z
+1054512,mututulwa,und,"","",,Venda,Botswanabugs,2021-05-22T05:55:17Z
+594658,tsimambe,und,"","",,Venda,Botswanabugs,2021-05-22T06:00:48Z
+340308,murulwa,und,"","",,Venda,Botswanabugs,2021-05-22T06:05:00Z
+147000,muboma,und,"","",,Venda,Botswanabugs,2021-05-24T11:45:48Z
+147000,mulambivhu,und,"","",,Venda,Botswanabugs,2021-05-24T11:46:30Z
+147000,muluma-nama,und,"","",,Venda,Botswanabugs,2021-05-24T11:47:07Z
+147000,muvhonelathangu,und,"","",,Venda,Botswanabugs,2021-05-24T11:47:54Z
+320739,mudima,und,"","",,Venda,Botswanabugs,2021-05-24T12:56:38Z
+320739,tshidima,und,"","",,Venda,Botswanabugs,2021-05-24T12:57:38Z
+190367,Iwani,und,"","",,Venda,Botswanabugs,2021-05-24T13:19:58Z
+431512,munukha vhaloi,und,"","",,Venda,Botswanabugs,2021-05-24T13:43:29Z
+338719,mutu,und,"","",,Venda,Botswanabugs,2021-06-12T07:58:21Z
+595101,mutawhi,und,"","",,Venda,Botswanabugs,2021-06-12T08:05:59Z
+585523,musiri,und,"","",,Venda,Botswanabugs,2021-06-12T08:10:08Z
+601165,Tshipengo,und,"","",,Venda,Tony Rebelo,2021-06-16T20:14:32Z
+601165,Tshitutku,und,"","",,Venda,Tony Rebelo,2021-06-16T20:14:51Z
+199580,muvhula,und,"","",,Venda,Botswanabugs,2021-07-04T14:03:12Z
+587678,nnyoyambudzi,und,"","",,Venda,Botswanabugs,2021-07-13T10:25:44Z
+587678,lubikela,und,"","",,Venda,Botswanabugs,2021-07-13T10:26:13Z
+583705,lubikelashamba,und,"","",,Venda,Botswanabugs,2021-07-13T10:27:10Z
+119178,mufhaṱavhufa,und,"","",,Venda,Botswanabugs,2021-07-13T10:29:14Z
+158103,tshikwenga,und,"","",,Venda,Botswanabugs,2021-07-13T10:30:46Z
+567836,nyalamudavhi,und,"","",,Venda,Botswanabugs,2021-07-13T10:31:45Z
+157960,mukuluvhali,und,"","",,Venda,Botswanabugs,2021-07-13T10:33:26Z
+133981,vowa,und,"","",,Venda,Botswanabugs,2021-07-13T10:34:41Z
+359289,vowa,und,"","",,Venda,Botswanabugs,2021-07-13T10:36:09Z
+75395,vowa,und,"","",,Venda,Botswanabugs,2021-07-13T10:40:22Z
+62917,vowa,und,"","",,Venda,Botswanabugs,2021-07-13T10:41:41Z
+62917,tshinyameila,und,"","",,Venda,Botswanabugs,2021-07-13T10:42:20Z
+451760,vowa,und,"","",,Venda,Botswanabugs,2021-07-13T10:43:25Z
+75401,vowakholomo,und,"","",,Venda,Botswanabugs,2021-07-13T10:44:33Z
+158232,vowamulambo,und,"","",,Venda,Botswanabugs,2021-07-13T11:04:21Z
+158232,tshifumbe,und,"","",,Venda,Botswanabugs,2021-07-13T11:05:12Z
+507031,munamu,und,"","",,Venda,Botswanabugs,2021-07-13T11:06:08Z
+583158,munamumuhulwane,und,"","",,Venda,Botswanabugs,2021-07-13T11:07:07Z
+514012,makhuluwaḓaledale,und,"","",,Venda,Botswanabugs,2021-07-13T11:08:18Z
+367465,kholomo,und,"","",,Venda,Botswanabugs,2021-07-13T12:19:29Z
+600880,munamu,und,"","",,Venda,Botswanabugs,2021-07-13T12:20:44Z
+588676,tshivhumbu,und,"","",,Venda,Botswanabugs,2021-07-13T12:22:00Z
+588676,munii,und,"","",,Venda,Botswanabugs,2021-07-13T12:22:34Z
+490675,mutshutshungu,und,"","",,Venda,Botswanabugs,2021-07-13T12:23:43Z
+340120,mulivhadza,und,"","",,Venda,Botswanabugs,2021-07-13T12:24:58Z
+340120,muswoswoto,und,"","",,Venda,Botswanabugs,2021-07-13T12:25:29Z
+340120,muaḓaba,und,"","",,Venda,Botswanabugs,2021-07-13T12:25:59Z
+340120,muvhumbumudenya,und,"","",,Venda,Botswanabugs,2021-07-13T12:26:22Z
+431394,mudumbula,und,"","",,Venda,Botswanabugs,2021-07-13T12:27:26Z
+431394,bandulakhali,und,"","",,Venda,Botswanabugs,2021-07-13T12:28:12Z
+441556,munungu,und,"","",,Venda,Botswanabugs,2021-07-13T12:29:07Z
+441556,munungumaswi,und,"","",,Venda,Botswanabugs,2021-07-13T12:29:34Z
+57354,mubibiri,und,"","",,Venda,Botswanabugs,2021-07-13T12:30:29Z
+557697,muvhaḓelaphanga,und,"","",,Venda,Botswanabugs,2021-07-13T12:32:26Z
+593890,muthathaba,und,"","",,Venda,Botswanabugs,2021-07-13T12:35:00Z
+601096,mutshakutshaku,und,"","",,Venda,Botswanabugs,2021-07-13T12:36:01Z
+601096,tshidzimba,und,"","",,Venda,Botswanabugs,2021-07-13T12:36:36Z
+601102,mutshakutshaku,und,"","",,Venda,Botswanabugs,2021-07-13T12:37:56Z
+601102,mushakaladza,und,"","",,Venda,Botswanabugs,2021-07-13T12:38:17Z
+593917,muṱhasiri,und,"","",,Venda,Botswanabugs,2021-07-13T12:39:26Z
+141628,muembe,und,"","",,Venda,Botswanabugs,2021-07-13T12:40:14Z
+340099,mudzidzi,und,"","",,Venda,Botswanabugs,2021-07-13T12:41:33Z
+340099,munnamutswu,und,"","",,Venda,Botswanabugs,2021-07-13T12:42:06Z
+580291,munnamutswu,und,"","",,Venda,Botswanabugs,2021-07-13T12:42:58Z
+505741,muhuhuma,und,"","",,Venda,Botswanabugs,2021-07-13T12:43:50Z
+505741,muukhuma,und,"","",,Venda,Botswanabugs,2021-07-13T12:44:22Z
+505741,muhukhuma,und,"","",,Venda,Botswanabugs,2021-07-13T12:45:00Z
+505741,munii,und,"","",,Venda,Botswanabugs,2021-07-13T12:45:35Z
+505741,mushakame,und,"","",,Venda,Botswanabugs,2021-07-13T12:46:11Z
+596344,muvhulavhusiku,und,"","",,Venda,Botswanabugs,2021-07-13T12:47:11Z
+423612,mufhefhera,und,"","",,Venda,Botswanabugs,2021-07-13T12:48:53Z
+160294,mukulungwane,und,"","",,Venda,Botswanabugs,2021-07-13T12:50:15Z
+76563,lufhelele,und,"","",,Venda,Botswanabugs,2021-07-13T12:51:41Z
+340354,muṱhaṱhavhanna,und,"","",,Venda,Botswanabugs,2021-07-13T12:52:51Z
+430600,musilili,und,"","",,Venda,Botswanabugs,2021-07-13T12:54:21Z
+579088,tshivhuyana,und,"","",,Venda,Botswanabugs,2021-07-13T12:56:46Z
+337799,murungulu,und,"","",,Venda,Botswanabugs,2021-07-13T12:58:42Z
+337799,tshirungulu,und,"","",,Venda,Botswanabugs,2021-07-13T12:59:20Z
+337799,mutogwe,und,"","",,Venda,Botswanabugs,2021-07-13T13:00:38Z
+438150,murungulu,und,"","",,Venda,Botswanabugs,2021-07-13T13:02:19Z
+438150,tshirungulu,und,"","",,Venda,Botswanabugs,2021-07-13T13:03:14Z
+581775,murungulu,und,"","",,Venda,Botswanabugs,2021-07-13T13:05:07Z
+62924,ḽiluvha,und,"","",,Venda,Botswanabugs,2021-07-13T13:06:44Z
+62924,tshikhaṱhakhaṱhane,und,"","",,Venda,Botswanabugs,2021-07-13T13:07:25Z
+62924,musalamarubini,und,"","",,Venda,Botswanabugs,2021-07-13T13:08:00Z
+583093,muṱanzwakhamelo,und,"","",,Venda,Botswanabugs,2021-07-13T13:10:00Z
+583093,ṱhanamaswi,und,"","",,Venda,Botswanabugs,2021-07-13T13:11:02Z
+340194,muthowa,und,"","",,Venda,Botswanabugs,2021-07-13T13:12:22Z
+52351,mubvafhisa,und,"","",,Venda,Botswanabugs,2021-07-13T13:14:00Z
+186561,makhuluwamuhatu,und,"","",,Venda,Botswanabugs,2021-07-13T13:15:41Z
+107889,Khala,und,"","",http://www.catalogueoflife.org/annual-checklist/details/species/id/10067864/common/96895,Venda,,2021-07-15T15:07:18Z
+107889,Thipende,und,"","",http://www.catalogueoflife.org/annual-checklist/details/species/id/10067864/common/96857,Venda,,2021-07-15T15:07:29Z
+107889,Tshena,und,"","",http://www.catalogueoflife.org/annual-checklist/details/species/id/10067864/common/96840,Venda,,2021-07-15T15:07:38Z
+107889,Tshikwea,und,"","",http://www.catalogueoflife.org/annual-checklist/details/species/id/10067864/common/96838,Venda,,2021-07-15T15:07:49Z
+114172,Tshikwea,und,"","",http://www.catalogueoflife.org/annual-checklist/details/species/id/10068263/common/75270,Venda,,2021-07-15T15:07:49Z
+49587,Ramafelia,und,"","",http://www.catalogueoflife.org/annual-checklist/details/species/id/10069306/common/103590,Venda,,2021-07-16T19:51:32Z
+186271,Mubvumala,und,"","",,Venda,Botswanabugs,2021-07-17T18:24:10Z
+186271,Mubvumela,und,"","",,Venda,Botswanabugs,2021-07-17T18:24:53Z
+427214,mukundandou,und,"","",,Venda,Botswanabugs,2021-07-25T11:01:16Z
+340211,Mufhanda,und,"","",,Venda,Botswanabugs,2021-07-27T06:24:39Z
+340062,mugavhi,und,"","",,Venda,Botswanabugs,2021-07-27T07:24:07Z
+593121,murundamali,und,"","",,Venda,Botswanabugs,2021-07-29T04:14:26Z
+593138,musivha,und,"","",,Venda,Botswanabugs,2021-07-29T04:15:40Z
+593138,liṱo,und,"","",,Venda,Botswanabugs,2021-07-29T04:16:41Z
+593138,maṱo,und,"","",,Venda,Botswanabugs,2021-07-29T04:17:07Z
+52347,muḓuwishango,und,"","",,Venda,Botswanabugs,2021-07-29T04:18:30Z
+416647,muhaṱaha,und,"","",,Venda,Botswanabugs,2021-07-29T04:20:51Z
+416647,mushushaphongwe,und,"","",,Venda,Botswanabugs,2021-07-29T04:21:49Z
+340243,mutondo,und,"","",,Venda,Botswanabugs,2021-07-29T04:24:22Z
+592162,mokolokoṱe,und,"","",,Venda,Botswanabugs,2021-07-29T04:26:30Z
+431389,mugogodwane,und,"","",,Venda,Botswanabugs,2021-07-29T04:29:52Z
+431389,mukundandou,und,"","",,Venda,Botswanabugs,2021-07-29T04:30:18Z
+415487,vhulada,und,"","",,Venda,Botswanabugs,2021-07-29T04:39:15Z
+415488,vhulada,und,"","",,Venda,Botswanabugs,2021-07-29T04:40:10Z
+47445,mushona,und,"","",,Venda,Botswanabugs,2021-07-29T04:42:03Z
+339372,muangaila,und,"","",,Venda,Botswanabugs,2021-07-29T04:43:18Z
+343060,muswiswa,und,"","",,Venda,Botswanabugs,2021-07-29T04:44:47Z
+343060,mualigatsibi,und,"","",,Venda,Botswanabugs,2021-07-29T04:45:28Z
+343060,mpindukwa,und,"","",,Venda,Botswanabugs,2021-07-29T04:45:55Z
+343039,muhoṱo,und,"","",,Venda,Botswanabugs,2021-07-29T04:47:50Z
+119673,muvhale,und,"","",,Venda,Botswanabugs,2021-07-29T04:49:10Z
+568770,gumululo,und,"","",,Venda,Botswanabugs,2021-07-29T04:51:47Z
+568770,musesekufa,und,"","",,Venda,Botswanabugs,2021-07-29T04:52:27Z
+568770,tshisesana,und,"","",,Venda,Botswanabugs,2021-07-29T04:53:17Z
+568770,gumbathakha,und,"","",,Venda,Botswanabugs,2021-07-29T04:54:06Z
+584445,gumululo,und,"","",,Venda,Botswanabugs,2021-07-29T04:55:46Z
+584445,musesekufa,und,"","",,Venda,Botswanabugs,2021-07-29T04:56:20Z
+584445,tshisesevhufa,und,"","",,Venda,Botswanabugs,2021-07-29T04:57:13Z
+584445,tshisesethavha,und,"","",,Venda,Botswanabugs,2021-07-29T04:58:07Z
+584445,tshisesana,und,"","",,Venda,Botswanabugs,2021-07-29T04:58:50Z
+584445,gumbathakha,und,"","",,Venda,Botswanabugs,2021-07-29T04:59:23Z
+584445,gumbavhufa,und,"","",,Venda,Botswanabugs,2021-07-29T04:59:51Z
+584445,gumbaufa,und,"","",,Venda,Botswanabugs,2021-07-29T05:00:28Z
+583422,musinḓe,und,"","",,Venda,Botswanabugs,2021-07-29T05:02:04Z
+191296,muuluri,und,"","",,Venda,Botswanabugs,2021-07-29T05:03:29Z
+191296,muhuluri,und,"","",,Venda,Botswanabugs,2021-07-29T05:03:55Z
+583028,murundelatshotshi,und,"","",,Venda,Botswanabugs,2021-07-29T05:05:16Z
+583028,mulambabea,und,"","",,Venda,Botswanabugs,2021-07-29T05:05:49Z
+583028,nḓuhushango,und,"","",,Venda,Botswanabugs,2021-07-29T05:06:25Z
+428023,mukamba,und,"","",,Venda,Botswanabugs,2021-07-29T10:53:27Z
+428023,muswingaphala,und,"","",,Venda,Botswanabugs,2021-07-29T10:54:07Z
+1065370,luanakha,und,"","",,Venda,Botswanabugs,2021-07-29T10:56:06Z
+139444,munḓodzi,und,"","",,Venda,Botswanabugs,2021-07-29T10:59:45Z
+147000,muṋembeṋembe,und,"","",,Venda,Botswanabugs,2021-07-29T11:01:04Z
+147000,mulambadivhu,und,"","",,Venda,Botswanabugs,2021-07-29T11:01:33Z
+147000,mulumaṋama,und,"","",,Venda,Botswanabugs,2021-07-29T11:02:48Z
+428749,muṱanari,und,"","",,Venda,Botswanabugs,2021-07-29T11:04:03Z
+159197,mutswiriri,und,"","",,Venda,Botswanabugs,2021-07-29T11:05:51Z
+340225,muṱambapfunda,und,"","",,Venda,Botswanabugs,2021-07-29T11:06:55Z
+340225,muvhambangoma,und,"","",,Venda,Botswanabugs,2021-07-29T11:07:26Z
+437242,mulelu,und,"","",,Venda,Botswanabugs,2021-07-29T11:08:38Z
+437242,munungufhefhe,und,"","",,Venda,Botswanabugs,2021-07-29T11:09:07Z
+579378,mupfumbadzi,und,"","",,Venda,Botswanabugs,2021-07-29T11:10:29Z
+579375,mupalakhwali,und,"","",,Venda,Botswanabugs,2021-07-29T11:12:51Z
+579375,mutsiḽari,und,"","",,Venda,Botswanabugs,2021-07-29T11:13:34Z
+340175,muime,und,"","",,Venda,Botswanabugs,2021-07-29T11:14:52Z
+340175,mupalakhwali,und,"","",,Venda,Botswanabugs,2021-07-29T11:15:19Z
+340175,mukuvhavhanḓinḓa,und,"","",,Venda,Botswanabugs,2021-07-29T11:15:44Z
+128969,muelela,und,"","",,Venda,Botswanabugs,2021-07-29T11:17:12Z
+128969,muvhanḓangoma,und,"","",,Venda,Botswanabugs,2021-07-29T11:17:47Z
+472455,muṱohoṱoho,und,"","",,Venda,Botswanabugs,2021-07-29T16:24:34Z
+472455,muṱoṱombudzi,und,"","",,Venda,Botswanabugs,2021-07-29T16:25:08Z
+128928,nimvi,und,"","",,Venda,Botswanabugs,2021-07-29T16:26:57Z
+128928,munimvi,und,"","",,Venda,Botswanabugs,2021-07-29T16:27:46Z
+342724,"gwambazi,",und,"","",,Venda,Botswanabugs,2021-07-29T16:30:23Z
+342724,muobaḓali,und,"","",,Venda,Botswanabugs,2021-07-29T16:31:20Z
+342724,muombaḓadzi,und,"","",,Venda,Botswanabugs,2021-07-29T16:31:53Z
+342724,luakhaboyi,und,"","",,Venda,Botswanabugs,2021-07-29T16:32:28Z
+524340,tshikuni,und,"","",,Venda,Botswanabugs,2021-07-29T17:01:53Z
+524340,munnamutswu,und,"","",,Venda,Botswanabugs,2021-07-29T17:03:00Z
+524340,mudiatsiwana,und,"","",,Venda,Botswanabugs,2021-07-29T17:03:33Z
+186043,mutambanamme,und,"","",,Venda,Botswanabugs,2021-07-29T17:05:13Z
+186043,mupopane,und,"","",,Venda,Botswanabugs,2021-07-29T17:05:42Z
+589547,mutapatila,und,"","",,Venda,Botswanabugs,2021-07-29T17:08:02Z
+549967,mutshalimela,und,"","",,Venda,Botswanabugs,2021-07-29T17:11:21Z
+505821,mutaladzi,und,"","",,Venda,Botswanabugs,2021-07-29T17:20:19Z
+488493,mufhafha,und,"","",,Venda,Botswanabugs,2021-07-29T17:22:02Z
+488493,mubobo,und,"","",,Venda,Botswanabugs,2021-07-29T17:22:38Z
+582629,muukhuthu,und,"","",,Venda,Botswanabugs,2021-07-29T17:24:23Z
+582637,mutonyombiḓi,und,"","",,Venda,Botswanabugs,2021-07-29T17:28:47Z
+582637,mutalu,und,"","",,Venda,Botswanabugs,2021-07-29T17:29:41Z
+182206,mulanga,und,"","",,Venda,Botswanabugs,2021-07-29T17:34:32Z
+190367,luṱhadzi,und,"","",,Venda,Botswanabugs,2021-07-29T17:51:44Z
+190367,mutie,und,"","",,Venda,Botswanabugs,2021-07-29T17:52:31Z
+584386,malambakupikwa,und,"","",,Venda,Botswanabugs,2021-07-29T17:55:22Z
+584388,mulumaṋamana,und,"","",,Venda,Botswanabugs,2021-07-29T17:56:28Z
+584388,mukuvhazwivhi,und,"","",,Venda,Botswanabugs,2021-07-29T17:57:22Z
+584388,mukundadivhu,und,"","",,Venda,Botswanabugs,2021-07-29T17:58:23Z
+340106,tshiphandwa,und,"","",,Venda,Botswanabugs,2021-07-29T18:00:24Z
+586688,ntsatshilambe,und,"","",,Venda,Botswanabugs,2021-07-29T18:02:34Z
+589367,luuvhu,und,"","",,Venda,Botswanabugs,2021-07-29T18:04:11Z
+589697,mukwatule,und,"","",,Venda,Botswanabugs,2021-07-29T18:05:43Z
+589698,tshibvukahalwa,und,"","",,Venda,Botswanabugs,2021-07-29T18:07:11Z
+589698,tshikwaṱukwaṱu,und,"","",,Venda,Botswanabugs,2021-07-29T18:07:41Z
+429473,mugugunu,und,"","",,Venda,Botswanabugs,2021-07-29T18:09:24Z
+429473,mukwatule,und,"","",,Venda,Botswanabugs,2021-07-29T18:09:52Z
+429473,mukwatikwati,und,"","",,Venda,Botswanabugs,2021-07-29T18:10:21Z
+500502,murumelelwa,und,"","",,Venda,Botswanabugs,2021-07-29T18:12:41Z
+592498,mutshiḽari,und,"","",,Venda,Botswanabugs,2021-07-29T18:13:51Z
+592498,mukolomo,und,"","",,Venda,Botswanabugs,2021-07-29T18:14:26Z
+592498,mutandambeulane,und,"","",,Venda,Botswanabugs,2021-07-29T18:15:21Z
+592498,mutandambevhulane,und,"","",,Venda,Botswanabugs,2021-07-29T18:16:12Z
+592498,mutswiputswipu,und,"","",,Venda,Botswanabugs,2021-07-29T18:16:42Z
+593608,dira,und,"","",,Venda,Botswanabugs,2021-07-30T05:19:47Z
+593608,musasalwabwa,und,"","",,Venda,Botswanabugs,2021-07-30T05:20:20Z
+593608,ntsatshilambe,und,"","",,Venda,Botswanabugs,2021-07-30T05:20:52Z
+593608,phaṱhatshimima,und,"","",,Venda,Botswanabugs,2021-07-30T05:21:19Z
+593608,tavhatapano,und,"","",,Venda,Botswanabugs,2021-07-30T05:21:52Z
+593608,tavhatapi,und,"","",,Venda,Botswanabugs,2021-07-30T05:22:27Z
+569017,tshivhulafhasi,und,"","",,Venda,Botswanabugs,2021-07-30T05:24:52Z
+569017,tshivhulana,und,"","",,Venda,Botswanabugs,2021-07-30T05:25:28Z
+340173,muphiphi,und,"","",,Venda,Botswanabugs,2021-07-30T05:27:07Z
+340173,mupimbi,und,"","",,Venda,Botswanabugs,2021-07-30T05:28:11Z
+340059,mugavhi,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:37:43Z
+426116,muvuvha,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:38:59Z
+340062,mudzwiri,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:42:51Z
+340062,musingidzi,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:43:57Z
+340408,mudzwiri,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:46:11Z
+340408,mugeri,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:46:41Z
+211071,muḽandou,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:48:44Z
+340115,mukopokopo,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:50:09Z
+340115,gopokopo,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:50:45Z
+340115,bungaluselo,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:51:12Z
+582597,gopokopobani,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:52:20Z
+582597,lugwit,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:52:44Z
+553599,mufhaṱelaṱhundu,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:53:53Z
+340142,nwanḓa,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:54:50Z
+430533,muṱwari,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:56:04Z
+336810,mususu,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:57:44Z
+76425,damba,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T06:59:14Z
+53478,Damba,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T07:00:27Z
+162913,mukangambadzhe,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T07:01:52Z
+587925,tshipokoto,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T07:03:20Z
+587925,muḓuhwi,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T07:05:10Z
+587925,mundalendale,und,"","",,Venda,Khama III Memorial Museum in Serowe,2021-07-30T07:05:35Z
+587941,muḓuhwi,und,"","",,Venda,Botswanabugs,2021-07-30T09:48:54Z
+164215,tshibokoṱo,und,"","",,Venda,Botswanabugs,2021-07-30T09:50:26Z
+588233,tshinyanyu,und,"","",,Venda,Botswanabugs,2021-07-30T09:51:24Z
+588233,tshirindidza,und,"","",,Venda,Botswanabugs,2021-07-30T09:51:46Z
+1245066,tshiphaswi,und,"","",,Venda,Botswanabugs,2021-07-30T09:52:57Z
+1245066,tshinyagu,und,"","",,Venda,Botswanabugs,2021-07-30T09:53:20Z
+70054,mutshatsha,und,"","",,Venda,Botswanabugs,2021-07-30T09:54:14Z
+489787,tshifhafhe,und,"","",,Venda,Botswanabugs,2021-07-30T09:55:06Z
+516178,tshinyagu,und,"","",,Venda,Botswanabugs,2021-07-30T09:56:02Z
+161246,muṱhangavhavhe,und,"","",,Venda,Botswanabugs,2021-07-30T09:57:11Z
+161246,tshiphaswi,und,"","",,Venda,Botswanabugs,2021-07-30T09:57:39Z
+161246,tshinyagu,und,"","",,Venda,Botswanabugs,2021-07-30T09:58:04Z
+126238,tshithangavhavhe,und,"","",,Venda,Botswanabugs,2021-07-30T09:59:34Z
+126238,tshinyagu,und,"","",,Venda,Botswanabugs,2021-07-30T10:00:05Z
+76539,tshinyagu,und,"","",,Venda,Botswanabugs,2021-07-30T10:02:31Z
+583108,tshinyagu,und,"","",,Venda,Botswanabugs,2021-07-30T10:03:47Z
+583108,tshithangavhavhe,und,"","",,Venda,Botswanabugs,2021-07-30T10:04:17Z
+583108,gumutsha,und,"","",,Venda,Botswanabugs,2021-07-30T10:04:50Z
+164415,muphapha,und,"","",,Venda,Botswanabugs,2021-07-30T10:06:16Z
+164415,mukumbu,und,"","",,Venda,Botswanabugs,2021-07-30T10:06:43Z
+165503,tshibavhe,und,"","",,Venda,Botswanabugs,2021-07-30T10:07:54Z
+165503,lukake,und,"","",,Venda,Botswanabugs,2021-07-30T10:08:32Z
+590053,mbandatshilale,und,"","",,Venda,Botswanabugs,2021-07-30T10:09:36Z
+590053,nyapiringulule,und,"","",,Venda,Botswanabugs,2021-07-30T10:10:06Z
+590053,tshifhafhe,und,"","",,Venda,Botswanabugs,2021-07-30T10:19:20Z
+590053,tshilungamuṋo,und,"","",,Venda,Botswanabugs,2021-07-30T10:20:00Z
+61369,lubavhe,und,"","",,Venda,Botswanabugs,2021-07-30T10:23:04Z
+61369,tshibavhe,und,"","",,Venda,Botswanabugs,2021-07-30T10:23:45Z
+61369,lugulusekene,und,"","",,Venda,Botswanabugs,2021-07-30T10:24:17Z
+61369,nngutshiphaswi,und,"","",,Venda,Botswanabugs,2021-07-30T10:24:46Z
+590055,nngu,und,"","",,Venda,Botswanabugs,2021-07-30T10:25:56Z
+135521,ṱhaululo,und,"","",,Venda,Botswanabugs,2021-07-30T10:27:09Z
+76584,ngowe,und,"","",,Venda,Botswanabugs,2021-07-30T10:28:26Z
+507246,dzhesi,und,"","",,Venda,Botswanabugs,2021-07-30T10:29:20Z
+583263,muṱaṱe,und,"","",,Venda,Botswanabugs,2021-07-30T10:30:27Z
+326086,tshirindidza,und,"","",,Venda,Botswanabugs,2021-07-30T10:31:22Z
+583845,gambampengo,und,"","",,Venda,Botswanabugs,2021-07-30T10:32:19Z
+583845,mukamba,und,"","",,Venda,Botswanabugs,2021-07-30T10:32:46Z
+340214,musuma,und,"","",,Venda,Botswanabugs,2021-07-30T10:34:13Z
+340214,mutsuma,und,"","",,Venda,Botswanabugs,2021-07-30T10:34:46Z
+326781,muxe,und,"","",,Venda,Botswanabugs,2021-07-30T16:27:28Z
+340118,Kokwaro,und,"","",,Venda,Botswanabugs,2021-07-30T17:09:26Z
+340118,mulivhadza,und,"","",,Venda,Botswanabugs,2021-07-30T17:10:07Z
+135389,mugwiti,und,"","",,Venda,Botswanabugs,2021-08-12T09:18:07Z
+553599,mufhatelathundu,und,"","",,Venda,Botswanabugs,2021-08-13T18:14:03Z
+342536,mukopokopo,und,"","",,Venda,Botswanabugs,2021-08-13T19:26:33Z
+342536,gopogopo,und,"","",,Venda,Botswanabugs,2021-08-13T19:27:25Z
+342740,mutonyombiḓi,und,"","",,Venda,Botswanabugs,2021-08-13T19:37:44Z
+594421,Mulondo,und,"","",,Venda,Botswanabugs,2021-09-13T12:49:57Z
+594427,Tshihaka phele,und,"","",,Venda,Botswanabugs,2021-09-13T12:50:59Z
+52328,vowa,und,"","",https://www.inaturalist.org/taxon_names/2601136/edit,Venda,,2021-09-17T16:16:21Z
+52328,thebe,und,"","",https://www.inaturalist.org/taxon_names/2601137/edit,Venda,,2021-09-17T16:16:21Z
+52328,gango,und,"","",https://www.inaturalist.org/taxon_names/2601138/edit,Venda,,2021-09-17T16:16:22Z
+52328,tshiubavhakololo,und,"","",https://www.inaturalist.org/taxon_names/2601139/edit,Venda,,2021-09-17T16:16:23Z
+594418,muvundėa-mbadėo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:54Z
+595943,musaunga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:55Z
+595946,musivhitėha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:55Z
+595946,musivhitha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:55Z
+594421,tshihaka-phele,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:56Z
+601154,munembedzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:57Z
+594427,mudhaya,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:57Z
+601156,tshikwalo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:57Z
+601540,muvumba ngwena,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:58Z
+601540,muvumba-ngwenėa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:58Z
+601157,muombaluwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:58Z
+601158,muunga-tėhudėa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:59Z
+601158,muunga-thuda,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:59Z
+568252,muunga-luselo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:59Z
+567419,muswu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:45:59Z
+567419,muungakhanga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:00Z
+567419,muunga-khanga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:00Z
+601160,munanganėia,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:00Z
+601160,munangiana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:01Z
+348763,muunga-gwena,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:01Z
+597500,mulambila,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:02Z
+597500,mulėambila,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:02Z
+430600,mutsilili,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:02Z
+81500,muvhuyu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:03Z
+340276,Beleha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:03Z
+340276,bopa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:03Z
+340276,bopa-vafu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:04Z
+340276,bopa-vhafu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:04Z
+340276,Bopha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:04Z
+579088,tshivhuyu-dumbu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:04Z
+340236,mutėokotėa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:05Z
+597591,muomba-ngoma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:06Z
+597591,muvhada-ngoma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:06Z
+597591,muvhadėa-ngoma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:06Z
+464609,muvhola,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:07Z
+340175,mukuvhavhadėinda,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:07Z
+340175,mukuvhavhadinda,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:07Z
+340175,mupula khwali,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:08Z
+579375,mutsilari,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:08Z
+597592,muvhole-vhole,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:09Z
+340225,mutamba-pfuna,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:09Z
+340225,mutėamba-pfunda,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:10Z
+340009,murunda-malofha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:10Z
+597621,musangwane-sonde,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:10Z
+597621,sudzungwane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:11Z
+579586,tshikhopa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:11Z
+579586,tshikhopha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:11Z
+597640,bindamutsho,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:12Z
+597640,khopha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:12Z
+579836,musimbiri,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:12Z
+579836,musumbiri,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:13Z
+132972,mueneene,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:13Z
+340136,mufhala-khwali,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:13Z
+340136,mukwala-kwali,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:14Z
+340136,mupala-khwali,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:14Z
+597739,tshiphopha-madėi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:14Z
+597739,tshiphopha-madi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:15Z
+340099,munna-mutswa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:15Z
+597939,Mudulu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:16Z
+597940,danzwa-nombe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:16Z
+597940,dėanzwa-nombe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:16Z
+67321,mushakule,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:17Z
+340336,munėie,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:17Z
+340336,munie,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:18Z
+581033,munėiane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:18Z
+581033,munėia-nėiane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:18Z
+581033,muniaiane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:19Z
+581117,sando,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:19Z
+50203,mushiji,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:19Z
+428023,mukambana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:20Z
+428023,muswinga-phala,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:20Z
+70065,mutėhobi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:20Z
+70065,muthobi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:20Z
+70065,muvhombwe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:21Z
+598015,tshibibi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:21Z
+598015,tshitėhobi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:21Z
+598015,tshithobi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:22Z
+189878,mufhata thavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:22Z
+189878,mufhatėa-thavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:22Z
+189878,mutėonzhe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:23Z
+189878,mutonzhe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:23Z
+581265,mufhata,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:23Z
+581265,mufhatėa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:24Z
+340265,mutsiwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:24Z
+340346,mutavhatsindi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:24Z
+340346,mutėavhatsindi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:25Z
+429244,mutulume,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:25Z
+132932,munzere,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:25Z
+581380,mukumba-kumbane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:25Z
+211103,mudiatėholana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:26Z
+211103,mudiatholana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:26Z
+184342,muvaha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:27Z
+598053,muhalika,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:27Z
+598053,tmuhalika,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:28Z
+581724,mufhaladza-tshitėangu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:28Z
+581724,mulivhadza-tshitėangu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:28Z
+581725,mulume-khoda,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:29Z
+581725,mulume-khodėa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:29Z
+559528,muvhibvela-shadani,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:29Z
+559528,muvhibvela-shadėani,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:30Z
+340368,mukumawabane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:30Z
+342724,Gwambadzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:30Z
+342724,gwambazi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:31Z
+342724,mubadaki,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:31Z
+342724,mubadali,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:31Z
+342724,mubadati,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:31Z
+342724,Muobadali,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:32Z
+342724,muoba-dali,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:32Z
+342724,muoba-dėali,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:32Z
+342724,ukonanguluvhe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:33Z
+581772,tshitshesana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:33Z
+147002,muvhonetshela-thevhelu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:34Z
+147002,muvhonela-tėhangu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:34Z
+342720,tshamulevhu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:35Z
+160172,luangalala,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:35Z
+190367,lutėhadzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:36Z
+190367,luthadzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:36Z
+190367,lwani,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:36Z
+70059,lurenzhebane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:36Z
+70059,muphula-tsindi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:37Z
+559533,mulivhadze-tshitėangu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:37Z
+133950,mpopana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:37Z
+160294,tshiwa-mwando,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:38Z
+581875,murondo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:38Z
+469317,mulėa-nguluvhe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:39Z
+469317,mutėhavhalunzhi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:39Z
+469317,muthavhalunzhi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:39Z
+582082,mula-nguluvhe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:40Z
+598173,murathane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:40Z
+588002,mukuda-khombe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:40Z
+588002,mukudėa-khombe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:41Z
+342748,mudedede,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:41Z
+342748,munukha-vhaloi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:41Z
+342748,murandela,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:42Z
+128928,muruvidi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:42Z
+582494,sipho,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:42Z
+582500,tshinapanapana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:43Z
+428749,mutanari,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:43Z
+428749,mutėanari,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:43Z
+340408,muheri,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:45Z
+340408,muhiri,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:45Z
+135386,muvuvhu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:45Z
+135386,muvuvhu-thavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:46Z
+135386,muvuvhu-wannda,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:46Z
+135386,muvuvhu-wa-thavhani,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:46Z
+340115,gopo-gopo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:47Z
+340115,mukopo-kopo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:47Z
+340115,murunda-gopokopo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:47Z
+582591,muvuvhatavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:48Z
+582591,muvuvha-thavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:48Z
+211071,gopokopo-bani,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:48Z
+211071,mulandėou,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:49Z
+211071,mulandou,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:49Z
+553599,mufhatėela-tėhundėu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:49Z
+553599,mufhatela,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:49Z
+553599,mufhatela-thundu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:50Z
+340296,mubobobo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:50Z
+582622,mutėalu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:51Z
+488493,mukarakara,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:51Z
+488493,mukarakara mufhafha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:52Z
+340306,mundalindali,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:52Z
+582635,tshiuvhu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:52Z
+566052,mutėahadzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:53Z
+582637,mutonyombidėi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:53Z
+582637,mutonyombidi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:53Z
+847544,ndilela,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:54Z
+582771,muhasha-phande,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:54Z
+342630,mutėadola,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:54Z
+362173,mududa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:55Z
+582792,mutėogwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:55Z
+582793,munganingani,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:55Z
+582793,munamuna,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:56Z
+340240,mukhobekwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:56Z
+340240,mukhobigwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:56Z
+340240,mulumazwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:56Z
+583028,musumbudza-nduhu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:57Z
+598569,mufhorola,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:57Z
+598569,muthatha-khubi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:57Z
+598569,nyasimbitane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:58Z
+340314,muruthu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:58Z
+430901,muima-vanda,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:58Z
+430901,muima-vandėa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:59Z
+430901,mula-thoho,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:59Z
+430901,mulėa-tėhoho,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:46:59Z
+583085,munėenze,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:00Z
+583087,munenze,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:00Z
+490221,musangwe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:00Z
+543240,musenzhe-thavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:01Z
+598589,musenzhe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:01Z
+415490,ndou muhulu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:01Z
+583263,mutate,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:02Z
+583883,tshitėhalėa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:04Z
+583883,tshithala,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:04Z
+578253,mutėhalėa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:04Z
+578253,muthala,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:05Z
+340194,mutėhowa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:05Z
+521451,muputepute,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:05Z
+521451,mutata-vhana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:06Z
+521451,muputėeputėe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:06Z
+430960,mufulwi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:06Z
+430960,mupfulwi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:07Z
+337751,mutunu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:08Z
+337751,muvhamba-nguvho,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:08Z
+584112,muhoholosa-lulimi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:08Z
+584112,munwevha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:09Z
+584115,mutshimba,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:09Z
+584115,tshinwevha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:09Z
+132590,tshila-mbila,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:09Z
+132590,tshilėa-mbila,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:10Z
+132959,mutėongola,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:10Z
+132962,mutongola,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:10Z
+340056,shombe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:11Z
+598818,murovherovhe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:11Z
+506952,mudėouma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:11Z
+506952,mudouma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:12Z
+506952,mutėovuma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:12Z
+506952,Mutobvuma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:12Z
+506952,mutovuma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:13Z
+557692,Tshibvukahalwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:13Z
+584388,mulumanamana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:13Z
+584388,mulumanėamana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:14Z
+584445,tshisese-thavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:14Z
+584445,tshisesevhafa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:15Z
+135963,mutondolo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:16Z
+135963,tshifhanga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:16Z
+135963,tshitėondėolo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:16Z
+135963,tshitondolo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:17Z
+191883,munzhounzhou,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:17Z
+191883,muzhounzhou,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:17Z
+585191,makhulu-wa-musanana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:18Z
+340139,muswayi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:18Z
+340139,nyatėhonge,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:19Z
+340139,nyathonge,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:19Z
+599235,mungule-nyele,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:19Z
+599235,mutangule,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:20Z
+599235,mutėangule,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:20Z
+599235,mutėangule-nyele,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:20Z
+585517,lutangule,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:20Z
+585517,lutėangule,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:21Z
+585517,mutėangule-musekene,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:21Z
+599240,mutėangule-thavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:21Z
+533457,tshitangule,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:22Z
+533457,tshitėangule,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:22Z
+585523,mukavha-mahunguvhu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:22Z
+585523,murambo-thavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:23Z
+585523,tshitawatawane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:23Z
+585523,tshitėawatėawane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:23Z
+599272,tshikonde-ngala,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:24Z
+599273,mukonde-ngala,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:24Z
+334379,mukonde,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:24Z
+162855,mutėungu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:25Z
+162855,mutungu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:25Z
+599336,mutoko,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:25Z
+343039,muhotėo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:26Z
+183411,mutėango,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:26Z
+585801,mutango,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:26Z
+585801,mutango-thavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:26Z
+585801,mutėango-thavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:27Z
+428367,Mutango,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:27Z
+431014,tshikululu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:27Z
+585956,muumo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:28Z
+507292,muhuyu-lukumbe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:28Z
+585958,muvumo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:28Z
+585962,muuomo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:29Z
+129715,mudzula-tshinya,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:29Z
+129715,mutamvu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:29Z
+129715,mutėamvu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:30Z
+133182,muhuyu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:30Z
+133182,muhuyu-lukuse,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:30Z
+133182,muhuyu-ngala,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:31Z
+599386,muhuvhoya,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:31Z
+599386,mutėole,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:31Z
+599386,mutole,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:32Z
+599386,muvhuyu-vhutwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:32Z
+163027,muvhamba-ngoma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:32Z
+556880,mutangauma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:33Z
+340173,mpimbi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:33Z
+599414,tshidedede,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:33Z
+466979,tshiralala,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:34Z
+431074,murabva,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:35Z
+527059,muredėwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:35Z
+431075,mupharasheni,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:36Z
+586636,mukukunu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:36Z
+560210,mufuka,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:36Z
+560210,mupfuka,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:37Z
+334569,mulembu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:37Z
+567067,nya-muzwila,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:37Z
+586644,tshirabva,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:38Z
+599497,mupuna,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:38Z
+599497,murapfa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:38Z
+586652,rambolavhadzimu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:38Z
+586652,rambola-vhadzimu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:39Z
+586652,Shambodavhadzimu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:39Z
+586652,shambola-vhadzimu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:39Z
+599503,tshitėongofa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:40Z
+340381,tshithongofa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:40Z
+589698,thibvukalwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:41Z
+589698,tshinembane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:41Z
+599510,mudzhoudzhou,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:42Z
+599510,mutama,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:42Z
+564534,ishitoni sha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:42Z
+599784,mula-notshi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:43Z
+599784,mutėhatėha-vhanna,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:43Z
+599784,muthatha-vhanna,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:43Z
+587481,myhwidzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:44Z
+567695,mufhapabere,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:44Z
+186561,kakhulu-wa-muhatėu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:44Z
+186561,khatėha-khatėhane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:45Z
+186561,khatha-khathane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:45Z
+340267,tshikhonwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:45Z
+340267,tshikonwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:46Z
+467989,mudyanongo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:46Z
+133558,Mutanzwa-Khamelo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:46Z
+133558,mutėanzwa-khamelo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:47Z
+587953,shangwe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:47Z
+164238,mafuredonga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:47Z
+164238,mupfire-wa-tshikhuwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:48Z
+164238,mupfure-donga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:48Z
+164238,mupfure-wa-tshikhuwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:48Z
+526999,nethi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:49Z
+588248,mutėhambeni,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:49Z
+588248,muthambeni,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:49Z
+81491,mubvevha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:50Z
+81491,mutshata,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:50Z
+81491,mutshato,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:50Z
+81491,muvevha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:51Z
+119178,mufhatapvhufa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:51Z
+119178,mufhatėa-vhufa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:51Z
+119178,muphatavhafu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:51Z
+340010,mukumululo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:52Z
+588682,Tshidzimbambule,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:53Z
+588682,tshidzimba-vhalisa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:53Z
+588682,tshidzomba vhalisa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:54Z
+588707,dzaluma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:54Z
+437591,untlokwana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:54Z
+490656,bogokgwe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:55Z
+489282,munyongatshifumbu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:55Z
+343067,musudzungwane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:55Z
+403681,mufhanza,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:56Z
+403681,muphanza,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:57Z
+600201,mutamba-na-mme,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:57Z
+133587,mutaku,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:57Z
+133587,Mutibammela,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:58Z
+133587,mutiba-mmela,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:58Z
+133587,muunguri,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:58Z
+340191,munamba,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:58Z
+340191,munėamba,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:59Z
+340191,mutshesa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:59Z
+340159,mulėa-kholomo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:47:59Z
+589697,makhulu-wa-mukwatule,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:00Z
+589698,mutape,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:00Z
+589985,mulambilana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:01Z
+589985,mulėambilana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:01Z
+590029,mububulu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:02Z
+469316,mutėaladzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:02Z
+506886,tshinwamulwadze,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:03Z
+600283,nyagokwane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:03Z
+590285,tshifhangwana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:03Z
+415488,shiritsi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:04Z
+600317,mukunda-ndou,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:04Z
+469795,Mafavuka,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:04Z
+469795,Mukangambanzhe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:05Z
+469795,ufazham-ka,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:05Z
+70260,tshilalantsa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:05Z
+600329,mungugunu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:06Z
+427261,mpupumwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:06Z
+427261,Mulanotshi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:06Z
+427261,mulėa-nėotshi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:07Z
+340348,mulamvuvhu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:07Z
+340348,mulėamvuvhu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:07Z
+590672,marombodane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:08Z
+503912,dyambila,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:08Z
+503912,gukhunya,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:08Z
+503912,muendanathavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:09Z
+503912,muendana-thavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:09Z
+503912,murovha-dėembe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:10Z
+503912,mutėhanzwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:10Z
+503912,mutėvhazwi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:10Z
+503912,muungana muvhazwi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:10Z
+503912,tanga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:11Z
+600370,murambo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:11Z
+568613,tshipfure,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:11Z
+416644,tshitėhotėhonya,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:12Z
+525408,munėie-dombo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:12Z
+525408,munie-dombo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:13Z
+525408,mutandavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:13Z
+525408,mutėandėavha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:13Z
+322082,mutėwari,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:14Z
+322082,mutwari,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:14Z
+590768,mulondwane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:14Z
+340332,mutuzwu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:14Z
+410574,makonde,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:15Z
+543377,mugogodėwane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:15Z
+431389,mutėhari,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:16Z
+431389,muthari,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:16Z
+600533,tshinangana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:16Z
+504205,musununu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:17Z
+600543,mubandulakhali,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:17Z
+428559,Murodololo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:18Z
+428559,Muvundambado,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:18Z
+428559,tshikavhavhe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:18Z
+591423,musanana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:19Z
+591476,tshituku,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:19Z
+591486,Gundamanyelo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:20Z
+591486,Mutudo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:20Z
+591505,mutshetshe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:21Z
+166729,mutshema,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:21Z
+166729,mutshevho,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:21Z
+166729,mutzhema,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:22Z
+507252,makhulu-wa-mutangauma,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:22Z
+507252,mutangauma-vhadzimu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:22Z
+507252,mutėangauma-vhadzimu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:23Z
+51988,murugudani,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:23Z
+592162,mukolokotėa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:24Z
+152137,mulilwe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:24Z
+166935,Mutanzwakhamelo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:24Z
+560244,mufhaladza-tshitangu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:25Z
+560244,mulivhadza-tshitangu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:25Z
+132930,muhovhohovho,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:25Z
+326086,tshilepwetėe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:26Z
+326086,tshitėopitėopi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:26Z
+566289,dzungu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:28Z
+566289,tshidėzungu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:28Z
+566289,tshididiri,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:28Z
+568506,tshidėidėiri,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:28Z
+568506,tshizungu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:29Z
+367323,mutu-musolde,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:29Z
+435322,mulala-maanga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:29Z
+192788,mutondowe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:30Z
+600852,mutėondėowa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:30Z
+592652,makhulu-wa-mutomaboti,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:32Z
+592652,tshiritsirane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:33Z
+592652,tsiritsirane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:33Z
+472436,makhulu-wa-mutomboti,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:33Z
+431512,mulari,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:34Z
+431512,munari,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:34Z
+431512,munėari,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:34Z
+431512,munukhavhaloi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:35Z
+340142,mufhanza-belo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:35Z
+340142,mwandėa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:35Z
+600866,muatėaha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:36Z
+600866,muathaha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:36Z
+600866,mushasha-phombwe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:36Z
+600866,mushusha-phombwe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:36Z
+592669,luhakangue,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:37Z
+133184,Munadzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:37Z
+133184,munėadzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:37Z
+133184,muraldi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:38Z
+133551,tshikwatėule,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:38Z
+593047,murenzhebane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:38Z
+593083,tshikundėwi-mai,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:39Z
+593083,tshikundwi-mai,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:39Z
+593084,tshikundėwi-mae,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:39Z
+593084,tshikundwi-mae,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:40Z
+566441,khundėwi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:40Z
+566441,khundwi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:40Z
+428557,murumbula-mbudzana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:41Z
+557697,Muvhadela-phanga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:41Z
+593907,mutasiri,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:42Z
+601104,tshitasiri,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:43Z
+593921,mutzhaku-tzhaku,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:43Z
+601110,mushalakadza,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:43Z
+600966,mukurwane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:44Z
+600966,muputa-mazhana,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:44Z
+431566,mukubudu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:45Z
+431566,muratha-mapfene,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:45Z
+431566,muratha-mapfenėe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:45Z
+431565,thudėwane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:46Z
+431565,thudwane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:46Z
+405771,tshitamba-tshedzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:46Z
+601034,munengeledzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:47Z
+601036,munėengeledzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:47Z
+446942,mundamuka,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:47Z
+446942,mundėamuka,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:48Z
+1269678,mukho,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:48Z
+369448,mulibi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:48Z
+369448,mulubi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:49Z
+369448,munėunzwu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:49Z
+369448,mununzwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:49Z
+369448,mununzwu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:49Z
+369448,mutanswa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:50Z
+538727,mulingwi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:50Z
+557697,muvhadėela-phanga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:50Z
+593907,mutėasiri,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:51Z
+601103,tshitėasiri,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:51Z
+593921,mutshaku-tshaku,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:51Z
+593974,mpesu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:52Z
+340244,munembenembe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:52Z
+181972,tshinėonzhe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:52Z
+181972,tshinonzhe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:53Z
+567059,mutaladzi-vhufa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:55Z
+567059,mutėaladzi-vhufa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:55Z
+53294,shashe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:56Z
+340253,muonze,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:56Z
+601245,tshisenzhane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:57Z
+431646,mukakate,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:57Z
+594900,mukamaga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:57Z
+594900,mukhamaga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:58Z
+594900,nambi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:58Z
+594900,nėambi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:59Z
+340252,muramba-kolodza,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:59Z
+340100,mutupa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:59Z
+595012,muramba,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:48:59Z
+595012,murudėa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:00Z
+601299,muramba-khomu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:00Z
+595029,tshitėongola,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:00Z
+595029,tshitongola,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:01Z
+739104,mulamba-nėoni,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:01Z
+739104,mulamba-noni,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:01Z
+739104,muswoswo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:02Z
+338719,mutėu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:02Z
+595101,mupone,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:02Z
+595101,mutėawi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:03Z
+595101,mutuwi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:03Z
+338720,mutėu-phemba,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:03Z
+338720,mutumadi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:04Z
+338720,mutu-phemba,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:04Z
+595103,mutawi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:04Z
+340266,muhatėu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:05Z
+340266,muhatu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:05Z
+286772,luvhenga-mmbwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:05Z
+286772,mpashile,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:06Z
+406462,Tshiololo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:06Z
+595986,mutswolotswondėo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:07Z
+595986,mutswolotswondo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:07Z
+147425,mukurukuru,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:07Z
+595641,tshituku-tsha-dėaka,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:08Z
+601423,tshituku-tsha-dake,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:08Z
+147420,mulahu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:08Z
+147420,mutėuhu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:09Z
+147420,mutshikili,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:09Z
+147420,mutuhu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:09Z
+147420,muuhu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:09Z
+186663,muphopha-maai,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:10Z
+186663,muphopha-madėi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:10Z
+186663,muphopha-madi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:11Z
+186663,muvhadela-phanga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:11Z
+601453,tshilaphithi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:11Z
+601453,tshilėaphithi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:11Z
+340092,tshigombo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:12Z
+595938,munna-mutswu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:12Z
+601546,muzwilu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:12Z
+340338,muhondwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:13Z
+601548,phatėhane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:13Z
+569564,mululudza,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:13Z
+587504,tshibaha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:14Z
+586655,Phathane,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:14Z
+444767,mupfulu-pfumbu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:14Z
+182206,manaka,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:15Z
+182206,Manakha,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:15Z
+135521,tėhaululo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:15Z
+135521,thaululo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:16Z
+596296,musunzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:16Z
+340212,mudzungu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:16Z
+601612,dėadzwanombe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:17Z
+601612,mutėanzwa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:17Z
+340168,mutanwadombo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:17Z
+340168,mutėanzwa-dombo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:17Z
+340168,mutshili,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:18Z
+596344,muvhula-vhusiku,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:18Z
+132925,mutekere,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:18Z
+132925,mutshika,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:19Z
+132925,tshipengo,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:19Z
+362174,mungungu,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:19Z
+469304,Tshamavhudzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:20Z
+596434,mukhalu-vhufa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:21Z
+596434,mulalantsa,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:21Z
+596480,nyatsi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,Ken-ichi Ueda,2021-10-21T20:49:21Z
+340143,mutangauma,und,"","",,Venda,Botswanabugs,2021-11-07T16:32:53Z
+119995,mashonzha,und,"","",,Venda,Botswanabugs,2021-11-08T07:32:40Z
+81500,mukuyu,und,"","",,Venda,Botswanabugs,2021-11-11T16:36:36Z
+68227,mushakule,und,"","",,Venda,Botswanabugs,2021-11-13T10:56:14Z
+48894,phame,und,"","",,Venda,Botswanabugs,2021-12-17T10:16:17Z
+48894,phepeni,und,"","",,Venda,Botswanabugs,2021-12-17T10:18:07Z
+142774,tshihupu,und,"","",,Venda,Botswanabugs,2022-01-09T04:38:32Z
+1186469,gogodza,und,"","",,Venda,Botswanabugs,2022-01-11T14:30:58Z
+337751,mtunu,und,"","",,Venda,Botswanabugs,2022-01-11T14:40:23Z
+1306005,Thagalu,und,"","",https://www.inaturalist.org/taxon_names/2899686/edit,Venda,,2022-02-28T01:14:34Z
+1306005,Didingwe,und,"","",https://www.inaturalist.org/taxon_names/2899696/edit,Venda,,2022-02-28T01:14:37Z
+1363338,gwambadzi,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,,2022-03-06T15:26:48Z
+1210966,Phunguhwe,und,"","",,Venda,Botswanabugs,2022-03-10T10:42:19Z
+5017,Lihamakholomo,und,"","",,Venda,Botswanabugs,2022-03-10T11:02:03Z
+42042,Limange la daka,und,"","",,Venda,Botswanabugs,2022-03-24T04:21:17Z
+42042,thwani,und,"","",,Venda,Botswanabugs,2022-03-24T04:35:00Z
+41886,phele,und,"","",,Venda,Botswanabugs,2022-03-24T08:20:19Z
+42305,Dahvu,und,"","",,Venda,Botswanabugs,2022-03-24T11:46:40Z
+583085,munenze,und,"","",,Venda,Botswanabugs,2022-03-27T06:13:51Z
+581033,muhukhuma,und,"","",,Venda,Botswanabugs,2022-03-27T06:16:00Z
+581033,munianiane,und,"","",,Venda,Botswanabugs,2022-03-27T06:16:34Z
+581033,muniane,und,"","",,Venda,Botswanabugs,2022-03-27T06:17:09Z
+1371229,muzwilu-ngala,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,,2022-03-31T08:46:22Z
+596042,munukha-tshilongwe,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,,2022-04-13T07:20:03Z
+595643,Mutshikili,und,"","",,Venda,Botswanabugs,2022-04-28T10:06:24Z
+595643,Mutuhu,und,"","",,Venda,Botswanabugs,2022-04-28T10:14:45Z
+595643,Umkuhlu,und,"","",,Venda,Botswanabugs,2022-04-28T10:15:29Z
+56739,muplure,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,,2022-05-09T18:29:08Z
+191689,Mulanga,und,"","",South African National Biodiversity Institute. 2021. Botanical Database of Southern Africa (BODATSA) [offline dataset]. http://newposa.sanbi.org [Note that these data are not available at this URL as of 2021],Venda,,2022-05-13T15:35:45Z
+490221,Mufhefhera,und,"","",,Venda,Botswanabugs,2022-05-22T05:10:41Z
+591317,mudumbula,und,"","",,Venda,Botswanabugs,2022-06-02T08:28:34Z
