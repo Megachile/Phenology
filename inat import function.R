@@ -22,7 +22,7 @@ wd <- "C:/Users/adam/Documents/GitHub/gallformers/Phenology"
 setwd(wd)
 
 #input iNat code or GF code
-spcode <- "1148791"
+spcode <- "1204152"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -84,10 +84,15 @@ dbAppendTable(gallphen, "observations",)
 # update the last updated date to the current date
 setUpdate(spcode)
 
+dbGetQuery(gallphen, "SELECT inatcode FROM species WHERE species_id in (SELECT DISTINCT gall_id FROM observations)")
+
 # dbGetQuery(gallphen, "SELECT * FROM observations WHERE pageURL ='https://www.inaturalist.org/observations/127280486'")
 
 # dbExecute(gallphen, "DELETE FROM observations 
 #           WHERE obs_id = ''")
+
+#input iNat code or GF code
+spcode <- "1260104"
 
 data <- dbGetQuery(gallphen, str_interp("SELECT observations.*, host.species AS host, gall.generation FROM observations 
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
@@ -100,10 +105,19 @@ data <- dbGetQuery(gallphen, "SELECT * FROM observations
                              WHERE genus = 'Solidago' AND species = 'altissima')
                               AND gall_id IS NULL")
 
+easfull <- seasonIndex(easfull)
+easfull <- acchours(easfull)
+
+data <- data[!(data$doy<171&data$phenophase=="Flower Budding"),]
 data <- seasonIndex(data)
 data <- acchours(data)
+param <- doyLatSeasEq(data,easfull)
+param <- doyLatAGDD32Eq(data,eas)
+param <- doyLatAGDD50Eq(data,eas)
+doyLatPlot(data,param)
 
-p = ggplot(data = host, aes(x = doy, y = latitude, color=phenophase, shape=phenophase,size=22)) + 
+
+p = ggplot(data = data, aes(x = doy, y = latitude, color=phenophase, shape=phenophase,size=22)) + 
   geom_point()
 p
 
@@ -572,8 +586,27 @@ PrepAppend <- function(x){
   return(as.data.frame(x))
 }
 
-# function to calculate a new column for the seasonality index of each observation in a dataframe; must contain a latitude and doy column
-eq = function(x,lat) {(2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(x)/180))))-8}
+# functions to calculate a new column for the accumulated hours (adjusted for latitude) and the percent of same (seasonality index) of each observation in a dataframe
+# must contain a latitude and doy column
+eq = function(x,lat=45) {(2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(x)/180))))-8}
+acchours <- function(x){
+  
+  for (i in 1:dim(x)[1]){
+    x$acchours[i] <- trapz(
+      seq(1,x$doy[i]),
+      (pos_part(eq(seq(1,x$doy[i]),x$latitude[i])*(90-x$latitude[i]))
+       /max(eq(seq(1,365),x$latitude[i])) )
+    )
+  }
+  return(x)
+}
+seasonIndex <- function(x){
+  
+  for (i in 1:dim(x)[1]){
+    x$seasind[i] <- trapz(seq(1,x$doy[i]),(pos_part(eq(seq(1,x$doy[i]),x$latitude[i]))))/trapz(seq(1,365),(pos_part(eq(seq(1,365),x$latitude[i]))))
+  }
+  return(x)
+}
 
 seasonIndex <- function(x){
   
@@ -583,19 +616,30 @@ seasonIndex <- function(x){
   return(x)
 }
 
-acchours <- function(x){
-  
-  for (i in 1:dim(x)[1]){
-    x$acchours[i] <- trapz(seq(1,x$doy[i]),eq(seq(1,x$doy[i]),x$latitude[i]))
+# calculates the slope and y intercept of the lines representing two sds above and below the mean accumulated day hours or seasonality index of flower budding or maturing, adult, perimature observations
+parcalc <- function(x,y,var){
+  m <- mean(x[[var]],na.rm=TRUE)
+  s <- sd(x[[var]],na.rm=TRUE)
+  thr <- 0.1*m
+  tf <- y[which(between(y[[var]],((m-thr)-(z*s)),((m+thr)-(z*s))  )),]
+  if (dim(tf)[1]>1){
+    mod <- lm(tf$latitude~tf$doy)
+    low <- coefficients(mod)
+  } else {
+    low <- c(-9999,0)
   }
-  return(x)
+  tf <- y[which(between(y[[var]],((m-thr)+(z*s)),((m+thr)+(z*s))  )),]
+  if (dim(tf)[1]>1){
+    mod <- lm(tf$latitude~tf$doy)
+    high <- coefficients(mod)
+  } else {
+    high <- c(-9999,0)
+  }
+  
+  coef <- rbind(low,high)
+  return(as.data.frame(coef))
 }
-eas <- acchours(eas)
-eas <- seasonIndex(eas)
-plot(eas$percent32~eas$seasind)
 
-# calculates the slope and y intercept of the lines representing two sds above and below the mean AGDD of maturing, adult, perimature observations
-# a lot of late perimature observations tend to shift this too late 
 doyLatSeasEq <- function(x,y){ 
   x <- as.data.frame(x)
   if (all(is.na(x$gall_id))){
@@ -609,100 +653,209 @@ doyLatSeasEq <- function(x,y){
     x <- x[!x$phenophase=="oviscar",]
   }
   
-  x <- x[!is.na(x$AGDD32),]
-  x <- x[!is.nan(x$AGDD32),]
-  
-  thr <- 50
   z <- 2
   if (!all(x$generation=="NA")) { 
     if (any(grepl("agamic",x$generation))){
-      m <- mean(x[which(x$generation=="agamic"),"AGDD32"])
-      s <- sd(x[which(x$generation=="agamic"),"AGDD32"])
-      
-      tf <- y[which(between(y$AGDD32,((m-thr)-(z*s)),((m+thr)-(z*s)))),]
-      mod <- lm(tf$latitude~tf$doy)
-      plot(tf$latitude~tf$doy)
-      coef <- coefficients(mod)
-      agamlowslope <- coef[2]
-      agamlowyint <- coef[1]
-      
-      tf <- y[which(between(y$AGDD32,((m-thr)+(z*s)),((m+thr)+(z*s)))),]
-      if (dim(tf)[1]>1){
-        mod <- lm(tf$latitude~tf$doy)
-        plot(tf$latitude~tf$doy)
-        coef <- coefficients(mod)
-        agamhighslope <- coef[2]
-        agamhighyint <- coef[1]
+      sub <- x[which(x$generation=="agamic"),]
+      if (min(x$doy)>171){
+        coef <- parcalc(sub,y,"seasind")
       } else {
-        agamhighslope <- 0
-        agamhighyint <- -9999
+        coef <- parcalc(sub,y,"acchours")  
       }
+    agamlowslope <- coef[1,2]
+    agamlowyint <- coef[1,1]
+    agamhighslope <- coef[2,2]
+    agamhighyint <- coef[2,1]
     } else {
-      agamhighslope <- 0
-      agamhighyint <- -9999
       agamlowslope <- 0
       agamlowyint <- -9999
-    }
-    if (any(grepl("sexgen",x$generation))){
-      m <- mean(x[which(x$generation=="sexgen"),"AGDD32"])
-      s <- sd(x[which(x$generation=="sexgen"),"AGDD32"])
-      
-      tf <- y[which(between(y$AGDD32,((m-thr)-(z*s)),((m+thr)-(z*s)))),]
-      mod <- lm(tf$latitude~tf$doy)
-      plot(tf$latitude~tf$doy)
-      coef <- coefficients(mod)
-      sglowslope <- coef[2]
-      sglowyint <- coef[1]
-      
-      tf <- y[which(between(y$AGDD32,((m-thr)+(z*s)),((m+thr)+(z*s)))),]
-      if (dim(tf)[1]>1){
-        mod <- lm(tf$latitude~tf$doy)
-        plot(tf$latitude~tf$doy)
-        coef <- coefficients(mod)
-        sghighslope <- coef[2]
-        sghighyint <- coef[1]
-      } else {
-        sghighslope <- 0
-        sghighyint <- -9999
-      } 
-    } else {
-      sghighslope <- 0
-      sghighyint <- -9999
-      sglowslope <- 0
-      sglowyint <- -9999
+      agamhighslope <- 0
+      agamhighyint <- -9999
     }
     
+    
+    if (any(grepl("sexgen",x$generation))){
+      sub <- x[which(x$generation=="sexgen"),]
+      if (min(x$doy)>171){
+        coef <- parcalc(sub,y,"seasind")
+      } else {
+        coef <- parcalc(sub,y,"acchours")  
+      }
+    sglowslope <- coef[1,2]
+    sglowyint <- coef[1,1]
+    sghighslope <- coef[2,2]
+    sghighyint <- coef[2,1]
+    } else {
+      sglowslope <- 0
+      sglowyint <- -9999
+      sghighslope <- 0
+      sghighyint <- -9999
+    }
     param <- as.data.frame(t(c(agamlowslope,agamlowyint,agamhighslope,agamhighyint,sglowslope,sglowyint,sghighslope,sghighyint)))
     colnames(param) <- c("agamlowslope","agamlowyint","agamhighslope","agamhighyint","sglowslope","sglowyint","sghighslope","sghighyint")
     
   } else {
-    
-    m <- mean(x$AGDD32, na.rm=TRUE)
-    s <- sd(x$AGDD32, na.rm=TRUE)
-    tf <- y[which(between(y$AGDD32,((m-thr)-(z*s)),((m+thr)-(z*s)))),]
-    mod <- lm(tf$latitude~tf$doy)
-    plot(tf$latitude~tf$doy)
-    coef <- coefficients(mod)
-    lowslope <- coef[2]
-    lowyint <- coef[1]
-    
-    tf <- y[which(between(y$AGDD32,((m-thr)+(z*s)),((m+thr)+(z*s)))),]
-    mod <- lm(tf$latitude~tf$doy)
-    plot(tf$latitude~tf$doy)
-    coef <- coefficients(mod)
-    highslope <- coef[2]
-    highyint <- coef[1]
+    if (min(x$doy)>171){
+      coef <- parcalc(x,y,"seasind")
+    } else {
+      coef <- parcalc(x,y,"acchours")
+    }
+    lowslope <- coef[1,2]
+    lowyint <- coef[1,1]
+    highslope <- coef[2,2]
+    highyint <- coef[2,1]
     
     param <- as.data.frame(t(c(lowslope,lowyint,highslope,highyint)))
     colnames(param) <- c("lowslope","lowyint","highslope","highyint")
-    
     
   }
   return(param)
 }
 
-param <- doyLatSeasEq(data,eas)
-doyLatPlot(data,param)
+doyLatAGDD50Eq <- function(x,y){ 
+  x <- as.data.frame(x)
+  if (all(is.na(x$gall_id))){
+    x <- x[grepl('Flower Budding',x$phenophase),] 
+  } else {
+    x$phenostage <- paste0(x$phenophase, x$lifestage)
+    x <- x[!x$phenophase=="senescent",]
+    x <- x[!x$phenostage=="",]
+    x <- x[!x$phenophase=="developing",]  
+    x <- x[!x$phenophase=="dormant",] 
+    x <- x[!x$phenophase=="oviscar",]
+  }
+  
+  z <- 2
+  if (!all(x$generation=="NA")) { 
+    if (any(grepl("agamic",x$generation))){
+      sub <- x[which(x$generation=="agamic"),]
+      if (min(x$doy)>171){
+        coef <- parcalc(sub,y,"percent50")
+      } else {
+        coef <- parcalc(sub,y,"AGDD50")  
+      }
+      agamlowslope <- coef[1,2]
+      agamlowyint <- coef[1,1]
+      agamhighslope <- coef[2,2]
+      agamhighyint <- coef[2,1]
+    } else {
+      agamlowslope <- 0
+      agamlowyint <- -9999
+      agamhighslope <- 0
+      agamhighyint <- -9999
+    }
+    
+    
+    if (any(grepl("sexgen",x$generation))){
+      sub <- x[which(x$generation=="sexgen"),]
+      if (min(x$doy)>171){
+        coef <- parcalc(sub,y,"percent50")
+      } else {
+        coef <- parcalc(sub,y,"AGDD50")  
+      }
+      sglowslope <- coef[1,2]
+      sglowyint <- coef[1,1]
+      sghighslope <- coef[2,2]
+      sghighyint <- coef[2,1]
+    } else {
+      sglowslope <- 0
+      sglowyint <- -9999
+      sghighslope <- 0
+      sghighyint <- -9999
+    }
+    param <- as.data.frame(t(c(agamlowslope,agamlowyint,agamhighslope,agamhighyint,sglowslope,sglowyint,sghighslope,sghighyint)))
+    colnames(param) <- c("agamlowslope","agamlowyint","agamhighslope","agamhighyint","sglowslope","sglowyint","sghighslope","sghighyint")
+    
+  } else {
+    if (min(x$doy>171)){
+      coef <- parcalc(x,y,"percent50")
+    } else {
+      coef <- parcalc(x,y,"AGDD50")
+    }
+    lowslope <- coef[1,2]
+    lowyint <- coef[1,1]
+    highslope <- coef[2,2]
+    highyint <- coef[2,1]
+    
+    param <- as.data.frame(t(c(lowslope,lowyint,highslope,highyint)))
+    colnames(param) <- c("lowslope","lowyint","highslope","highyint")
+    
+  }
+  return(param)
+}
+
+doyLatAGDD32Eq <- function(x,y){ 
+  x <- as.data.frame(x)
+  if (all(is.na(x$gall_id))){
+    x <- x[grepl('Flower Budding',x$phenophase),] 
+  } else {
+    x$phenostage <- paste0(x$phenophase, x$lifestage)
+    x <- x[!x$phenophase=="senescent",]
+    x <- x[!x$phenostage=="",]
+    x <- x[!x$phenophase=="developing",]  
+    x <- x[!x$phenophase=="dormant",] 
+    x <- x[!x$phenophase=="oviscar",]
+  }
+  
+  z <- 2
+  if (!all(x$generation=="NA")) { 
+    if (any(grepl("agamic",x$generation))){
+      sub <- x[which(x$generation=="agamic"),]
+      if (min(x$doy)>171){
+        coef <- parcalc(sub,y,"percent32")
+      } else {
+        coef <- parcalc(sub,y,"AGDD32")  
+      }
+      agamlowslope <- coef[1,2]
+      agamlowyint <- coef[1,1]
+      agamhighslope <- coef[2,2]
+      agamhighyint <- coef[2,1]
+    } else {
+      agamlowslope <- 0
+      agamlowyint <- -9999
+      agamhighslope <- 0
+      agamhighyint <- -9999
+    }
+    
+    
+    if (any(grepl("sexgen",x$generation))){
+      sub <- x[which(x$generation=="sexgen"),]
+      if (min(x$doy)>171){
+        coef <- parcalc(sub,y,"percent32")
+      } else {
+        coef <- parcalc(sub,y,"AGDD32")  
+      }
+      sglowslope <- coef[1,2]
+      sglowyint <- coef[1,1]
+      sghighslope <- coef[2,2]
+      sghighyint <- coef[2,1]
+    } else {
+      sglowslope <- 0
+      sglowyint <- -9999
+      sghighslope <- 0
+      sghighyint <- -9999
+    }
+    param <- as.data.frame(t(c(agamlowslope,agamlowyint,agamhighslope,agamhighyint,sglowslope,sglowyint,sghighslope,sghighyint)))
+    colnames(param) <- c("agamlowslope","agamlowyint","agamhighslope","agamhighyint","sglowslope","sglowyint","sghighslope","sghighyint")
+    
+  } else {
+    if (min(x$doy)>171){
+      coef <- parcalc(x,y,"percent32")
+    } else {
+      coef <- parcalc(x,y,"AGDD32")
+    }
+    lowslope <- coef[1,2]
+    lowyint <- coef[1,1]
+    highslope <- coef[2,2]
+    highyint <- coef[2,1]
+    
+    param <- as.data.frame(t(c(lowslope,lowyint,highslope,highyint)))
+    colnames(param) <- c("lowslope","lowyint","highslope","highyint")
+    
+  }
+  return(param)
+}
+
 
 # creates a new dataframe containing any maturing, adult, perimature observations outside the two lines calculated above
 doyLatAnom <- function(x, y) {

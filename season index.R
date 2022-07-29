@@ -45,11 +45,16 @@ p
 doyLatPlot(data1, y)
 
 plot(data1$percent50~data1$seasind)
+pos_part <- function(x) {
+  return(sapply(x, max, 0))
+}
 
 
 
-ggplot(data.frame(x=c(1, 365)), aes(x=x)) + 
-  stat_function(fun=insol)
+pos_part(seq(0,365))
+
+ggplot(data.frame(x=c(0, 365)), aes(x=x)) + 
+  stat_function(fun=pos_part)
 
 
 eq(c(1,2,3,4,5,6),45)
