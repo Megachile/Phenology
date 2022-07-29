@@ -22,7 +22,7 @@ wd <- "C:/Users/adam/Documents/GitHub/gallformers/Phenology"
 setwd(wd)
 
 #input iNat code or GF code
-spcode <- "85317"
+spcode <- "1148791"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -101,15 +101,20 @@ data <- dbGetQuery(gallphen, "SELECT * FROM observations
                               AND gall_id IS NULL")
 
 data <- seasonIndex(data)
+data <- acchours(data)
 
 p = ggplot(data = host, aes(x = doy, y = latitude, color=phenophase, shape=phenophase,size=22)) + 
   geom_point()
 p
 
 eas1 <- easfull[between(easfull$latitude,35,52),]
+eas <- acchours(eas)
+
+plot(sqrt(eas$AGDD32)~eas$doy)
+plot(sqrt(eas$acchours)~sqrt(eas$AGDD32))
 
 # data <- data[!data$pageURL=="https://www.inaturalist.org/observations/72725154",]
-param <- doyLatSeasEq(data,eas1)
+param <- doyLatSeasEq(data,eas)
 
 anom <- doyLatAnom(data, param)
 
@@ -568,6 +573,8 @@ PrepAppend <- function(x){
 }
 
 # function to calculate a new column for the seasonality index of each observation in a dataframe; must contain a latitude and doy column
+eq = function(x,lat) {(2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(x)/180))))-8}
+
 seasonIndex <- function(x){
   
   for (i in 1:dim(x)[1]){
@@ -576,8 +583,17 @@ seasonIndex <- function(x){
   return(x)
 }
 
-x <- data
-y <- eas
+acchours <- function(x){
+  
+  for (i in 1:dim(x)[1]){
+    x$acchours[i] <- trapz(seq(1,x$doy[i]),eq(seq(1,x$doy[i]),x$latitude[i]))
+  }
+  return(x)
+}
+eas <- acchours(eas)
+eas <- seasonIndex(eas)
+plot(eas$percent32~eas$seasind)
+
 # calculates the slope and y intercept of the lines representing two sds above and below the mean AGDD of maturing, adult, perimature observations
 # a lot of late perimature observations tend to shift this too late 
 doyLatSeasEq <- function(x,y){ 
@@ -593,25 +609,27 @@ doyLatSeasEq <- function(x,y){
     x <- x[!x$phenophase=="oviscar",]
   }
   
-  x <- x[!is.na(x$seasind),]
-  x <- x[!is.nan(x$seasind),]
+  x <- x[!is.na(x$AGDD32),]
+  x <- x[!is.nan(x$AGDD32),]
   
   thr <- 50
   z <- 2
   if (!all(x$generation=="NA")) { 
     if (any(grepl("agamic",x$generation))){
-      m <- mean(x[which(x$generation=="agamic"),"seasind"])
-      s <- sd(x[which(x$generation=="agamic"),"seasind"])
+      m <- mean(x[which(x$generation=="agamic"),"AGDD32"])
+      s <- sd(x[which(x$generation=="agamic"),"AGDD32"])
       
-      tf <- y[which(between(y$seasind,((m-thr)-(z*s)),((m+thr)-(z*s)))),]
+      tf <- y[which(between(y$AGDD32,((m-thr)-(z*s)),((m+thr)-(z*s)))),]
       mod <- lm(tf$latitude~tf$doy)
+      plot(tf$latitude~tf$doy)
       coef <- coefficients(mod)
       agamlowslope <- coef[2]
       agamlowyint <- coef[1]
       
-      tf <- y[which(between(y$seasind,((m-thr)+(z*s)),((m+thr)+(z*s)))),]
+      tf <- y[which(between(y$AGDD32,((m-thr)+(z*s)),((m+thr)+(z*s)))),]
       if (dim(tf)[1]>1){
         mod <- lm(tf$latitude~tf$doy)
+        plot(tf$latitude~tf$doy)
         coef <- coefficients(mod)
         agamhighslope <- coef[2]
         agamhighyint <- coef[1]
@@ -626,18 +644,20 @@ doyLatSeasEq <- function(x,y){
       agamlowyint <- -9999
     }
     if (any(grepl("sexgen",x$generation))){
-      m <- mean(x[which(x$generation=="sexgen"),"seasind"])
-      s <- sd(x[which(x$generation=="sexgen"),"seasind"])
+      m <- mean(x[which(x$generation=="sexgen"),"AGDD32"])
+      s <- sd(x[which(x$generation=="sexgen"),"AGDD32"])
       
-      tf <- y[which(between(y$seasind,((m-thr)-(z*s)),((m+thr)-(z*s)))),]
+      tf <- y[which(between(y$AGDD32,((m-thr)-(z*s)),((m+thr)-(z*s)))),]
       mod <- lm(tf$latitude~tf$doy)
+      plot(tf$latitude~tf$doy)
       coef <- coefficients(mod)
       sglowslope <- coef[2]
       sglowyint <- coef[1]
       
-      tf <- y[which(between(y$seasind,((m-thr)+(z*s)),((m+thr)+(z*s)))),]
+      tf <- y[which(between(y$AGDD32,((m-thr)+(z*s)),((m+thr)+(z*s)))),]
       if (dim(tf)[1]>1){
         mod <- lm(tf$latitude~tf$doy)
+        plot(tf$latitude~tf$doy)
         coef <- coefficients(mod)
         sghighslope <- coef[2]
         sghighyint <- coef[1]
@@ -661,7 +681,7 @@ doyLatSeasEq <- function(x,y){
     s <- sd(x$AGDD32, na.rm=TRUE)
     tf <- y[which(between(y$AGDD32,((m-thr)-(z*s)),((m+thr)-(z*s)))),]
     mod <- lm(tf$latitude~tf$doy)
-    # plot(tf$latitude~tf$doy)
+    plot(tf$latitude~tf$doy)
     coef <- coefficients(mod)
     lowslope <- coef[2]
     lowyint <- coef[1]
@@ -681,7 +701,7 @@ doyLatSeasEq <- function(x,y){
   return(param)
 }
 
-param <- doyLatSeasEq(data,eas1)
+param <- doyLatSeasEq(data,eas)
 doyLatPlot(data,param)
 
 # creates a new dataframe containing any maturing, adult, perimature observations outside the two lines calculated above

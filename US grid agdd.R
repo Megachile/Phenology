@@ -46,6 +46,7 @@ comb$yearend32 <- NA
 comb$yearend50 <- NA
 
 comb <- prev
+percent <- function(comb){
 for (i in 1:dim(comb)[1]){
   comb$yearend32[i] <- comb[(comb$doy>355&comb$latitude==comb$latitude[i]&comb$longitude==comb$longitude[i]),5]
   comb$yearend50[i] <- comb[(comb$doy>355&comb$latitude==comb$latitude[i]&comb$longitude==comb$longitude[i]),6]
@@ -53,7 +54,9 @@ for (i in 1:dim(comb)[1]){
 
 comb$percent32 <- comb$AGDD32/comb$yearend32
 comb$percent50 <- comb$AGDD50/comb$yearend50
-
+return(comb)
+}
+eas <- percent(eas)
 comb$daylength <- NULL
 
 
@@ -62,6 +65,8 @@ comb$daylength <- NULL
 prev <- seasonIndex(prev)
 
 easfull <- miss[miss$longitude>-103,]
+
+eas <- prev[prev$longitude>-103,]
 eas <- eas[!is.na(eas$AGDD32),]
 
 
