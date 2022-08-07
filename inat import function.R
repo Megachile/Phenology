@@ -18,11 +18,19 @@ library(solrad)
 # library(units)
 # library(stats)
 library(pracma)
+library(DBI)
+library(stringr)
 wd <- "C:/Users/adam/Documents/GitHub/gallformers/Phenology"
 setwd(wd)
+gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
+prev <- read.csv(paste0(wd, "/USgridagdd.csv" ))
+eas <- prev[prev$longitude>-103,]
+eas <- eas[!is.na(eas$AGDD32),]
+pac <- prev[!(prev$longitude>-103),]
+pac <- pac[!is.na(pac$AGDD32),]
 
 #input iNat code or GF code
-spcode <- "1204152"
+spcode <- "1080114"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -43,11 +51,11 @@ new <- checkData(obs)
 
 # creates a *new* dataframe with only rows missing data
 # 
-missing <- findMissing(new)
+# missing <- findMissing(new)
 
-for (i in 1:20){
-  browseURL(missing$uri[i])
-}
+# for (i in 1:20){
+#   browseURL(missing$uri[i])
+# }
 
 prob <- #####
 # new[new$id==prob,"Gall_phenophase"] <- "dormant"
@@ -55,29 +63,31 @@ prob <- #####
 # new[new$id==prob,"Host_Plant_ID"] <- "49006"
 # new[new$id==prob,"Life_Stage"] <- "Larva"
 
-egg <- findEgg(new)
+# egg <- findEgg(new)
 
-for (i in 1:20){
-  browseURL(egg$uri[i])
-}
+# for (i in 1:20){
+#   browseURL(egg$uri[i])
+# }
 
 # new[new$Gall_phenophase=="Egg","Gall_phenophase"] <- NA
 
 #get AGDD
-# agdd <- lookUpAGDD(new)
+agdd <- lookUpAGDD(new)
 
-checkHost(new)
+checkHost(agdd)
 # 
  # dbExecute(gallphen, "UPDATE species SET inatcode = '119269'
  #            WHERE genus = 'Quercus' AND species = 'stellata'")
 
 #remove and add columns to match database table
-append <- PrepAppend(new)
+append <- PrepAppend(agdd)
 
-lit <- read.csv(paste0(wd,"/litdates4.csv"))
+lit <- read.csv(paste0(wd,"/litdates5.csv"))
 lit <- lit[!is.na(lit$gall_id),]
-lit$doy <- yday(lit$date)
-
+for (i in 1:dim(lit)[1]){
+if (is.na(lit$doy[i])){
+lit$doy[i] <- yday(lit$date[i])
+}}
 
 #add to the database
 dbAppendTable(gallphen, "observations",)
@@ -92,7 +102,7 @@ dbGetQuery(gallphen, "SELECT inatcode FROM species WHERE species_id in (SELECT D
 #           WHERE obs_id = ''")
 
 #input iNat code or GF code
-spcode <- "1260104"
+spcode <- "85317"
 
 data <- dbGetQuery(gallphen, str_interp("SELECT observations.*, host.species AS host, gall.generation FROM observations 
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
@@ -105,13 +115,29 @@ data <- dbGetQuery(gallphen, "SELECT * FROM observations
                              WHERE genus = 'Solidago' AND species = 'altissima')
                               AND gall_id IS NULL")
 
+
+data <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.species AS gall FROM observations 
+                             LEFT JOIN species AS host ON observations.host_id = host.species_id
+                             LEFT JOIN species AS gall ON observations.gall_id = gall.species_id
+                             WHERE host_id in (SELECT species_id FROM species
+                             WHERE genus = 'Solidago') OR gall_id = '760'")
+
+
+write.csv(data, paste0(wd, "/Eurosta+solidago.csv"))
+
+
+
 easfull <- seasonIndex(easfull)
 easfull <- acchours(easfull)
 
-data <- data[!(data$doy<171&data$phenophase=="Flower Budding"),]
+data <- data[data$sourceURL=="inaturalist.org",]
+eas <- seasonIndex(eas)
+eas <- acchours(eas)
+data <- data[!(data$doy<171&grepl('Flower Budding',data$phenophase)),]
+
 data <- seasonIndex(data)
 data <- acchours(data)
-param <- doyLatSeasEq(data,easfull)
+param <- doyLatSeasEq(data,eas)
 param <- doyLatAGDD32Eq(data,eas)
 param <- doyLatAGDD50Eq(data,eas)
 doyLatPlot(data,param)
@@ -121,11 +147,21 @@ p = ggplot(data = data, aes(x = doy, y = latitude, color=phenophase, shape=pheno
   geom_point()
 p
 
-eas1 <- easfull[between(easfull$latitude,35,52),]
-eas <- acchours(eas)
+eas <- easfull[easfull$latitude==c(49),]
+eas1 <- eas[eas$doy==c(359),]
+eas <- easfull
 
-plot(sqrt(eas$AGDD32)~eas$doy)
-plot(sqrt(eas$acchours)~sqrt(eas$AGDD32))
+
+plot(eas$AGDD32~eas$doy)
+plot(eas$acchours~eas$doy)
+plot(eas$percent32~eas$doy)
+plot(eas$seasind~eas$doy)
+plot(eas$percent50~eas$seasind)
+plot(eas$AGDD50~eas$AGDD32)
+
+mod <- lm(formula = AGDD32 ~ latitude, data = eas1)
+summary(mod)
+
 
 # data <- data[!data$pageURL=="https://www.inaturalist.org/observations/72725154",]
 param <- doyLatSeasEq(data,eas)
@@ -588,22 +624,20 @@ PrepAppend <- function(x){
 
 # functions to calculate a new column for the accumulated hours (adjusted for latitude) and the percent of same (seasonality index) of each observation in a dataframe
 # must contain a latitude and doy column
-eq = function(x,lat=45) {(2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(x)/180))))-8}
+pos_part <- function(x) {
+  return(sapply(x, max, 0))
+}
+eq = function(x,lat=49) {((2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(x-(1.8*lat-50) )/180))))-(0.1*lat+5)) }
+
+
 acchours <- function(x){
   
   for (i in 1:dim(x)[1]){
     x$acchours[i] <- trapz(
       seq(1,x$doy[i]),
       (pos_part(eq(seq(1,x$doy[i]),x$latitude[i])*(90-x$latitude[i]))
-       /max(eq(seq(1,365),x$latitude[i])) )
+       /max(eq(seq(1,365),x$latitude[i])) * (-1/200*x$latitude[i]+647/600) )  
     )
-  }
-  return(x)
-}
-seasonIndex <- function(x){
-  
-  for (i in 1:dim(x)[1]){
-    x$seasind[i] <- trapz(seq(1,x$doy[i]),(pos_part(eq(seq(1,x$doy[i]),x$latitude[i]))))/trapz(seq(1,365),(pos_part(eq(seq(1,365),x$latitude[i]))))
   }
   return(x)
 }
@@ -611,7 +645,7 @@ seasonIndex <- function(x){
 seasonIndex <- function(x){
   
   for (i in 1:dim(x)[1]){
-    x$seasind[i] <- trapz(seq(1,x$doy[i]),eq(seq(1,x$doy[i]),x$latitude[i]))/trapz(seq(1,365),eq(seq(1,365),x$latitude[i]))
+    x$seasind[i] <- trapz(seq(1,x$doy[i]),(pos_part(eq(seq(1,x$doy[i]),x$latitude[i]))))/trapz(seq(1,(365-(1.8*x$latitude[i]-50))),(pos_part(eq(seq(1,(365-(1.8*x$latitude[i]-50))),x$latitude[i]))))
   }
   return(x)
 }
@@ -620,10 +654,11 @@ seasonIndex <- function(x){
 parcalc <- function(x,y,var){
   m <- mean(x[[var]],na.rm=TRUE)
   s <- sd(x[[var]],na.rm=TRUE)
-  thr <- 0.1*m
+  thr <- 0.015*m
   tf <- y[which(between(y[[var]],((m-thr)-(z*s)),((m+thr)-(z*s))  )),]
   if (dim(tf)[1]>1){
     mod <- lm(tf$latitude~tf$doy)
+    plot(tf$latitude~tf$doy)
     low <- coefficients(mod)
   } else {
     low <- c(-9999,0)
@@ -631,6 +666,7 @@ parcalc <- function(x,y,var){
   tf <- y[which(between(y[[var]],((m-thr)+(z*s)),((m+thr)+(z*s))  )),]
   if (dim(tf)[1]>1){
     mod <- lm(tf$latitude~tf$doy)
+    plot(tf$latitude~tf$doy)
     high <- coefficients(mod)
   } else {
     high <- c(-9999,0)
@@ -640,6 +676,8 @@ parcalc <- function(x,y,var){
   return(as.data.frame(coef))
 }
 
+
+
 doyLatSeasEq <- function(x,y){ 
   x <- as.data.frame(x)
   if (all(is.na(x$gall_id))){
@@ -648,8 +686,8 @@ doyLatSeasEq <- function(x,y){
     x$phenostage <- paste0(x$phenophase, x$lifestage)
     x <- x[!x$phenophase=="senescent",]
     x <- x[!x$phenostage=="",]
-    x <- x[!x$phenophase=="developing",]  
-    x <- x[!x$phenophase=="dormant",] 
+    x <- x[!x$phenophase=="developing",]
+    x <- x[!x$phenophase=="dormant",]
     x <- x[!x$phenophase=="oviscar",]
   }
   
