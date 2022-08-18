@@ -30,9 +30,6 @@ pac <- prev[!(prev$longitude>-103),]
 pac <- pac[!is.na(pac$AGDD32),]
 
 
-
-checkdata <- dbGetQuery(gallphen, "SELECT * FROM observations")
-
 #input iNat code or GF code
 spcode <- "1080114"
 
@@ -472,10 +469,7 @@ checkHost <- function(df){
   
   hosts <- hosts[!hosts$hostcodes=="",]
   
-  
-  dbGetQuery(gallphen, str_interp("SELECT inatcode FROM species
-                                                      WHERE species = 'macrocarpa'"))
-  
+
   for (i in 1:dim(hosts)[1]){
     if (numbers_only(hosts$hostcodes[i])){
       rank <- dbGetQuery(gallphen, str_interp("SELECT taxonRank FROM inatcodes WHERE id = '${hosts$hostcodes[i]}' ")) 
@@ -631,25 +625,27 @@ PrepAppend <- function(x){
 pos_part <- function(x) {
   return(sapply(x, max, 0))
 }
-eq = function(x,lat=49) {((2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(x-(1.8*lat-50) )/180))))-(0.1*lat+5)) }
 
+eqmod = function(x,lat=49) {((2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(x-(1.8*lat-50) )/180))))-(0.1*lat+5)) }
 
 acchours <- function(x){
   
   for (i in 1:dim(x)[1]){
     x$acchours[i] <- trapz(
       seq(1,x$doy[i]),
-      (pos_part(eq(seq(1,x$doy[i]),x$latitude[i])*(90-x$latitude[i]))
-       /max(eq(seq(1,365),x$latitude[i])) * (-1/200*x$latitude[i]+647/600) )  
+      (pos_part(eqmod(seq(1,x$doy[i]),x$latitude[i])*(90-x$latitude[i]))
+       /max(eqmod(seq(1,365),x$latitude[i])) * (-1/200*x$latitude[i]+647/600) )  
     )
   }
   return(x)
 }
 
+eq = function(x,lat=49) {((2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(x)/180))))-(0.1*lat+5)) }
+
 seasonIndex <- function(x){
   
   for (i in 1:dim(x)[1]){
-    x$seasind[i] <- trapz(seq(1,x$doy[i]),(pos_part(eq(seq(1,x$doy[i]),x$latitude[i]))))/trapz(seq(1,(365-(1.8*x$latitude[i]-50))),(pos_part(eq(seq(1,(365-(1.8*x$latitude[i]-50))),x$latitude[i]))))
+    x$seasind[i] <- trapz(seq(1,x$doy[i]),(pos_part(eq(seq(1,x$doy[i]),x$latitude[i]))))/trapz(seq(1,(365)),(pos_part(eq(seq(1,(365)),x$latitude[i]))))
   }
   return(x)
 }
@@ -658,7 +654,7 @@ seasonIndex <- function(x){
 parcalc <- function(x,y,var){
   m <- mean(x[[var]],na.rm=TRUE)
   s <- sd(x[[var]],na.rm=TRUE)
-  thr <- 0.015*m
+  thr <- 0.025*m
   tf <- y[which(between(y[[var]],((m-thr)-(z*s)),((m+thr)-(z*s))  )),]
   if (dim(tf)[1]>1){
     mod <- lm(tf$latitude~tf$doy)
@@ -915,7 +911,7 @@ doyLatAnom <- function(x, y) {
     x <- x[!x$phenophase=="oviscar",]
   }
   
-  if (!isTRUE(all(is.na(full$generation)))) { 
+  if (!isTRUE(all(is.na(x$generation)))) { 
     agam <- x[x$generation=="agamic",]
     if (isTRUE(y$agamlowslope[1]>0)){
       agamlow <- agam[(agam$latitude>y$agamlowslope[1]*agam$doy+y$agamlowyint[1]),]
@@ -1017,8 +1013,10 @@ markBad <- function(code) {
   if (!dim(check2)[1]==0){
     count <- dbExecute(gallphen, str_interp("DELETE FROM observations 
           WHERE pageURL LIKE '%${badurl}%'"))
+    return(paste("Number of observations deleted:", count))
+  } else {
+  return(paste("Number of observations deleted: 0"))
   }
-  return(paste("Number of observations deleted:", count))
 }
 
 # input an inat species code to set the date updated for that species to the current date
