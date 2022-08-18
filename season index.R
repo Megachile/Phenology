@@ -1,6 +1,4 @@
 library(solrad)
-install.packages("insol")
-library(insol)
 library(units)
 library(stats)
 library(pracma)
@@ -14,14 +12,13 @@ lat <- 45
 
 
 eq = function(x,lat=45) {(2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(x)/180))))-9}
-ah <- function(x, lat)
 
 # 
 # x <- seq(0,250)
 # y <- eq(x,lat,thr)
 # x <- data
 
-eas1 <- seasonIndex(eas1)
+eas1 <- seasonIndex(eas)
 data1 <- seasonIndex(data)
 x <- data
 y <- eas1
@@ -45,40 +42,55 @@ p
 doyLatPlot(data1, y)
 
 plot(data1$percent50~data1$seasind)
-pos_part <- function(x) {
-  return(sapply(x, max, 0))
-}
 
+x <- 173
 
+eq = function(x,lat=56) {
+  adj <- (x - (0.5*(lat/90)*(183-x)))
+  if (between(adj,0,365)[1]){
+    dec <- adj
+  } else {
+    dec <- 0
+  }
+  eq <- (2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(dec)/180)))) - (0.1*lat+5) 
+  return(eq)}
 
-pos_part(seq(0,365))
-
-ggplot(data.frame(x=c(0, 365)), aes(x=x)) + 
-  stat_function(fun=pos_part)
-
-
-eq(c(1,2,3,4,5,6),45)
-
-insol(52,45,-100)
-
-insol <- function(doy, lat=45, long=-100){
- insolation(acos(sin(lat*pi/180)*sin(Declination(doy)*pi/180)+cos(lat*pi/180)*cos(Declination(doy)*pi/180)*cos(hourangle(doy,long,-9)*pi/180)),doy,1500,28,60,278.15,0.3,0.2)[1]
-}
-
-insol <- function(x){
-  insolation(acos(sin(x$latitude*pi/180)*sin(Declination(x$doy)*pi/180)+cos(x$latitude*pi/180)*cos(Declination(x$doy)*pi/180)*cos(hourangle(x$doy,long,-9)*pi/180)),x$doy,3000,28,60,278.15,0.3,0.2)
-}
-
-
-x <- eas1
-insol(x$doy[1],x$latitude[1],x$longitude[1])
-
-insolPercent <- function(x){
-  
+i=2000
+x <- eas
+acchours <- function(x){
   for (i in 1:dim(x)[1]){
-    x$insolPercent[i] <- trapz(seq(1,x$doy[i]),insol(seq(1,x$doy[i]),x$latitude[i],x$longitude[i]))/trapz(seq(1,365),insol(seq(1,365),x$latitude[i],x$longitude[i]))
+    doyrange <- NULL
+    doyrange <- as.data.frame(seq(1,x$doy[i]))
+    names(doyrange)[names(doyrange)=="seq(1, x$doy[i])"] <- "doy"
+    for (j in 1:dim(doyrange)[1]){
+    doyrange$eq[j] <- pos_part(eq(j,x$latitude[i])) *(90-x$latitude[i]) / eq(171,x$latitude[i]) * (-1/200*x$latitude[i]+647/600)
+    }
+    x$acchours[i] <- trapz(doyrange$doy,doyrange$eq)
   }
   return(x)
 }
 
-eas1 <- insolPercent(eas1)
+
+eq = function(x,lat=49) { ((2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(x-(0.5*(lat/90)*(183-x))-(1.8*lat-50) )/180))))-(0.1*lat+5)) }
+
+ggplot(data.frame(x=c(0, 365)), aes(x=x)) + 
+  stat_function(fun=eq) +
+  geom_vline(xintercept = 171)
+
+eas <- eas[grepl('2021',eas$date),]
+
+eas <- seasonIndex(eas)
+eas <- acchours(eas)
+
+
+plot(eas$AGDD32~eas$acchours)
+plot(eas$AGDD50~eas$acchours)
+plot(eas$percent32~eas$seasind)
+plot(eas$percent50~eas$seasind)
+
+data <- seasonIndex(data)
+data <- acchours(data)
+param <- doyLatSeasEq(data,eas)
+param <- doyLatAGDD32Eq(data,eas)
+param <- doyLatAGDD50Eq(data,eas)
+doyLatPlot(data,param)

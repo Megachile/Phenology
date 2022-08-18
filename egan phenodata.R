@@ -16,14 +16,14 @@ lookUpAGDD50 <- function(x){
   }
   return(x)
 }
-wd <- "C:/Users/adam/Documents/GitHub/gallformers/Phenology"
+wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 sites <- data.frame(Site = c("Archbold","Lake Lizzie","Dickinson","Kissimmee","Okeechobee","Alva","Gatorama"),
                      Latitude = c(27.1831, 28.2451, 27.0029, 27.9828, 27.1968, 26.7297, 26.9326),
                      Longitude = c(-81.3552,-81.1681,-80.1015,-81.3826,-80.8291,-81.6107,-81.29)
                                   )
 btre <- read.csv(paste0(wd,"/Emergence in Nature.csv"))
-supp1 <- read.csv("C:/Users/adam/Downloads/rsbl20190572supp1.csv")
+supp1 <- read.csv(paste0(wd, "/rsbl20190572supp1.csv"))
 supp3 <- read.csv(paste0(wd, "/rsbl20190572supp3.csv"))
 supp3$observed_on <-  as.Date(supp3$Emergence.date, format = "%m/%d/%y")
 flda <- supp3[supp3$State=="FL",]
@@ -34,9 +34,64 @@ fl$doy <- yday(fl$observed_on)
 bkin <- read.csv(paste0(wd, "/bkinagdd.csv"))
 nqv <- read.csv(paste0(wd, "/nqvagdd.csv"))
 
-btre$observed_on <- as.Date(btre$observed_on, format = "%m/%d/%Y")
+
 btre <- merge(sites,btre)
-btre$doy <- yday(btre$observed_on)
+btre <- btre[btre$Caught>0,]
+
+
+dbGetQuery(gallphen, "SELECT * FROM species
+           WHERE genus = 'Belonocnema' AND species LIKE '%treatae%'")
+
+btre <- prepspecial(btre)
+
+
+prepspecial <- function(x){
+x$observed_on <- as.character(as.Date(x$observed_on, format = "%m/%d/%Y"))
+names(x)[names(x)=="Latitude"] <- "latitude"
+names(x)[names(x)=="Longitude"] <- "longitude"
+names(x)[names(x)=="observed_on"] <- "date"
+names(x)[names(x)=="Site"] <- "site"
+x$Host.Plant <- gsub("Quercus virginiana", 353, x$Host.Plant)
+x$Host.Plant <- gsub("Quercus geminata", 309, x$Host.Plant)
+x$Host.Plant <- gsub("Quercus fusiformis", 307, x$Host.Plant)
+names(x)[names(x)=="Host.Plant"] <- "host_id"
+x$gall_id <- "1305"
+x$gall_id <- as.numeric(x$gall_id)
+x$host_id <- as.numeric(x$host_id)
+x$doy <- yday(x$date)
+x$state <- "Florida"
+x$country <- "USA"
+x$lifestage <- "Adult"
+x$phenophase <- "maturing"
+x$Monitoring.interval <- NULL
+x$Caught <- NULL
+x$pageURL <- NA
+x$sourceURL <- "https://datadryad.org/stash/dataset/doi:10.5061/dryad.82j677c"
+if (is.null(x$AGDD32)){
+  x$AGDD32 <- NA
+}
+if (is.null(x$AGDD50)){
+  x$AGDD50 <- NA
+} 
+if (is.null(x$yearend32)){
+  x$yearend32 <- NA
+}
+if (is.null(x$yearend50)){
+  x$yearend50 <- NA
+} 
+if (is.null(x$percent32)){
+  x$percent32 <- NA
+}
+if (is.null(x$percent50)){
+  x$percent50 <- NA
+} 
+if (is.null(x$viability)){
+  x$viability <- NA
+} 
+return(x)
+}
+
+#
 fl <- read.csv(paste0(wd,"/Herbarium Records.csv"))
 fl$observed_on <- as.Date(fl$observed_on, format = "%m/%d/%Y")
 fl <- fl[!fl$Flowers=="N",]
@@ -174,7 +229,7 @@ fivenum(folqg$emergeagdd)
 
 #B treatae emergence
 btre <- lookUpAGDD32(btre)
-btre$doy <- yday(btre$observed_on)
+# btre$doy <- yday(btre$observed_on)
 btre <- btre[!btre$agdd32=="-9999",]
 btreqv <- btre[btre$Host.Plant=="Quercus virginiana",]
 btreqg <- btre[btre$Host.Plant=="Quercus geminata",]

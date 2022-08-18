@@ -7,11 +7,11 @@ library(rinat)
 library(stringr)
 library(ggplot2)
 library(lubridate)
-wd <- "C:/Users/adam/Documents/GitHub/gallformers/Phenology"
+wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
 # gfall <- dbConnect(RSQLite::SQLite(), "gallformers.sqlite")
-dbDisconnect(mydb)
+dbDisconnect(gallphen)
 
 dbListTables(gfall)
 dbListFields(gfall, "gallspecies")
@@ -173,6 +173,11 @@ dbExecute(gallphen, "UPDATE species SET species = 'margaretiae' WHERE genus = 'Q
 # }
 
 
+# Add lifestage Adult to maturing gall observations that are missing it
+# blank <-dbGetQuery(gallphen, "SELECT * FROM observations WHERE phenophase = 'maturing' AND lifestage IS NULL")
+# 
+# dbExecute(gallphen, "UPDATE observations SET lifestage = 'Adult'
+# WHERE phenophase = 'maturing' AND lifestage IS NULL ")
 
 
 
