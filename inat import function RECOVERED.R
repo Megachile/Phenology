@@ -91,7 +91,12 @@ for (i in 1:dim(lit)[1]){
   }}
 
 #add to the database
-dbAppendTable(gallphen, "observations",)
+dbAppendTable(gallphen, "observations",emer)
+
+test<-dbGetQuery(gallphen, "SELECT *FROM observations WHERE phenophase = 'Emerging leaves'")
+
+
+
 # update the last updated date to the current date
 setUpdate(spcode)
 
@@ -111,6 +116,7 @@ data <- dbGetQuery(gallphen, str_interp("SELECT observations.*, host.species AS 
                              WHERE gall_id in (SELECT species_id FROM species
                              WHERE inatcode = '${spcode}')"))
 
+# plant-only data for S altissima 
 data <- dbGetQuery(gallphen, "SELECT * FROM observations 
                              WHERE host_id IN (SELECT species_id FROM species
                              WHERE genus = 'Solidago' AND species = 'altissima')
@@ -124,16 +130,8 @@ data <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.
                              WHERE genus = 'Solidago') OR gall_id = '760'")
 
 
-write.csv(data, paste0(wd, "/Eurosta+solidago.csv"))
-
-
-
-easfull <- seasonIndex(easfull)
-easfull <- acchours(easfull)
-
 data <- data[data$sourceURL=="inaturalist.org",]
-eas <- seasonIndex(eas)
-eas <- acchours(eas)
+
 data <- data[!(data$doy<171&grepl('Flower Budding',data$phenophase)),]
 
 data <- seasonIndex(data)
@@ -142,26 +140,6 @@ param <- doyLatSeasEq(data,eas)
 param <- doyLatAGDD32Eq(data,eas)
 param <- doyLatAGDD50Eq(data,eas)
 doyLatPlot(data,param)
-
-
-p = ggplot(data = data, aes(x = doy, y = latitude, color=phenophase, shape=phenophase,size=22)) + 
-  geom_point()
-p
-
-eas <- easfull[easfull$latitude==c(49),]
-eas1 <- eas[eas$doy==c(359),]
-eas <- easfull
-
-
-plot(eas$AGDD32~eas$doy)
-plot(eas$acchours~eas$doy)
-plot(eas$percent32~eas$doy)
-plot(eas$seasind~eas$doy)
-plot(eas$percent50~eas$seasind)
-plot(eas$AGDD50~eas$AGDD32)
-
-mod <- lm(formula = AGDD32 ~ latitude, data = eas1)
-summary(mod)
 
 
 # data <- data[!data$pageURL=="https://www.inaturalist.org/observations/72725154",]
@@ -677,7 +655,7 @@ parcalc <- function(x,y,var){
 }
 
 
-
+#
 doyLatSeasEq <- function(x,y){ 
   x <- as.data.frame(x)
   if (all(is.na(x$gall_id))){
@@ -749,7 +727,7 @@ doyLatSeasEq <- function(x,y){
   }
   return(param)
 }
-
+#
 doyLatAGDD50Eq <- function(x,y){ 
   x <- as.data.frame(x)
   if (all(is.na(x$gall_id))){
@@ -821,7 +799,7 @@ doyLatAGDD50Eq <- function(x,y){
   }
   return(param)
 }
-
+#
 doyLatAGDD32Eq <- function(x,y){ 
   x <- as.data.frame(x)
   if (all(is.na(x$gall_id))){

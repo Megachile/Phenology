@@ -3,6 +3,10 @@ library(rnpn)
 library(lubridate)
 library(data.table)
 library(spatstat)
+
+species <- npn_species()
+qvcodes <- npn_phenophases_by_species(c(305),2020-03-31)
+
 # this function calls the NPN database to associate an AGDD value with each observation based on lat/long and date
 lookUpAGDD32 <- function(x){
   for (i in 1:dim(x)[1]){
@@ -22,51 +26,106 @@ sites <- data.frame(Site = c("Archbold","Lake Lizzie","Dickinson","Kissimmee","O
                      Latitude = c(27.1831, 28.2451, 27.0029, 27.9828, 27.1968, 26.7297, 26.9326),
                      Longitude = c(-81.3552,-81.1681,-80.1015,-81.3826,-80.8291,-81.6107,-81.29)
                                   )
-btre <- read.csv(paste0(wd,"/Emergence in Nature.csv"))
-supp1 <- read.csv(paste0(wd, "/rsbl20190572supp1.csv"))
+# btre <- read.csv(paste0(wd,"/Emergence in Nature.csv"))
+# supp1 <- read.csv(paste0(wd, "/rsbl20190572supp1.csv"))
 supp3 <- read.csv(paste0(wd, "/rsbl20190572supp3.csv"))
-supp3$observed_on <-  as.Date(supp3$Emergence.date, format = "%m/%d/%y")
-flda <- supp3[supp3$State=="FL",]
-cgbrk <- read.csv(paste0(wd, "/Initial Budbreak Common Garden.csv"))
-bdbr <- read.csv(paste0(wd,"/Budbreak in Nature.csv"))
-bdbr$observed_on <- as.Date(bdbr$Date.Monitored, format = "%m/%d/%Y")
+supp3 <- supp3[!(supp3$Emergent.animal.type=="synergist"),]
+supp3$Emergent.animal.type <- NULL
+supp3$Year <- NULL
+supp3$E.julian <- NULL
+supp3[supp3$Species=="A. atra",3] <- NA
+supp3$Generation <- gsub("asexual","agamic", supp3$Generation)
+supp3$Generation <- gsub("sexual","sexgen", supp3$Generation)
+
+supp3$Species <- gsub("D. q. virens","quercusvirens", supp3$Species)
+supp3$Species <- gsub("A. atra","atra", supp3$Species)
+supp3$Species <- gsub("A. foliatus","quercusfoliatus", supp3$Species)
+
+supp3$Species <- gsub("C. batatoides","quercusbatatoides", supp3$Species)
+supp3$Species <- gsub("A. lanigera","quercuslanigerum", supp3$Species)
+
+
+
+for (i in 1:dim(supp3)[1]){
+  if (is.na(supp3$Generation[i])){
+    supp3$gall_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM species
+                                                      WHERE genus = 'Arnoldiola' AND species = '${supp3$Species[i]}'"))
+  } else {
+  supp3$gall_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM species
+                                                      WHERE species LIKE '%${supp3$Species[i]}%' AND generation LIKE '%${supp3$Generation[i]}%'"))
+}}
+
+supp3$Species <- NULL
+supp3$Generation <- NULL
+
+# harv <- supp3
+# harv$Emergence.date <- NULL
+# names(harv)[names(harv)=="H.julian"] <- "doy"
+# 
+# harv$date <-  as.character(as.Date(harv$Harvest.date, format = "%m/%d/%y"))
+# harv$Harvest.date <- NULL
+# 
+# harv <- prepspecial(harv)
+
+
+# emer <- supp3
+# emer$Harvest.date <- NULL
+# emer$H.julian <- NULL
+# emer$date <-  as.character(as.Date(emer$Emergence.date, format = "%m/%d/%y"))
+# emer$Emergence.date <- NULL
+# 
+# emer <- prepspecial(emer)
+
+# cgbrk <- read.csv(paste0(wd, "/Initial Budbreak Common Garden.csv"))
+# bdbr <- read.csv(paste0(wd,"/Budbreak in Nature.csv"))
+
 fl$doy <- yday(fl$observed_on)
 bkin <- read.csv(paste0(wd, "/bkinagdd.csv"))
 nqv <- read.csv(paste0(wd, "/nqvagdd.csv"))
 
 
-btre <- merge(sites,btre)
-btre <- btre[btre$Caught>0,]
+# btre <- merge(sites,btre)
+# btre <- btre[btre$Caught>0,]
 
-
+# bdbr <- bdbr[bdbr$FlushPercent>0,]
 dbGetQuery(gallphen, "SELECT * FROM species
            WHERE genus = 'Belonocnema' AND species LIKE '%treatae%'")
 
-btre <- prepspecial(btre)
-
+# btre <- prepspecial(btre)
+# cgbrk <- prepspecial(cgbrk)
+# bdbr <- prepspecial(bdbr)
 
 prepspecial <- function(x){
-x$observed_on <- as.character(as.Date(x$observed_on, format = "%m/%d/%Y"))
+# x$observed_on <- as.character(as.Date(x$observed_on, format = "%m/%d/%Y"))
 names(x)[names(x)=="Latitude"] <- "latitude"
 names(x)[names(x)=="Longitude"] <- "longitude"
-names(x)[names(x)=="observed_on"] <- "date"
-names(x)[names(x)=="Site"] <- "site"
-x$Host.Plant <- gsub("Quercus virginiana", 353, x$Host.Plant)
-x$Host.Plant <- gsub("Quercus geminata", 309, x$Host.Plant)
-x$Host.Plant <- gsub("Quercus fusiformis", 307, x$Host.Plant)
-names(x)[names(x)=="Host.Plant"] <- "host_id"
-x$gall_id <- "1305"
+names(x)[names(x)=="State"] <- "state"
+# names(x)[names(x)=="observed_on"] <- "date"
+# names(x)[names(x)=="agdd32"] <- "AGDD32"
+# names(x)[names(x)=="agdd50"] <- "AGDD50"
+names(x)[names(x)=="Collection.Site"] <- "site"
+names(x)[names(x)=="Host.plant"] <- "host_id"
+x$host_id <- gsub("Qv", 353, x$host_id)
+x$host_id <- gsub("Qg", 309, x$host_id)
+# x$host_id <- gsub("Quercus fusiformis", 307, x$host_id)
+x$state <- gsub("FL", "Florida", x$state)
+x$state <- gsub("AL", "Alabama", x$state)
 x$gall_id <- as.numeric(x$gall_id)
+# x$site <- "San Marcos"
 x$host_id <- as.numeric(x$host_id)
 x$doy <- yday(x$date)
-x$state <- "Florida"
+# x$state <- "Florida"
 x$country <- "USA"
 x$lifestage <- "Adult"
 x$phenophase <- "maturing"
-x$Monitoring.interval <- NULL
-x$Caught <- NULL
+# x$Monitoring.interval <- NULL
+# 
+# x$Date.first.break <- NULL
+# x$N <- NULL
+# x$Species <- NULL
+# x$Entered.by. <- NULL
 x$pageURL <- NA
-x$sourceURL <- "https://datadryad.org/stash/dataset/doi:10.5061/dryad.82j677c"
+x$sourceURL <- "https://royalsocietypublishing.org/doi/suppl/10.1098/rsbl.2019.0572"
 if (is.null(x$AGDD32)){
   x$AGDD32 <- NA
 }
@@ -88,13 +147,18 @@ if (is.null(x$percent50)){
 if (is.null(x$viability)){
   x$viability <- NA
 } 
+if (is.null(x$site)){
+  x$site <- NA
+} 
 return(x)
 }
 
 #
-fl <- read.csv(paste0(wd,"/Herbarium Records.csv"))
-fl$observed_on <- as.Date(fl$observed_on, format = "%m/%d/%Y")
-fl <- fl[!fl$Flowers=="N",]
+# fl <- read.csv(paste0(wd,"/Herbarium Records.csv"))
+# fl$observed_on <- as.Date(fl$observed_on, format = "%m/%d/%Y")
+# fl <- fl[!fl$Flowers=="N",]
+# fl <- prepspecial(fl)
+
 fl <- fl[!yday(fl$observed_on)>180,]
 boxplot(yday(fl$observed_on)~fl$Plant.species, horizontal = T)
 flqv <-  fl[fl$Plant.species=="Quercus virginiana",]
