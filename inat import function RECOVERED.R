@@ -108,13 +108,17 @@ dbGetQuery(gallphen, "SELECT inatcode FROM species WHERE species_id in (SELECT D
 #           WHERE obs_id = ''")
 
 #input iNat code or GF code
-spcode <- "85317"
+spcode <- "1148791"
 
 data <- dbGetQuery(gallphen, str_interp("SELECT observations.*, host.species AS host, gall.generation FROM observations 
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
                              WHERE gall_id in (SELECT species_id FROM species
                              WHERE inatcode = '${spcode}')"))
+data <- seasonIndex(data)
+data <- acchours(data)
+data <- doywrap(data)
+
 
 # plant-only data for S altissima 
 data <- dbGetQuery(gallphen, "SELECT * FROM observations 
@@ -134,11 +138,10 @@ data <- data[data$sourceURL=="inaturalist.org",]
 
 data <- data[!(data$doy<171&grepl('Flower Budding',data$phenophase)),]
 
-data <- seasonIndex(data)
-data <- acchours(data)
+
 param <- doyLatSeasEq(data,eas)
-param <- doyLatAGDD32Eq(data,eas)
-param <- doyLatAGDD50Eq(data,eas)
+# param <- doyLatAGDD32Eq(data,eas)
+# param <- doyLatAGDD50Eq(data,eas)
 doyLatPlot(data,param)
 
 
@@ -150,7 +153,7 @@ anom <- doyLatAnom(data, param)
 anom <- data[data$phenophase=="developing"&data$doy<230,]
 
 for (i in 1:20){
-  browseURL(x$pageURL[i])
+  browseURL(anom$pageURL[i])
 }
 
 doyLatPlot(data,param)
@@ -628,10 +631,42 @@ seasonIndex <- function(x){
   return(x)
 }
 
+
+# wraps doy around the new year for agamic galls that start in fall and emerge next spring
+doywrap <- function(x){
+  sub <- x[!x$generation=="sexgen",]
+  sub$phenostage <- paste0(sub$phenophase, sub$lifestage)
+  sub <- sub[!sub$phenophase=="senescent",]
+  sub <- sub[!sub$phenostage=="",]
+  sub <- sub[!sub$phenophase=="developing",]
+  sub <- sub[!sub$phenophase=="dormant",]
+  
+  if (min(sub$doy)<65&&max(sub$doy)>300){
+    for (i in 1:dim(x)[1]){
+      if (x$generation[i]!="sexgen"&&x$doy[i]<200&&x$phenophase[i]!="developing"&&x$phenophase[i]!="oviscar"){
+        x$doy[i] <- x$doy[i]+365
+        x$seasind[i] <- x$seasind[i]+1
+      }
+    }
+  }
+  return(x)
+}
+
+
 # calculates the slope and y intercept of the lines representing two sds above and below the mean accumulated day hours or seasonality index of flower budding or maturing, adult, perimature observations
 parcalc <- function(x,y,var){
   m <- mean(x[[var]],na.rm=TRUE)
   s <- sd(x[[var]],na.rm=TRUE)
+  if (is.na(s)){
+    if (var=="acchours"){
+      s <- 500
+    } else {
+      s <- .1
+    }
+
+  }
+  
+  z <- 2
   thr <- 0.025*m
   tf <- y[which(between(y[[var]],((m-thr)-(z*s)),((m+thr)-(z*s))  )),]
   if (dim(tf)[1]>1){
@@ -669,11 +704,10 @@ doyLatSeasEq <- function(x,y){
     x <- x[!x$phenophase=="oviscar",]
   }
   
-  z <- 2
   if (!all(x$generation=="NA")) { 
     if (any(grepl("agamic",x$generation))){
       sub <- x[which(x$generation=="agamic"),]
-      if (min(x$doy)>171){
+      if (min(sub$doy)>171){
         coef <- parcalc(sub,y,"seasind")
       } else {
         coef <- parcalc(sub,y,"acchours")  
@@ -692,7 +726,7 @@ doyLatSeasEq <- function(x,y){
     
     if (any(grepl("sexgen",x$generation))){
       sub <- x[which(x$generation=="sexgen"),]
-      if (min(x$doy)>171){
+      if (min(sub$doy)>171){
         coef <- parcalc(sub,y,"seasind")
       } else {
         coef <- parcalc(sub,y,"acchours")  

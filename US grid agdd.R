@@ -78,6 +78,20 @@ prev <- rbind(prev,twenty)
 write.csv(prev, paste0(wd, "/USgridagdd.csv"))
 prev <- read.csv(paste0(wd, "/USgridagdd.csv" ))
 
+prev[prev$doy>365,"acchours"] <- NA
+
+# 
+# for (i in 1:dim(prev)[1]){
+#   prev[i+35298,] <- prev[i,]
+#   prev$doy[i+35298] <- prev$doy[i]+365
+#   prev$seasind[i+35298] <- prev$seasind[i]+1
+#   prev$acchours[i+35298] <- NA
+# }
+
+plot(eas$doy~eas$seasind)
+
+
+
 prev <- seasonIndex(prev)
 prev <- acchours(prev)
 
