@@ -13,7 +13,7 @@ gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
 # gfall <- dbConnect(RSQLite::SQLite(), "gallformers.sqlite")
 dbDisconnect(gallphen)
 
-dbListTables(gfall)
+dbListTables(gallphen)
 dbListFields(gfall, "gallspecies")
 dbListFields(gfall, "gall")
 dbListFields(gfall, "species")
@@ -158,7 +158,7 @@ quercus <- quercus[is.na(quercus$inatcode),]
 
 dbGetQuery(gallphen, "SELECT DISTINCT taxonRank FROM inatcodes")
 
-dbGetQuery(gallphen, "SELECT * FROM observations ORDER BY obs_id DESC LIMIT 7")
+dbGetQuery(gallphen, "SELECT DISTINCT country FROM observations ORDER BY obs_id DESC LIMIT 7")
 dbExecute(gallphen, "UPDATE species SET species = 'margaretiae' WHERE genus = 'Quercus' AND species = 'margarettae'")
 
 
@@ -179,6 +179,8 @@ dbExecute(gallphen, "UPDATE species SET species = 'margaretiae' WHERE genus = 'Q
 # dbExecute(gallphen, "UPDATE observations SET lifestage = 'Adult'
 # WHERE phenophase = 'maturing' AND lifestage IS NULL ")
 
+
+# dbExecute(gallphen, "INSERT INTO species (gf_id,genus,species,type,generation,undescribed) VALUES ('4656','Bassettia','gemmae','gall','agamic','0')")
 
 
 # 
