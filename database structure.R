@@ -179,8 +179,8 @@ dbExecute(gallphen, "UPDATE species SET species = 'margaretiae' WHERE genus = 'Q
 # dbExecute(gallphen, "UPDATE observations SET lifestage = 'Adult'
 # WHERE phenophase = 'maturing' AND lifestage IS NULL ")
 
-
-# dbExecute(gallphen, "INSERT INTO species (gf_id,genus,species,type,generation,undescribed) VALUES ('4656','Bassettia','gemmae','gall','agamic','0')")
+# add a single new species to the db manually
+# dbExecute(gallphen, "INSERT INTO species (gf_id,genus,species,type,undescribed) VALUES ('4689','Unknown','q-imbricaria-bent-catkin','gall','1')")
 
 
 # 

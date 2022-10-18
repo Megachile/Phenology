@@ -4,21 +4,13 @@ CAsheet <- multiplesheets(paste0(wd,"/CAgalls.xlsx"))
 CAsites <- read.csv(paste0(wd,"/CAsites.csv"))
 CArecords <- read.csv(paste0(wd,"/CArecords.csv"))
 
-multiplesheets <- function(fname) {
-  
-  # getting info about all excel sheets
-  sheets <- readxl::excel_sheets(fname)
-  tibble <- lapply(sheets, function(x) readxl::read_excel(fname, sheet = x))
-  data_frame <- lapply(tibble, as.data.frame)
-  
-  # assigning names to data frames
-  names(data_frame) <- sheets
-  
-  # print data frame
-  print(data_frame)
-}
 
-key <- CAsheet[[1]]
+
+sites <- read.csv(paste0(wd,"/ForbesENAsites.csv"))
+key <- read.csv(paste0(wd,"/ForbesENAspecies.csv"))
+collections <- read.csv(paste0(wd,"/ForbesENAcollections.csv"))
+data <- read.csv(paste0(wd,"/ForbesENAdata.csv"))
+
 
 # use GF_id to fill gall_id
 for (i in 1:dim(key)[1]){
@@ -26,35 +18,53 @@ for (i in 1:dim(key)[1]){
                                                       WHERE gf_id = '${key$gf_id[i]}'"))
 }
 
-# use host_species to fill host_id
-for (i in 1:dim(key)[1]){
-  key$host_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM species
-                                                      WHERE genus = '${key$genus[i]}' AND species LIKE '%${key$species[i]}%'"))
-}
-
 #convert new ID columns back to vectors
 key$gall_id <- unlist(key$gall_id)
-key$host_id <- unlist(key$host_id)
+key <- key[,-c(2,3,4)]
+str(key)
 
-CAkey <- key[,c(1,11,12)]
-CArecords$date <- gsub("/","-",CArecords$date)
-CArecords$date <- as.Date(CArecords$date, tryFormats = "%m-%d-%Y")
+records <- collections
 
-CArecords <- merge(CArecords, CAkey, by="code")
-CArecords <- merge(CArecords, CAsites, by="collection")
-CArecords$gall_id <- unlist(CArecords$gall_id)
-str(CArecords)
+# use host_species to fill host_id
+for (i in 1:dim(records)[1]){
+  records$host_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM species
+                                                      WHERE genus = '${records$genus[i]}' AND species LIKE '%${records$species[i]}%'"))
+}
 
-CArecords$sourceURL <- "https://www.biorxiv.org/content/10.1101/2022.02.11.480154v1.abstract"
-CArecords$pageURL <- NA
-CArecords$doy <- yday(CArecords$date)
-CArecords$code <- NULL
-CArecords$collection <- NULL
-CArecords$AGDD32 <- NA
-CArecords$AGDD50 <- NA
-CArecords$yearend32 <- NA
-CArecords$yearend50 <- NA
-CArecords$percent32 <- NA
-CArecords$percent50 <- NA
-# dbAppendTable(gallphen, "observations",CArecords)
+records[111,13] <- NA
+records$host_id <- unlist(records$host_id)
+
+records$code <- str_pad(records$code, 3, pad = "0")
+
+records <- merge(records,key, by="code",all.x=TRUE)
+
+records <- records[,-c(3,4,5,7,8,9,10,11,12)]
+records <- records[,-2]
+data$date <- gsub("/","-",data$date)
+data$date <- as.Date(data$date, tryFormats = "%m-%d-%Y")
+
+# records <- merge(records, key, by=c("code","collection"))
+records <- merge(records, sites, by="SiteTemp")
+records$gall_id <- unlist(records$gall_id)
+str(records)
+records <- records[,-1]
+
+data <- merge(data, records, by="collection",all.x=TRUE)
+data <- merge(data, key, by="code",all.x=TRUE)
+
+
+data$sourceURL <- "https://www.biorxiv.org/content/10.1101/2022.02.11.480154v1.abstract"
+data$pageURL <- NA
+data$doy <- yday(data$date)
+data$code <- NULL
+data$collection <- NULL
+data$AGDD32 <- NA
+data$AGDD50 <- NA
+data$yearend32 <- NA
+data$yearend50 <- NA
+data$percent32 <- NA
+data$percent50 <- NA
+# dbAppendTable(gallphen, "observations",data)
+
+# dbGetQuery(gallphen, "SELECT species_id FROM species WHERE genus = 'Quercus' AND species = 'alba'")
 

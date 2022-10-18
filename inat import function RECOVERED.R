@@ -28,7 +28,7 @@ eas <- prev[prev$longitude>-103,]
 eas <- eas[!is.na(eas$AGDD32),]
 pac <- prev[!(prev$longitude>-103),]
 pac <- pac[!is.na(pac$AGDD32),]
-
+eas[eas$doy>365,"acchours"] <- NA
 
 #input iNat code or GF code
 spcode <- "1080114"
@@ -108,7 +108,7 @@ dbGetQuery(gallphen, "SELECT inatcode FROM species WHERE species_id in (SELECT D
 #           WHERE obs_id = ''")
 
 #input iNat code or GF code
-spcode <- "1148791"
+spcode <- "1090186"
 
 data <- dbGetQuery(gallphen, str_interp("SELECT observations.*, host.species AS host, gall.generation FROM observations 
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
@@ -118,6 +118,10 @@ data <- dbGetQuery(gallphen, str_interp("SELECT observations.*, host.species AS 
 data <- seasonIndex(data)
 data <- acchours(data)
 data <- doywrap(data)
+param <- doyLatSeasEq(data,eas)
+# param <- doyLatAGDD32Eq(data,eas)
+# param <- doyLatAGDD50Eq(data,eas)
+doyLatPlot(data,param)
 
 
 # plant-only data for S altissima 
@@ -139,18 +143,13 @@ data <- data[data$sourceURL=="inaturalist.org",]
 data <- data[!(data$doy<171&grepl('Flower Budding',data$phenophase)),]
 
 
-param <- doyLatSeasEq(data,eas)
-# param <- doyLatAGDD32Eq(data,eas)
-# param <- doyLatAGDD50Eq(data,eas)
-doyLatPlot(data,param)
+
 
 
 # data <- data[!data$pageURL=="https://www.inaturalist.org/observations/72725154",]
-param <- doyLatSeasEq(data,eas)
-
 anom <- doyLatAnom(data, param)
 
-anom <- data[data$phenophase=="developing"&data$doy<230,]
+# anom <- data[data$phenophase=="developing"&data$doy<230,]
 
 for (i in 1:20){
   browseURL(anom$pageURL[i])
@@ -652,7 +651,6 @@ doywrap <- function(x){
   return(x)
 }
 
-
 # calculates the slope and y intercept of the lines representing two sds above and below the mean accumulated day hours or seasonality index of flower budding or maturing, adult, perimature observations
 parcalc <- function(x,y,var){
   m <- mean(x[[var]],na.rm=TRUE)
@@ -688,7 +686,6 @@ parcalc <- function(x,y,var){
   coef <- rbind(low,high)
   return(as.data.frame(coef))
 }
-
 
 #
 doyLatSeasEq <- function(x,y){ 
