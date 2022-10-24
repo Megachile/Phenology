@@ -162,8 +162,8 @@ dbGetQuery(gallphen, "SELECT DISTINCT country FROM observations ORDER BY obs_id 
 dbExecute(gallphen, "UPDATE species SET species = 'margaretiae' WHERE genus = 'Quercus' AND species = 'margarettae'")
 
 
-# # fix dates added as Julian dates
-# for (i in 1:9472) {
+# fix dates added as Julian dates
+# for (i in 1:22159) {
 #   date <- dbGetQuery(gallphen, str_interp("SELECT date FROM observations WHERE obs_id = '${i}'"))
 # 
 #   if (!grepl("-", date)){

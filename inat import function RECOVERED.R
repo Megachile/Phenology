@@ -20,6 +20,7 @@ library(solrad)
 library(pracma)
 library(DBI)
 library(stringr)
+# library(glmm)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
@@ -31,7 +32,7 @@ pac <- pac[!is.na(pac$AGDD32),]
 eas[eas$doy>365,"acchours"] <- NA
 
 #input iNat code or GF code
-spcode <- "1195335"
+spcode <- "1224634"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -70,7 +71,7 @@ prob <- #####
 #   browseURL(egg$uri[i])
 # }
 
-# new[new$Gall_phenophase=="Egg","Gall_phenophase"] <- NA
+append[append$pageURL=="https://www.inaturalist.org/observations/110335394","lifestage"] <- NA
 
 #get AGDD
 # agdd <- lookUpAGDD(new)
@@ -85,6 +86,7 @@ new <- new[!(new$Gall_generation==""),]
 #remove and add columns to match database table
 str(new)
 append <- PrepAppend(new)
+# append <- append[,-21]
 
 #add to the database
 # dbAppendTable(gallphen, "observations",append)
@@ -101,26 +103,39 @@ dbGetQuery(gallphen, "SELECT inatcode FROM species WHERE species_id in (SELECT D
 # dbExecute(gallphen, "DELETE FROM observations 
 #           WHERE obs_id = ''")
 
-dbGetQuery(gallphen, "SELECT * FROM species WHERE species LIKE '%kinseyi%'")
+dbGetQuery(gallphen, "SELECT * FROM species WHERE species LIKE '%stellata%'")
 
+# dbExecute(gallphen, "UPDATE observations SET gall_id = '757' WHERE gall_id = '803' AND host_id = '346' ")
+
+dbGetQuery(gallphen, "SELECT DISTINCT gall_id FROM observations")
 
 #input iNat code or GF code
-spcode <- "518255"
+spcode <- "1339696"
 
 data <- dbGetQuery(gallphen, str_interp("SELECT observations.*, host.species AS host, gall.generation FROM observations 
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
                              WHERE gall_id in (SELECT species_id FROM species
-                             WHERE inatcode = '${spcode}')"))
+                             WHERE inatcode = '${spcode}') "))
+
+
+data <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation FROM observations 
+                             LEFT JOIN species AS host ON observations.host_id = host.species_id
+                             INNER JOIN species AS gall ON observations.gall_id = gall.species_id
+                             WHERE gall_id IN (SELECT species_id FROM species
+                             WHERE genus = 'Disholcaspis' OR genus = 'Druon' OR genus = 'Acraspis')")
 data <- seasonIndex(data)
 data <- acchours(data)
-data <- doywrap(data)
-param <- doyLatSeasEq(data,eas)
+# data <- doywrap(data)
+# rear <- subRear(data)
+# data <- subset(data,host=="phellos")
+# data <- subset(data,gall_id=="1680")
+mat <- subMat(data)
+# param <- doyLatSeasEq(mat,eas)
 # param <- doyLatAGDD32Eq(data,eas)
 # param <- doyLatAGDD50Eq(data,eas)
 doyLatPlot(data,param)
 
-data[(data$doy>150&data$doy<250),]
 
 data <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation FROM observations 
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
@@ -129,6 +144,8 @@ data <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.
                              WHERE genus = 'Quercus' AND species = 'alba')")
 
 
+
+data <- data[data$gall_id==802,]
 data <- data[!(data$phenophase=="developing"),]
 data <- data[!(data$phenophase=="dormant"),]
 data <- data[!(data$phenophase=="senescent"),]
@@ -136,7 +153,9 @@ data <- data[data$doy>95,]
 data <- data[data$doy<115,]
 unique(data$gall_id)
 
-dbGetQuery(gallphen, "SELECT * from species WHERE species_id IS 954")
+dbGetQuery(gallphen, "SELECT * from species WHERE species LIKE '%tumifica%'")
+dbGetQuery(gallphen, "SELECT * FROM species WHERE genus = 'Belonocnema'")
+dbGetQuery(gallphen, "SELECT * FROM species WHERE species_id = '891' ")
 
 
 # plant-only data for S altissima 
@@ -166,11 +185,13 @@ anom <- doyLatAnom(data, param)
 
 # anom <- data[data$phenophase=="developing"&data$doy<230,]
 
+anom <- anom[anom$sourceURL=="inaturalist.org",]
+
 for (i in 1:20){
   browseURL(anom$pageURL[i])
 }
 
-doyLatPlot(data,param)
+doyLatPlot(anom,param)
 
 data[is.na(data$lifestage),"lifestage"] <- ""
 
@@ -186,6 +207,9 @@ dbExecute(gallphen, "UPDATE observations SET lifestage = ''
 #           WHERE pageURL = 'https://www.inaturalist.org/observations/63399188'")
 # dbExecute(gallphen, "UPDATE observations SET host_id = '325'
 #           WHERE gall_id = '960'")
+# dbExecute(gallphen, "UPDATE observations SET phenophase = 'senescent'
+#           WHERE pageURL = 'https://www.inaturalist.org/observations/79894023'")
+
 
 # enter an iNat observation ID (not a species ID!) to put it into the baddata table so it will be excluded from future imports. 
 # also deletes any records with that code in the observations table
@@ -668,12 +692,10 @@ doywrap <- function(x){
   return(x)
 }
 
-x <- data
-y <- eas
-var <- "seasind"
-
 # calculates the slope and y intercept of the lines representing two sds above and below the mean accumulated day hours or seasonality index of flower budding or maturing, adult, perimature observations
-parcalc <- function(x,y,var){
+# old version using mean and sd
+# parcalc <- function(x,y,var){
+  y <- distinct(y[,-c(1:4,7:8,12:15)])
   m <- mean(x[[var]],na.rm=TRUE)
   s <- sd(x[[var]],na.rm=TRUE)
   if (is.na(s)){
@@ -684,10 +706,13 @@ parcalc <- function(x,y,var){
     }
 
   }
-  
-  z <- 1
+  print(m)
+  print(s)
+  z <- 1.25
   thr <- 0.025*m
+  print((m)-(z*s))
   tf <- y[which(between(y[[var]],((m-thr)-(z*s)),((m+thr)-(z*s))  )),]
+  print(dim(tf)[1])
   if (dim(tf)[1]>1){
     mod <- lm(tf$latitude~tf$doy)
     plot(tf$latitude~tf$doy)
@@ -695,7 +720,62 @@ parcalc <- function(x,y,var){
   } else {
     low <- c(-9999,0)
   }
+  z <- 2.2
+  print(((m)+(z*s)))
   tf <- y[which(between(y[[var]],((m-thr)+(z*s)),((m+thr)+(z*s))  )),]
+  print(dim(tf)[1])
+  if (dim(tf)[1]>1){
+    mod <- lm(tf$latitude~tf$doy)
+    plot(tf$latitude~tf$doy)
+    high <- coefficients(mod)
+  } else {
+    high <- c(-9999,0)
+  }
+  
+  coef <- rbind(low,high)
+  return(as.data.frame(coef))
+}
+# new version using median and IQR
+parcalc <- function(x,y,var){
+  y <- distinct(y[,-c(1:4,7:8,12:15)])
+  quant <- quantile(x[[var]], probs=c(.05,.5,.95))
+  
+  q1 <- quant[1]
+  m <- quant[2]
+  q3 <- quant[3]
+  
+  # m <- mean(x[[var]],na.rm=TRUE)
+  # s <- sd(x[[var]],na.rm=TRUE)
+  # if (is.na(s)){
+  #   if (var=="acchours"){
+  #     s <- 500
+  #   } else {
+  #     s <- .1
+  #   }
+  #   
+  # }
+  # print(m)
+  # print(s)
+  q1 <- 1.001
+  thr <- 0.05*m
+  tf <- y[which(between(y[[var]],(q1-thr),(q1+thr)  )),]
+  tf$dist <-  abs(tf[[var]]-q1)
+  quantile(tf$dist)[4]
+  tf <- tf[!(tf$dist>quantile(tf$dist)[4]),]
+  print(dim(tf)[1])
+  if (dim(tf)[1]>1){
+    mod <- lm(tf$latitude~tf$doy)
+    plot(tf$latitude~tf$doy)
+    low <- coefficients(mod)
+  } else {
+    low <- c(-9999,0)
+  }
+  
+  
+  tf <- y[which(between(y[[var]],(q3-thr),(q3+thr)  )),]
+  
+  
+  print(dim(tf)[1])
   if (dim(tf)[1]>1){
     mod <- lm(tf$latitude~tf$doy)
     plot(tf$latitude~tf$doy)
@@ -708,20 +788,30 @@ parcalc <- function(x,y,var){
   return(as.data.frame(coef))
 }
 
-#
-doyLatSeasEq <- function(x,y){ 
+# subset for analysis
+subMat <- function(x){
   x <- as.data.frame(x)
   if (all(is.na(x$gall_id))){
     x <- x[grepl('Flower Budding',x$phenophase),] 
   } else {
     x$phenostage <- paste0(x$phenophase, x$lifestage)
     x <- x[!x$phenophase=="senescent",]
-    x <- x[!x$phenostage=="",]
+    x <- x[!x$phenophase=="",]
     x <- x[!x$phenophase=="developing",]
     x <- x[!x$phenophase=="dormant",]
     x <- x[!x$phenophase=="oviscar",]
   }
-  
+  return(x)
+}
+# subset for analysis
+subRear <- function(x){
+  x <- as.data.frame(x)
+  x <- x[x$viability=="viable"&!is.na(x$viability),]
+  return(x)
+}
+
+#
+doyLatSeasEq <- function(x,y){ 
   if (!all(x$generation=="NA")) { 
     if (any(grepl("agamic",x$generation))){
       sub <- x[which(x$generation=="agamic"),]
@@ -1002,24 +1092,30 @@ doyLatPlot <- function(x, y) {
   x <- x[!x$phenophase=="senescent",]
   # x <- x[grepl('Flower Budding',x$phenophase),]
   
+  shapes <- c(0,1,17,2,18,8)
+  names(shapes) <- c('dormant','developing','maturing','perimature','Adult','oviscar')
+  
   if (!all(x$generation=="NA")) { 
     p = ggplot(data = x, aes(x = doy, y = latitude, color=generation, shape=phenophase,size=22)) +
       geom_point()+
-      geom_abline(intercept = y$agamlowyint[1], slope=y$agamlowslope[1], color="#E41A1C")+
-      geom_abline(intercept = y$agamhighyint[1], slope=y$agamhighslope[1], color="#E41A1C")+
-      geom_abline(intercept = y$sglowyint[1], slope=y$sglowslope[1], color="#008080")+
-      geom_abline(intercept = y$sghighyint[1], slope=y$sghighslope[1], color="#008080")
+      xlim(0,365)+
+      scale_shape_manual(values=shapes) 
+          # geom_abline(intercept = y$agamlowyint[1], slope=y$agamlowslope[1], color="#E41A1C")+
+      # geom_abline(intercept = y$agamhighyint[1], slope=y$agamhighslope[1], color="#E41A1C")+
+      # geom_abline(intercept = y$sglowyint[1], slope=y$sglowslope[1], color="#008080")+
+      # geom_abline(intercept = y$sghighyint[1], slope=y$sghighslope[1], color="#008080")
     
   } else {
     p = ggplot(data = x, aes(x = doy %% 365, y = latitude, color=phenophase, shape=phenophase,size=22)) + 
       geom_point()+
+      xlim(0,365)+
       geom_abline(intercept = y$lowyint[1], slope=y$lowslope[1], color="#E41A1C")+
       geom_abline(intercept = y$highyint[1], slope=y$highslope[1], color="#E41A1C")
   }
   
   return(p)
 }
-doyLatPlot(data,param)
+
 
 # input a single observation ID (not URL or species code) to delete it from observations table and blacklist the id in baddata
 markBad <- function(code) {
