@@ -32,7 +32,7 @@ pac <- pac[!is.na(pac$AGDD32),]
 eas[eas$doy>365,"acchours"] <- NA
 
 #input iNat code or GF code
-spcode <- "1224634"
+spcode <- "518693"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -42,6 +42,8 @@ url <- urlMaker(spcode)
 
 #iNat API call
 obs <- iNatCall(url)
+
+obs <- obs[!(obs$Gall_phenophase=="senescent"),]
 
 #add inat code to database if you get an error
 # dbExecute(gallphen, "UPDATE species SET inatcode = 1394743
@@ -53,9 +55,9 @@ new <- checkData(obs)
 
 # creates a *new* dataframe with only rows missing data
 # 
-# missing <- findMissing(new)
+missing <- findMissing(new)
 
-# for (i in 1:20){
+#  for (i in 1:20){
 #   browseURL(missing$uri[i])
 # }
 
@@ -110,7 +112,7 @@ dbGetQuery(gallphen, "SELECT * FROM species WHERE species LIKE '%stellata%'")
 dbGetQuery(gallphen, "SELECT DISTINCT gall_id FROM observations")
 
 #input iNat code or GF code
-spcode <- "1339696"
+spcode <- "1148791"
 
 data <- dbGetQuery(gallphen, str_interp("SELECT observations.*, host.species AS host, gall.generation FROM observations 
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
@@ -119,19 +121,24 @@ data <- dbGetQuery(gallphen, str_interp("SELECT observations.*, host.species AS 
                              WHERE inatcode = '${spcode}') "))
 
 
-data <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation FROM observations 
+
+data <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation FROM observations
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
                              WHERE gall_id IN (SELECT species_id FROM species
-                             WHERE genus = 'Disholcaspis' OR genus = 'Druon' OR genus = 'Acraspis')")
+                             WHERE genus = 'Callirhytis')")
+
+dbExecute(gallphen, "SELECT genus ")
+
 data <- seasonIndex(data)
 data <- acchours(data)
+
 # data <- doywrap(data)
 # rear <- subRear(data)
 # data <- subset(data,host=="phellos")
 # data <- subset(data,gall_id=="1680")
 mat <- subMat(data)
-# param <- doyLatSeasEq(mat,eas)
+param <- doyLatSeasEq(data,eas)
 # param <- doyLatAGDD32Eq(data,eas)
 # param <- doyLatAGDD50Eq(data,eas)
 doyLatPlot(data,param)
@@ -144,13 +151,12 @@ data <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.
                              WHERE genus = 'Quercus' AND species = 'alba')")
 
 
-
 data <- data[data$gall_id==802,]
 data <- data[!(data$phenophase=="developing"),]
 data <- data[!(data$phenophase=="dormant"),]
 data <- data[!(data$phenophase=="senescent"),]
 data <- data[data$doy>95,]
-data <- data[data$doy<115,]
+data <- data[data$doy<100,]
 unique(data$gall_id)
 
 dbGetQuery(gallphen, "SELECT * from species WHERE species LIKE '%tumifica%'")
@@ -177,7 +183,7 @@ data <- data[data$sourceURL=="inaturalist.org",]
 data <- data[!(data$doy<171&grepl('Flower Budding',data$phenophase)),]
 
 
-
+# dbExecute(gallphen, "DELETE FROM observations where pageURL = 'https://www.inaturalist.org/observations/33969776'")
 
 
 # data <- data[!data$pageURL=="https://www.inaturalist.org/observations/72725154",]
@@ -429,6 +435,7 @@ iNatCall <- function(url) {
   return(as.data.frame(obs))
 }
 
+
 # checks to see if observations are in the baddata table or already in the observations table; outputs a new dataframe without those observations
 checkData <- function(df){
   library(DBI)
@@ -442,10 +449,10 @@ checkData <- function(df){
     exist <- dbGetQuery(gallphen, str_interp("SELECT 1 FROM observations WHERE pageURL = '${df$uri[i]}'"))
     if (dim(bad)[1]!=0||dim(exist)[1]!=0) {
       remove$id[i] <- df$id[i]
-    }
+    } 
   }
   df <- df[!(df$id %in% remove$id),]
-  warning(str_interp("${length(remove[!is.na(remove$id)])} observations have been removed as duplicates or bad data"))
+  warning(str_interp("${length(remove[!is.na(remove$id),1])} observations have been removed as duplicates or bad data"))
   return(df)
 }
 
@@ -453,13 +460,13 @@ checkData <- function(df){
 findMissing <- function(df){
   if (!is.null(df$Plant_Phenology)){
     miss1 <- df[df$Plant_Phenology=="",]
-  } 
+  }  else {miss1 <- NULL}
   if (!is.null(df$Gall_generation)){
     miss2 <- df[df$Gall_generation=="",]
-  }
+  } else {miss2 <- NULL}
   if (!is.null(df$Gall_phenophase)){
     miss3 <- df[df$Gall_phenophase=="",]
-  }
+  } else {miss3 <- NULL}
   missing <- rbind(miss1,miss2,miss3)
   if (dim(unique(missing))[1]>20){
     warning("Many data points are missing values. You may want to go to iNat and fill them in and run the import function again rather than using this tool to fix them individually")
@@ -1099,16 +1106,17 @@ doyLatPlot <- function(x, y) {
     p = ggplot(data = x, aes(x = doy, y = latitude, color=generation, shape=phenophase,size=22)) +
       geom_point()+
       xlim(0,365)+
-      scale_shape_manual(values=shapes) 
-          # geom_abline(intercept = y$agamlowyint[1], slope=y$agamlowslope[1], color="#E41A1C")+
-      # geom_abline(intercept = y$agamhighyint[1], slope=y$agamhighslope[1], color="#E41A1C")+
-      # geom_abline(intercept = y$sglowyint[1], slope=y$sglowslope[1], color="#008080")+
-      # geom_abline(intercept = y$sghighyint[1], slope=y$sghighslope[1], color="#008080")
+      scale_shape_manual(values=shapes)+ 
+      geom_abline(intercept = y$agamlowyint[1], slope=y$agamlowslope[1], color="#E41A1C")+
+      geom_abline(intercept = y$agamhighyint[1], slope=y$agamhighslope[1], color="#E41A1C")+
+      geom_abline(intercept = y$sglowyint[1], slope=y$sglowslope[1], color="#008080")+
+      geom_abline(intercept = y$sghighyint[1], slope=y$sghighslope[1], color="#008080")
     
   } else {
     p = ggplot(data = x, aes(x = doy %% 365, y = latitude, color=phenophase, shape=phenophase,size=22)) + 
       geom_point()+
       xlim(0,365)+
+      scale_shape_manual(values=shapes)+ 
       geom_abline(intercept = y$lowyint[1], slope=y$lowslope[1], color="#E41A1C")+
       geom_abline(intercept = y$highyint[1], slope=y$highslope[1], color="#E41A1C")
   }

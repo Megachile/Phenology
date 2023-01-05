@@ -1,0 +1,130 @@
+# input <- dbGetQuery(gallphen, str_interp("SELECT observations.*, host.species AS host, gall.generation FROM observations
+#                              LEFT JOIN species AS host ON observations.host_id = host.species_id
+#                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
+#                              WHERE gall_id in (SELECT species_id FROM species
+#                              WHERE inatcode = '495742') "))
+#                              
+input <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation FROM observations
+                             LEFT JOIN species AS host ON observations.host_id = host.species_id
+                             INNER JOIN species AS gall ON observations.gall_id = gall.species_id
+                             WHERE gall_id IN (SELECT species_id FROM species
+                             WHERE genus = 'Eurosta')")
+
+data <- input
+data <- data[!(data$generation=="sexgen"),]
+data <- data[data$doy<250,]
+data <- data[!(data$phenophase=="developing"),]
+data <- data[!(data$phenophase=="dormant"),]
+data <- data[!(data$phenophase=="oviscar"),]
+# data <- data[!(data$phenophase=="perimature"),]
+data <- seasonIndex(data)
+data <- acchours(data)
+
+
+doy <- sort(data$doy)
+#sort by doy
+x <- data[sort(data$doy),]
+# Compute the differences between successive elements
+diffs <- diff(doy)
+# Find the maximum difference
+max_diff <- max(diffs)
+
+if (max_diff>89|min(data$doy)>171){
+
+# Find the index of the element that precedes the largest gap
+split_index <- which(diffs == max_diff)
+
+# Divide the dataset into two subsets based on the split index
+spring <- data[data$doy <= doy[split_index], ]
+fall <- data[data$doy > doy[split_index], ]
+
+var <- "seasind"
+thr <- 0.02
+left <- mean(unique(spring[spring$doy==max(spring$doy),"seasind"]))
+right <- mean(unique(fall[fall$doy==min(fall$doy),"seasind"]))
+
+} else {
+  var <- "acchours"
+  left <- min(data$acchours)
+  right <- max(data$acchours)
+  
+  # left <- mean(unique(data[data$doy==min(data$acchours),"acchours"]))
+  # right <- mean(unique(data[data$doy==max(data$acchours),"acchours"]))
+  thr <- ((left+right)/2)*0.08
+}
+
+
+
+y <- eas
+y <- distinct(y[,-c(1:4,7:8,12:15)])
+
+tf <- y[which(between(y[[var]],(left-thr),(left+thr)  )),]
+# tf$dist <-  abs(tf[[var]]-left)
+# quantile(tf$dist)[4]
+# tf <- tf[!(tf$dist>quantile(tf$dist)[4]),]
+# print(dim(tf)[1])
+
+tf <- unique(tf)
+# Assume your data is stored in a data frame called "df"
+
+# Group the data by y value
+tf_grouped <- tf %>% group_by(latitude)
+
+# Remove all but the point with the lowest x value for each group
+tf <- tf_grouped %>% filter(doy == max(doy))
+
+if (dim(tf)[1]>1){
+  mod <- lm(tf$latitude~tf$doy)
+  plot(tf$latitude~tf$doy)
+  low <- coefficients(mod)
+} else {
+  low <- c(-9999,0)
+}
+
+
+tf <- y[which(between(y[[var]],(right-thr),(right+thr)  )),]
+tf <- unique(tf)
+# Assume your data is stored in a data frame called "df"
+
+# Group the data by y value
+tf_grouped <- tf %>% group_by(latitude)
+
+# Remove all but the point with the lowest x value for each group
+tf <- tf_grouped %>% filter(doy == min(doy))
+
+print(dim(tf)[1])
+if (dim(tf)[1]>1){
+  mod <- lm(tf$latitude~tf$doy)
+  plot(tf$latitude~tf$doy)
+  high <- coefficients(mod)
+} else {
+  high <- c(-9999,0)
+}
+
+coef <- rbind(low,high)
+
+lowslope <- coef[1,2]
+lowyint <- coef[1,1]
+highslope <- coef[2,2]
+highyint <- coef[2,1]
+
+param <- as.data.frame(t(c(lowslope,lowyint,highslope,highyint)))
+colnames(param) <- c("lowslope","lowyint","highslope","highyint")
+x <- data
+y <- param
+x <- as.data.frame(x)
+# x <- x[grepl('Flower Budding',x$phenophase),]
+
+shapes <- c(0,1,17,2,18,8)
+names(shapes) <- c('dormant','developing','maturing','perimature','Adult','oviscar')
+p = ggplot(data = x, aes(x = doy %% 365, y = latitude, color=phenophase, shape=phenophase,size=22)) + 
+  geom_point()+
+  xlim(0,365)+
+  scale_shape_manual(values=shapes)+
+  geom_abline(intercept = y$lowyint[1], slope=y$lowslope[1], color="#E41A1C")+
+  geom_abline(intercept = y$highyint[1], slope=y$highslope[1], color="#E41A1C")
+p
+
+testlat <- 43.1144
+as.Date(((testlat - lowyint)/lowslope),"2023-01-01")
+as.Date(((testlat - highyint)/highslope),"2023-01-01")
