@@ -40,8 +40,12 @@ url <- urlMaker(spcode)
 #limit to only observations with plant phenology (for plant observations only)
 # url <- paste0(url, "&term_id=12")
 
+url <- "https://api.inaturalist.org/v1/observations?quality_grade=any&user_id=antoine_guiguet_&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775"
+
 #iNat API call
 obs <- iNatCall(url)
+
+obs <- obs %>% filter(nchar(obs$taxon.name) - nchar(gsub(" ", "", obs$taxon.name)) + 1 == 2)
 
 obs <- obs[!(obs$Gall_phenophase=="senescent"),]
 
@@ -67,6 +71,8 @@ prob <- #####
 # new[new$id==prob,"Host_Plant_ID"] <- "49006"
 # new[new$id==prob,"Life_Stage"] <- "Larva"
 
+new <- new[!(new$Gall_generation==""),]
+new <- new[!(new$observed_on==""),]
 # egg <- findEgg(new)
 
 # for (i in 1:20){
@@ -83,9 +89,11 @@ checkHost(new)
 # dbExecute(gallphen, "UPDATE species SET inatcode = '119269'
 #            WHERE genus = 'Quercus' AND species = 'stellata'")
 
-new <- new[!(new$Gall_generation==""),]
 
 #remove and add columns to match database table
+# WARNING note that as currently written, prepappend will drop any rows where the 
+# gall ID is not in the local version of the database 
+#and where multiple gall IDs are not disambiguated (ie, N quercusbatatus) 
 str(new)
 append <- PrepAppend(new)
 # append <- append[,-21]
@@ -126,9 +134,9 @@ data <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
                              WHERE gall_id IN (SELECT species_id FROM species
-                             WHERE genus = 'Callirhytis')")
+                             WHERE genus = 'Eurosta')")
 
-dbExecute(gallphen, "SELECT genus ")
+# dbExecute(gallphen, "SELECT genus ")
 
 data <- seasonIndex(data)
 data <- acchours(data)
@@ -468,6 +476,7 @@ findMissing <- function(df){
     miss3 <- df[df$Gall_phenophase=="",]
   } else {miss3 <- NULL}
   missing <- rbind(miss1,miss2,miss3)
+  missing <- missing[!(missing$Evidence_of_Presence == "Organism" & missing$Life_Stage == "Adult"),]
   if (dim(unique(missing))[1]>20){
     warning("Many data points are missing values. You may want to go to iNat and fill them in and run the import function again rather than using this tool to fix them individually")
   }
@@ -522,7 +531,7 @@ checkHost <- function(df){
   return(hosts)
 }
 
-
+x <- new
 # this function renames columns and adds columns as needed go from the output of the iNat export to the input to the database.  
 # Only works if column inputs are not altered
 PrepAppend <- function(x){
@@ -627,6 +636,8 @@ PrepAppend <- function(x){
                                                       WHERE genus = '${x$genus[i]}' AND species LIKE '%${x$species[i]}%' AND generation LIKE '%${x$Gall_generation[i]}%'"))
       }
     }
+    x <- x[!(x$gall_id=="integer(0)"), ]
+    x <- x[!grepl(",", x$gall_id), ]
     x$gall_id <- as.numeric(x$gall_id)
   }
   

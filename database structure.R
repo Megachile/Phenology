@@ -152,14 +152,14 @@ dbExecute(gallphen, "UPDATE species SET inatcode = inatcodes.id
 FROM inatcodes
 WHERE species.genus = inatcodes.genus AND species.species LIKE '%' || inatcodes.specificEpithet || '%' AND inatcodes.specificEpithet != '' AND taxonRank != 'variety' AND taxonRank != 'hybrid' AND taxonRank != 'subspecies' ")
 
-quercus <- dbGetQuery(gallphen, "SELECT * FROM species WHERE genus = 'Quercus' AND species = 'marilandica'")
-
+dbGetQuery(gallphen, "SELECT * FROM observations WHERE gall_id = '566'  AND sourceURL = 'https://www.biorxiv.org/content/10.1101/2022.02.11.480154v1.abstract' AND phenophase = 'perimature'")
+# dbExecute(gallphen, "DELETE FROM observations WHERE gall_id = '566'  AND sourceURL = 'https://www.biorxiv.org/content/10.1101/2022.02.11.480154v1.abstract' AND phenophase = 'perimature'")
 quercus <- quercus[is.na(quercus$inatcode),]
 
 dbGetQuery(gallphen, "SELECT DISTINCT taxonRank FROM inatcodes")
 
 dbGetQuery(gallphen, "SELECT DISTINCT country FROM observations ORDER BY obs_id DESC LIMIT 7")
-dbExecute(gallphen, "UPDATE species SET species = 'margaretiae' WHERE genus = 'Quercus' AND species = 'margarettae'")
+# dbExecute(gallphen, "UPDATE observations SET phenophase = 'dormant' WHERE gall_id = '566' AND phenophase = 'developing'")
 
 
 # fix dates added as Julian dates
