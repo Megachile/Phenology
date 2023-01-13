@@ -1,4 +1,13 @@
+library(DBI)
+library(dbx)
+library(tidyr)
+library(sjmisc)
+library(RSQLite)
+library(rinat)
+library(stringr)
+library(ggplot2)
 library(jsonlite)
+library(compare)
 library(data.table)
 # library(foreach)
 # library(stringr)
@@ -32,7 +41,7 @@ pac <- pac[!is.na(pac$AGDD32),]
 eas[eas$doy>365,"acchours"] <- NA
 
 #input iNat code or GF code
-spcode <- "518693"
+spcode <- "1041305"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -40,11 +49,13 @@ url <- urlMaker(spcode)
 #limit to only observations with plant phenology (for plant observations only)
 # url <- paste0(url, "&term_id=12")
 
-url <- "https://api.inaturalist.org/v1/observations?quality_grade=any&user_id=antoine_guiguet_&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775"
+#for a specific user (Antoine G now)
+# url <- "https://api.inaturalist.org/v1/observations?quality_grade=any&user_id=antoine_guiguet_&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775"
 
 #iNat API call
 obs <- iNatCall(url)
 
+#removes any observations that aren't ID'd to species
 obs <- obs %>% filter(nchar(obs$taxon.name) - nchar(gsub(" ", "", obs$taxon.name)) + 1 == 2)
 
 obs <- obs[!(obs$Gall_phenophase=="senescent"),]
@@ -60,7 +71,7 @@ new <- checkData(obs)
 # creates a *new* dataframe with only rows missing data
 # 
 missing <- findMissing(new)
-
+print(dim(missing)[1])
 #  for (i in 1:20){
 #   browseURL(missing$uri[i])
 # }

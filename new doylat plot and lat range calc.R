@@ -4,22 +4,25 @@
 #                              WHERE gall_id in (SELECT species_id FROM species
 #                              WHERE inatcode = '1400820') "))
 #                              
-input <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation FROM observations
+input <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation, gall.species FROM observations 
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
                              WHERE gall_id IN (SELECT species_id FROM species
-                             WHERE genus = 'Amphibolips' AND species LIKE '%soper%')")
-
+                             WHERE genus = 'Andricus' AND species LIKE '%balanaspi%' )")
 
 #AND species LIKE '%mamma%' 
-
+#AND (species LIKE '%floccos%' OR species LIKE '%verruc%')
+# input <- input[!(input$gall_id=="1084"),]
 data <- input
 # data <- filter(data, viability != "")
-# data <- data[(data$generation=="sexgen"),]
+# data <- data[!(data$generation=="agamic"),]
+data <- data[!(data$generation=="sexgen"),]
 # data <- data[data$doy>200,]
 data <- data[!(data$phenophase=="developing"),]
 data <- data[!(data$phenophase=="dormant"),]
 data <- data[!(data$phenophase=="oviscar"),]
+# data <- data[!(data$state=="CA"),]
+data <- data[!is.na(data$obs_id),]
 # data <- data[!(data$phenophase=="perimature"),]
 data <- seasonIndex(data)
 data <- acchours(data)
@@ -117,10 +120,10 @@ ymax <- max(input$latitude)
 
 shapes <- c(0,1,17,2,18,8)
 names(shapes) <- c('dormant','developing','maturing','perimature','Adult','oviscar')
-p = ggplot(data = x, aes(x = doy %% 365, y = latitude, color=phenophase, shape=phenophase,size=22)) +
+p = ggplot(data = x, aes(x = doy %% 365, y = latitude, color = generation, shape=phenophase,size=22)) +
   geom_point()+
   xlim(0,365)+
-  ylim(ymin,ymax)+
+  ylim(10,55)+
   scale_shape_manual(values=shapes)+
   geom_abline(intercept = y$lowyint[1], slope=y$lowslope[1], color="#E41A1C")+
   geom_abline(intercept = y$highyint[1], slope=y$highslope[1], color="#E41A1C")
@@ -134,6 +137,7 @@ p
 # p
 
 
-testlat <- 41.891556
+testlat <- 32.74
 as.Date(((testlat - lowyint)/lowslope),"2023-01-01")
 as.Date(((testlat - highyint)/highslope),"2023-01-01")
+

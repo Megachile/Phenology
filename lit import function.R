@@ -1,20 +1,15 @@
-install.packages("tidygeocoder")
 library(tidygeocoder)
 
-
-
-
-data <- dbGetQuery(gallphen, "SELECT * FROM observations 
-                             WHERE sourceURL = 'https://www.gallformers.org/source/9'")
+# data <- dbGetQuery(gallphen, "SELECT * FROM observations WHERE sourceURL = 'https://www.gallformers.org/source/9'")
 
 #import file
 fnsites <- read.csv(paste0(wd,"/FNsites.csv"))
 fnsites <- fnsites[,1:5]
-lit <- read.csv(paste0(wd,"/FNdata.csv"))
+lit <- read.csv(paste0(wd,"/litdates8.csv"))
 lit <- lit[!is.na(lit$gf_id),]
 
 #remove duplicates (K decidua, K rileyi, X q forticorne, D q flocci)
-lit <- lit[!(lit$gf_id=="577"|lit$gf_id=="735"|lit$gf_id=="851"|lit$gf_id=="865"|lit$gf_id=="764"|lit$gf_id=="1340"|lit$gf_id=="1317"|lit$gf_id=="1339"),]
+# lit <- lit[!(lit$gf_id=="577"|lit$gf_id=="735"|lit$gf_id=="851"|lit$gf_id=="865"|lit$gf_id=="764"|lit$gf_id=="1340"|lit$gf_id=="1317"|lit$gf_id=="1339"),]
 
 # use GF_id to fill gall_id
 for (i in 1:dim(lit)[1]){
@@ -59,8 +54,8 @@ for (i in 1:dim(lit)[1]){
 
 # use site to fill in lat/long state and country
 # setdiff(unique(lit$site), unique(fnsites$site))
-lit <- lit[,!(names(lit) %in% c("latitude","longitude","state","country"))]
-lit <- merge(lit, fnsites, by = "site",all.x=TRUE)
+# lit <- lit[,!(names(lit) %in% c("latitude","longitude","state","country"))]
+# lit <- merge(lit, fnsites, by = "site",all.x=TRUE)
 lit <- lit[,!(names(lit) %in% c("gf_id","genus","species"))]
 
 #append to table

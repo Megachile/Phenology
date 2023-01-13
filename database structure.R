@@ -10,10 +10,11 @@ library(lubridate)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
-# gfall <- dbConnect(RSQLite::SQLite(), "gallformers.sqlite")
+gfall <- dbConnect(RSQLite::SQLite(), "gallformers.sqlite")
 dbDisconnect(gallphen)
+dbDisconnect(gfall)
 
-dbListTables(gallphen)
+dbListTables(gfall)
 dbListFields(gfall, "gallspecies")
 dbListFields(gfall, "gall")
 dbListFields(gfall, "species")
@@ -152,14 +153,15 @@ dbExecute(gallphen, "UPDATE species SET inatcode = inatcodes.id
 FROM inatcodes
 WHERE species.genus = inatcodes.genus AND species.species LIKE '%' || inatcodes.specificEpithet || '%' AND inatcodes.specificEpithet != '' AND taxonRank != 'variety' AND taxonRank != 'hybrid' AND taxonRank != 'subspecies' ")
 
-dbGetQuery(gallphen, "SELECT * FROM observations WHERE gall_id = '566'  AND sourceURL = 'https://www.biorxiv.org/content/10.1101/2022.02.11.480154v1.abstract' AND phenophase = 'perimature'")
+dbGetQuery(gallphen, "SELECT * FROM observations WHERE phenophase = 'maturing' AND pageURL = 'https://www.biodiversitylibrary.org/page/7610635#page/279/mode/1up'")
+           # gall_id = '566'  AND sourceURL = 'https://www.biorxiv.org/content/10.1101/2022.02.11.480154v1.abstract' AND phenophase = 'perimature'")
 # dbExecute(gallphen, "DELETE FROM observations WHERE gall_id = '566'  AND sourceURL = 'https://www.biorxiv.org/content/10.1101/2022.02.11.480154v1.abstract' AND phenophase = 'perimature'")
 quercus <- quercus[is.na(quercus$inatcode),]
 
 dbGetQuery(gallphen, "SELECT DISTINCT taxonRank FROM inatcodes")
 
 dbGetQuery(gallphen, "SELECT DISTINCT country FROM observations ORDER BY obs_id DESC LIMIT 7")
-# dbExecute(gallphen, "UPDATE observations SET phenophase = 'dormant' WHERE gall_id = '566' AND phenophase = 'developing'")
+# dbExecute(gallphen, "UPDATE observations SET phenophase = 'dormant' WHERE phenophase = 'maturing' AND pageURL = 'https://www.biodiversitylibrary.org/page/7610635#page/279/mode/1up'")
 
 
 # fix dates added as Julian dates
@@ -195,5 +197,5 @@ dbGetQuery(gallphen, "SELECT DISTINCT country FROM observations ORDER BY obs_id 
 # # ids$update_date <- "never"
 # # dbAppendTable(gallphen,"specieshistory",ids)
 
-
-
+dbGetQuery(gallphen, "PRAGMA integrity_check")
+dbGetQuery(gallphen, "PRAGMA foreign_key_check")

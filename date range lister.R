@@ -1,4 +1,4 @@
-doy <- as.integer(format(as.Date("2022-06-15"),"%j"))
+doy <- as.integer(format(as.Date("2022-01-04"),"%j"))
   
 th <- 15
 # Calculate the range of ten days before and after the doy value
@@ -15,13 +15,14 @@ query <- paste0("SELECT observations.*, host.species AS host, gall.generation FR
 input <- dbGetQuery(gallphen, query)
 
 data <- input
-# data <- data[(data$generation=="sexgen"),]
+# data <- data[!(data$generation=="sexgen"),]
+data <- data[!(data$generation=="agamic"),]
 # data <- data[data$doy>200,]
 data <- data[!(data$phenophase=="developing"),]
 data <- data[!(data$phenophase=="dormant"),]
 data <- data[!(data$phenophase=="oviscar"),]
 # data <- data[!(data$phenophase=="perimature"),]
-data <- data[!(data$state=="CA"),]
+data <- data[(data$state=="CA"),]
 # data <- seasonIndex(data)
 # data <- acchours(data)
 
