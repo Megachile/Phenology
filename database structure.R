@@ -153,10 +153,23 @@ dbExecute(gallphen, "UPDATE species SET inatcode = inatcodes.id
 FROM inatcodes
 WHERE species.genus = inatcodes.genus AND species.species LIKE '%' || inatcodes.specificEpithet || '%' AND inatcodes.specificEpithet != '' AND taxonRank != 'variety' AND taxonRank != 'hybrid' AND taxonRank != 'subspecies' ")
 
-dbGetQuery(gallphen, "SELECT * FROM observations WHERE phenophase = 'maturing' AND pageURL = 'https://www.biodiversitylibrary.org/page/7610635#page/279/mode/1up'")
-           # gall_id = '566'  AND sourceURL = 'https://www.biorxiv.org/content/10.1101/2022.02.11.480154v1.abstract' AND phenophase = 'perimature'")
-# dbExecute(gallphen, "DELETE FROM observations WHERE gall_id = '566'  AND sourceURL = 'https://www.biorxiv.org/content/10.1101/2022.02.11.480154v1.abstract' AND phenophase = 'perimature'")
-quercus <- quercus[is.na(quercus$inatcode),]
+
+dbGetQuery(gallphen,"SELECT * FROM species WHERE genus = 'Neuroterus' AND species LIKE '%floccosus%'")
+
+
+query <- "WHERE obs_id IN ('26248')"
+select <- paste0("SELECT * FROM observations ", query)
+dbGetQuery(gallphen, select)
+# update <- paste0("UPDATE observations SET gall_id ='4163' ", query)
+# dbExecute(gallphen, update)
+# delete <- paste0("DELETE FROM observations ", query)
+#  dbExecute(gallphen, delete)
+
+
+
+
+
+# quercus <- quercus[is.na(quercus$inatcode),]
 
 dbGetQuery(gallphen, "SELECT DISTINCT taxonRank FROM inatcodes")
 
@@ -199,3 +212,4 @@ dbGetQuery(gallphen, "SELECT DISTINCT country FROM observations ORDER BY obs_id 
 
 dbGetQuery(gallphen, "PRAGMA integrity_check")
 dbGetQuery(gallphen, "PRAGMA foreign_key_check")
+dbConnect(gallphen)

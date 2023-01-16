@@ -32,16 +32,20 @@ library(stringr)
 # library(glmm)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
-gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
-prev <- read.csv(paste0(wd, "/USgridagdd.csv" ))
-eas <- prev[prev$longitude>-103,]
-eas <- eas[!is.na(eas$AGDD32),]
-pac <- prev[!(prev$longitude>-103),]
-pac <- pac[!is.na(pac$AGDD32),]
-eas[eas$doy>365,"acchours"] <- NA
+gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
+# prev <- read.csv(paste0(wd, "/USgridagdd.csv" ))
+# write.csv(eas, file = "phenogrid.csv", row.names = FALSE)
+eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
+# eas <- eas[eas$latitude>22,]
+# max(eas$latitude)
+# eas <- prev[prev$longitude>-103,]
+# eas <- eas[!is.na(eas$AGDD32),]
+# pac <- prev[!(prev$longitude>-103),]
+# pac <- pac[!is.na(pac$AGDD32),]
+# eas[eas$doy>365,"acchours"] <- NA
 
 #input iNat code or GF code
-spcode <- "1041305"
+spcode <- "69239"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -55,14 +59,23 @@ url <- urlMaker(spcode)
 #iNat API call
 obs <- iNatCall(url)
 
-#removes any observations that aren't ID'd to species
-obs <- obs %>% filter(nchar(obs$taxon.name) - nchar(gsub(" ", "", obs$taxon.name)) + 1 == 2)
+#removes any observations that aren't ID'd exactly to species
+# obs <- obs %>% filter(nchar(obs$taxon.name) - nchar(gsub(" ", "", obs$taxon.name)) + 1 == 2)
 
 obs <- obs[!(obs$Gall_phenophase=="senescent"),]
 
 #add inat code to database if you get an error
 # dbExecute(gallphen, "UPDATE species SET inatcode = 1394743
 # WHERE genus = 'Bassettia' AND species LIKE '%flavipes%'")
+
+obs$longitude <- as.numeric(obs$longitude)
+# obs <- obs[obs$longitude<=-100,]
+# ena <- ena %>% filter(nchar(ena$taxon.name) - nchar(gsub(" ", "", ena$taxon.name)) + 1 == 2)
+ena <- new[new$Life_Stage=='Larva',]
+for (i in 1:20){
+  browseURL(ena$uri[i])
+}
+
 
 # remove any rows with IDs in the baddata table or already present in the observations table. Eliminates any records that are not new. 
 # only works for iNat inputs, do not run on other data!
@@ -72,17 +85,21 @@ new <- checkData(obs)
 # 
 missing <- findMissing(new)
 print(dim(missing)[1])
-#  for (i in 1:20){
-#   browseURL(missing$uri[i])
-# }
+ for (i in 1:20){
+  browseURL(missing$uri[i])
+ }
 
-prob <- #####
+new = new[!(new$id %in% missing$id), ]
+
+
+prob <- paste0("https://www.inaturalist.org/observations/",13042299)
 # new[new$id==prob,"Gall_phenophase"] <- "dormant"
 # new[new$id==prob,"Gall_generation"] <- "unisexual"
 # new[new$id==prob,"Host_Plant_ID"] <- "49006"
-# new[new$id==prob,"Life_Stage"] <- "Larva"
+append[append$pageURL==prob,"lifestage"] <- NA
 
-new <- new[!(new$Gall_generation==""),]
+
+# new <- new[!(new$Gall_generation==""),]
 new <- new[!(new$observed_on==""),]
 # egg <- findEgg(new)
 
@@ -109,6 +126,12 @@ str(new)
 append <- PrepAppend(new)
 # append <- append[,-21]
 
+#check that the hosts in the data to be appended all make sense
+# for (i in 1:5) {
+#   query <- paste0("SELECT * FROM species WHERE species_id = '", unique(append$host_id)[i+1],"'")
+#   print(dbGetQuery(gallphen, query))
+# }
+
 #add to the database
 # dbAppendTable(gallphen, "observations",append)
 
@@ -121,8 +144,7 @@ dbGetQuery(gallphen, "SELECT inatcode FROM species WHERE species_id in (SELECT D
 
 # dbGetQuery(gallphen, "SELECT * FROM observations WHERE pageURL ='https://www.inaturalist.org/observations/127280486'")
 
-# dbExecute(gallphen, "DELETE FROM observations 
-#           WHERE obs_id = ''")
+# dbExecute(gallphen, "DELETE FROM observations WHERE obs_id = '5212'")
 
 dbGetQuery(gallphen, "SELECT * FROM species WHERE species LIKE '%stellata%'")
 
@@ -542,7 +564,6 @@ checkHost <- function(df){
   return(hosts)
 }
 
-x <- new
 # this function renames columns and adds columns as needed go from the output of the iNat export to the input to the database.  
 # Only works if column inputs are not altered
 PrepAppend <- function(x){
@@ -588,10 +609,6 @@ PrepAppend <- function(x){
   } 
   
   x <- x %>% separate(taxon.name, c("genus","species"), remove=TRUE, extra = "drop")
-  
-  #get database ready
-  library(DBI)
-  gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
   
   # if this is a plant dataset, get the corresponding species IDs for a host and make a blank gall_id column
   if (!is.null(x$Plant_Phenology)){
@@ -647,8 +664,11 @@ PrepAppend <- function(x){
                                                       WHERE genus = '${x$genus[i]}' AND species LIKE '%${x$species[i]}%' AND generation LIKE '%${x$Gall_generation[i]}%'"))
       }
     }
+    warning(paste0( dim(x[(x$gall_id=="integer(0)"), ])[1]  ), " rows have been removed because no gall id was found")
     x <- x[!(x$gall_id=="integer(0)"), ]
+    warning(paste0(dim(x[grepl(",", x$gall_id), ])[1]), " rows have been removed because multiple gall ids were found")
     x <- x[!grepl(",", x$gall_id), ]
+    # x[grepl(",", x$gall_id), "gall_id"] <- 1680
     x$gall_id <- as.numeric(x$gall_id)
   }
   
