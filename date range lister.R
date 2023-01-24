@@ -1,4 +1,5 @@
-doy <- as.integer(format(as.Date("2022-01-04"),"%j"))
+doy <- as.integer(format(as.Date("2022-05-04"),"%j"))
+
   
 th <- 15
 # Calculate the range of ten days before and after the doy value
@@ -9,20 +10,21 @@ doy_end <- doy + th
 query <- paste0("SELECT observations.*, host.species AS host, gall.generation FROM observations
                 LEFT JOIN species AS host ON observations.host_id = host.species_id
                 INNER JOIN species AS gall ON observations.gall_id = gall.species_id
-                WHERE DOY BETWEEN ", doy_start, " AND ", doy_end)
+                WHERE gall_id IN (SELECT species_id FROM species WHERE (genus = 'Neuroterus')) AND DOY BETWEEN ", doy_start, " AND ", doy_end)
+# 
 
 # Execute the query using dbGetQuery()
 input <- dbGetQuery(gallphen, query)
 
 data <- input
-# data <- data[!(data$generation=="sexgen"),]
-data <- data[!(data$generation=="agamic"),]
+# data <- data[(data$generation=="sexgen"),]
+# data <- data[!(data$generation=="agamic"),]
 # data <- data[data$doy>200,]
 data <- data[!(data$phenophase=="developing"),]
 data <- data[!(data$phenophase=="dormant"),]
 data <- data[!(data$phenophase=="oviscar"),]
 # data <- data[!(data$phenophase=="perimature"),]
-data <- data[(data$state=="CA"),]
+data <- data[!(data$state=="CA"),]
 # data <- seasonIndex(data)
 # data <- acchours(data)
 
@@ -37,3 +39,4 @@ for (id in gall_ids) {
     print(paste(result$genus,result$species))
   }
 }
+

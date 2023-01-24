@@ -14,10 +14,10 @@ gfall <- dbConnect(RSQLite::SQLite(), "gallformers.sqlite")
 dbDisconnect(gallphen)
 dbDisconnect(gfall)
 
-dbListTables(gfall)
+dbListTables(gallphen)
 dbListFields(gfall, "gallspecies")
 dbListFields(gfall, "gall")
-dbListFields(gfall, "species")
+dbListFields(gallphen, "species")
 dbReadTable(gfall, "species")
 # dbGetQuery(gfall, "SELECT * FROM gall ORDER BY undescribed DESC LIMIT 10")
 # taxa <- dbGetQuery(gfall, "SELECT id, taxoncode, name FROM species")
@@ -157,13 +157,16 @@ WHERE species.genus = inatcodes.genus AND species.species LIKE '%' || inatcodes.
 dbGetQuery(gallphen,"SELECT * FROM species WHERE genus = 'Neuroterus' AND species LIKE '%floccosus%'")
 
 
-query <- "WHERE obs_id IN ('26248')"
+sen <- input[which(input$phenophase=="dormant"&input$doy>20&input$doy<60),]
+query <- paste0("WHERE obs_id IN (", paste(sprintf("'%s'",sen$obs_id), collapse = ","),")")
+query <- paste0("WHERE obs_id IN ('29076')")
+
 select <- paste0("SELECT * FROM observations ", query)
 dbGetQuery(gallphen, select)
-# update <- paste0("UPDATE observations SET gall_id ='4163' ", query)
+# update <- paste0("UPDATE observations SET phenophase ='developing' ", query)
 # dbExecute(gallphen, update)
-# delete <- paste0("DELETE FROM observations ", query)
-#  dbExecute(gallphen, delete)
+ # delete <- paste0("DELETE FROM observations ", query)
+ # dbExecute(gallphen, delete)
 
 
 

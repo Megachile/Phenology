@@ -5,7 +5,7 @@ library(tidygeocoder)
 #import file
 fnsites <- read.csv(paste0(wd,"/FNsites.csv"))
 fnsites <- fnsites[,1:5]
-lit <- read.csv(paste0(wd,"/litdates8.csv"))
+lit <- read.csv(paste0(wd,"/SD_Druon_agamic.csv"))
 lit <- lit[!is.na(lit$gf_id),]
 
 #remove duplicates (K decidua, K rileyi, X q forticorne, D q flocci)
@@ -38,7 +38,11 @@ for (i in 1:dim(lit)[1]){
     lit$doy[i] <- yday(lit$date[i])
     lit$date[i] <- NA
   } else {
-        lit$doy[i] <- yday(lit$date[i])
+        
+    date_string <- lit$date[i]
+    date_object <- strptime(date_string, "%m/%d/%Y")
+    lit$date[i] <- as.character(date_object, format = "%Y-%m-%d")
+    lit$doy[i] <- yday(lit$date[i])
       }
     
 }

@@ -45,7 +45,7 @@ eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 # eas[eas$doy>365,"acchours"] <- NA
 
 #input iNat code or GF code
-spcode <- "69239"
+spcode <- "1260100"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -62,57 +62,57 @@ obs <- iNatCall(url)
 #removes any observations that aren't ID'd exactly to species
 # obs <- obs %>% filter(nchar(obs$taxon.name) - nchar(gsub(" ", "", obs$taxon.name)) + 1 == 2)
 
+obs <- obs[!(obs$observed_on==""),]
 obs <- obs[!(obs$Gall_phenophase=="senescent"),]
 
 #add inat code to database if you get an error
 # dbExecute(gallphen, "UPDATE species SET inatcode = 1394743
 # WHERE genus = 'Bassettia' AND species LIKE '%flavipes%'")
 
-obs$longitude <- as.numeric(obs$longitude)
+# obs$longitude <- as.numeric(obs$longitude)
 # obs <- obs[obs$longitude<=-100,]
 # ena <- ena %>% filter(nchar(ena$taxon.name) - nchar(gsub(" ", "", ena$taxon.name)) + 1 == 2)
-ena <- new[new$Life_Stage=='Larva',]
-for (i in 1:20){
-  browseURL(ena$uri[i])
-}
+
 
 
 # remove any rows with IDs in the baddata table or already present in the observations table. Eliminates any records that are not new. 
 # only works for iNat inputs, do not run on other data!
 new <- checkData(obs)
 
+ena <- new[new$Life_Stage=='Larva'|new$Life_Stage=='Pupa'|new$Life_Stage=='Egg',]
+for (i in 1:20){
+  browseURL(ena$uri[i])
+}
+
+
+
+prob <- "470969"
+# new[new$id==prob,"Gall_phenophase"] <- "dormant"
+# new[new$id==prob,"Gall_generation"] <- "unisexual"
+# new[new$id==prob,"Host_Plant_ID"] <- "49006"
+new[new$id==prob,"Life_Stage"] <- NA
+# new[new$uri==prob,"taxon.name"] <- "Acraspis villosa"
+
 # creates a *new* dataframe with only rows missing data
 # 
 missing <- findMissing(new)
 print(dim(missing)[1])
- for (i in 1:20){
+for (i in 1:20){
   browseURL(missing$uri[i])
- }
+}
 
 new = new[!(new$id %in% missing$id), ]
 
 
-prob <- paste0("https://www.inaturalist.org/observations/",13042299)
-# new[new$id==prob,"Gall_phenophase"] <- "dormant"
-# new[new$id==prob,"Gall_generation"] <- "unisexual"
-# new[new$id==prob,"Host_Plant_ID"] <- "49006"
-append[append$pageURL==prob,"lifestage"] <- NA
-
-
 # new <- new[!(new$Gall_generation==""),]
-new <- new[!(new$observed_on==""),]
-# egg <- findEgg(new)
 
-# for (i in 1:20){
-#   browseURL(egg$uri[i])
-# }
-
-append[append$pageURL=="https://www.inaturalist.org/observations/110335394","lifestage"] <- NA
+# append[append$pageURL=="https://www.inaturalist.org/observations/110335394","lifestage"] <- NA
 
 #get AGDD
 # agdd <- lookUpAGDD(new)
 
-checkHost(new)
+# CheckHost is not currently working--need to investigate this
+# checkHost(new)
 # 
 # dbExecute(gallphen, "UPDATE species SET inatcode = '119269'
 #            WHERE genus = 'Quercus' AND species = 'stellata'")
@@ -125,6 +125,10 @@ checkHost(new)
 str(new)
 append <- PrepAppend(new)
 # append <- append[,-21]
+
+
+prob <- "https://www.inaturalist.org/observations/15884207"
+append[append$pageURL==prob,"lifestage"] <- NA
 
 #check that the hosts in the data to be appended all make sense
 # for (i in 1:5) {
@@ -293,15 +297,11 @@ datecheck <- function(code){
 # only fetches observations uploaded after the last update date for the species 
 urlMaker <- function(code) {
   
-  #loads in the database if not already loaded  
-  library(DBI)
-  gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
-  
   if (grepl("-",code,fixed=TRUE)){
     
     url <-
       str_interp(
-        "https://api.inaturalist.org/v1/observations?quality_grade=any&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&any&field%3Agallformers%2Bcode=${code}"
+        "https://api.inaturalist.org/v1/observations?quality_grade=anyverifiable=true&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&any&field%3Agallformers%2Bcode=${code}"
       )
   } else {
     #checks to see if the code matches anything in the db
@@ -525,44 +525,47 @@ findEgg <- function(df){
 }
 
 numbers_only <- function(x) {!grepl("\\D", x)}
-
 # looks up all host IDs in the db and prints the ones not in the db yet
 checkHost <- function(df){
-  library(DBI)
-  gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
-  
+
   hostcodes <- unique(df$Host_Plant_ID)
   host_id <- NA
   hosts <- as.data.frame(cbind(hostcodes, host_id))
-  
+
   hosts <- hosts[!hosts$hostcodes=="",]
-  
 
   for (i in 1:dim(hosts)[1]){
     if (numbers_only(hosts$hostcodes[i])){
-      rank <- dbGetQuery(gallphen, str_interp("SELECT taxonRank FROM inatcodes WHERE id = '${hosts$hostcodes[i]}' ")) 
+      rank <- dbGetQuery(gallphen, str_interp("SELECT taxonRank FROM inatcodes WHERE id = '${hosts$hostcodes[i]}' "))
       if (isTRUE(rank[1,1]=="species")){
         hosts$host_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM species
                                                       WHERE inatcode = '${hosts$hostcodes[i]}'"))
       } else {
         hosts$host_id[i] <- NA
-      } 
-    } else { 
+      }
+    } else {
+      if (!grepl("'", hosts$hostcodes[i])){
       hosts$host_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM species
                                                       WHERE inatcode = (SELECT id FROM commonnames WHERE vernacularName LIKE '%${hosts$hostcodes[i]}%')"))
-    }
-    
+      } else {
+        hosts$host_id[i] <- NA
+      }
+      }
+
   }
+
+
   hosts <- hosts[numbers_only(hosts$host_id),]
   hosts <- hosts[hosts$host_id=="integer(0)",]
   if (dim(hosts)[1]!=0){
     hosts$uri <- paste0("https://www.inaturalist.org/taxa/",hosts$hostcodes)
     for (i in 1:20){
-      browseURL(hosts$uri[i])
+      browseURL(unique(hosts$uri[i]))
     }
   }
   return(hosts)
 }
+
 
 # this function renames columns and adds columns as needed go from the output of the iNat export to the input to the database.  
 # Only works if column inputs are not altered
@@ -639,8 +642,12 @@ PrepAppend <- function(x){
               x$host_id[i] <- NA
             } 
           } else { 
-            x$host_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM species
+            if (!grepl("'", x$Host_Plant_ID[i])){
+              x$host_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM species
                                                       WHERE inatcode = (SELECT id FROM commonnames WHERE vernacularName LIKE '%${x$Host_Plant_ID[i]}%')"))
+            } else {
+              x$host_id[i] <- NA
+            }
           }
         }
         
@@ -744,46 +751,46 @@ doywrap <- function(x){
 # calculates the slope and y intercept of the lines representing two sds above and below the mean accumulated day hours or seasonality index of flower budding or maturing, adult, perimature observations
 # old version using mean and sd
 # parcalc <- function(x,y,var){
-  y <- distinct(y[,-c(1:4,7:8,12:15)])
-  m <- mean(x[[var]],na.rm=TRUE)
-  s <- sd(x[[var]],na.rm=TRUE)
-  if (is.na(s)){
-    if (var=="acchours"){
-      s <- 500
-    } else {
-      s <- .1
-    }
-
-  }
-  print(m)
-  print(s)
-  z <- 1.25
-  thr <- 0.025*m
-  print((m)-(z*s))
-  tf <- y[which(between(y[[var]],((m-thr)-(z*s)),((m+thr)-(z*s))  )),]
-  print(dim(tf)[1])
-  if (dim(tf)[1]>1){
-    mod <- lm(tf$latitude~tf$doy)
-    plot(tf$latitude~tf$doy)
-    low <- coefficients(mod)
-  } else {
-    low <- c(-9999,0)
-  }
-  z <- 2.2
-  print(((m)+(z*s)))
-  tf <- y[which(between(y[[var]],((m-thr)+(z*s)),((m+thr)+(z*s))  )),]
-  print(dim(tf)[1])
-  if (dim(tf)[1]>1){
-    mod <- lm(tf$latitude~tf$doy)
-    plot(tf$latitude~tf$doy)
-    high <- coefficients(mod)
-  } else {
-    high <- c(-9999,0)
-  }
-  
-  coef <- rbind(low,high)
-  return(as.data.frame(coef))
-}
+#   y <- distinct(y[,-c(1:4,7:8,12:15)])
+#   m <- mean(x[[var]],na.rm=TRUE)
+#   s <- sd(x[[var]],na.rm=TRUE)
+#   if (is.na(s)){
+#     if (var=="acchours"){
+#       s <- 500
+#     } else {
+#       s <- .1
+#     }
+# 
+#   }
+#   print(m)
+#   print(s)
+#   z <- 1.25
+#   thr <- 0.025*m
+#   print((m)-(z*s))
+#   tf <- y[which(between(y[[var]],((m-thr)-(z*s)),((m+thr)-(z*s))  )),]
+#   print(dim(tf)[1])
+#   if (dim(tf)[1]>1){
+#     mod <- lm(tf$latitude~tf$doy)
+#     plot(tf$latitude~tf$doy)
+#     low <- coefficients(mod)
+#   } else {
+#     low <- c(-9999,0)
+#   }
+#   z <- 2.2
+#   print(((m)+(z*s)))
+#   tf <- y[which(between(y[[var]],((m-thr)+(z*s)),((m+thr)+(z*s))  )),]
+#   print(dim(tf)[1])
+#   if (dim(tf)[1]>1){
+#     mod <- lm(tf$latitude~tf$doy)
+#     plot(tf$latitude~tf$doy)
+#     high <- coefficients(mod)
+#   } else {
+#     high <- c(-9999,0)
+#   }
+#   
+#   coef <- rbind(low,high)
+#   return(as.data.frame(coef))
+# }
 # new version using median and IQR
 parcalc <- function(x,y,var){
   y <- distinct(y[,-c(1:4,7:8,12:15)])
