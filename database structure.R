@@ -154,16 +154,17 @@ FROM inatcodes
 WHERE species.genus = inatcodes.genus AND species.species LIKE '%' || inatcodes.specificEpithet || '%' AND inatcodes.specificEpithet != '' AND taxonRank != 'variety' AND taxonRank != 'hybrid' AND taxonRank != 'subspecies' ")
 
 
-dbGetQuery(gallphen,"SELECT * FROM species WHERE genus = 'Neuroterus' AND species LIKE '%floccosus%'")
+dbGetQuery(gallphen,"SELECT * FROM species WHERE species_id = '1362'")
+dbGetQuery(gallphen,"SELECT * FROM species WHERE genus = 'Diplolepis' AND species LIKE '%radic%'")
 
 
 sen <- input[which(input$phenophase=="dormant"&input$doy>20&input$doy<60),]
 query <- paste0("WHERE obs_id IN (", paste(sprintf("'%s'",sen$obs_id), collapse = ","),")")
-query <- paste0("WHERE obs_id IN ('29076')")
+query <- paste0("WHERE gall_id IN ('1362') ")
 
 select <- paste0("SELECT * FROM observations ", query)
 dbGetQuery(gallphen, select)
-# update <- paste0("UPDATE observations SET phenophase ='developing' ", query)
+# update <- paste0("UPDATE observations SET gall_id ='1364' ", query)
 # dbExecute(gallphen, update)
  # delete <- paste0("DELETE FROM observations ", query)
  # dbExecute(gallphen, delete)

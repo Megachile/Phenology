@@ -1,19 +1,21 @@
-str(eas)
-eas <- eas[,-c(1:3)]
-eas <- eas[,-c(4:5)]
-eas <- eas[,-c(1)]
-eas <- eas[,-c(6:9)]
-eas <- eas[eas$doy<366,]
-table(eas$longitude)
+# str(eas)
+# eas <- eas[,-c(1:3)]
+# eas <- eas[,-c(4:5)]
+# eas <- eas[,-c(1)]
+# eas <- eas[,-c(6:9)]
+# eas <- eas[eas$doy<366,]
+# table(eas$longitude)
 table(eas$latitude)
-table(y$doy)
+# table(y$doy)
 
 unique_doy <- unique(eas$doy)
 unique_longitude <- unique(eas$longitude)
+new_latitudes <- expand.grid(latitude = c(21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1), longitude = unique(eas$longitude), doy = unique(eas$doy))
 # new_latitudes <- expand.grid(latitude = c(15, 13, 11), longitude = unique(eas$longitude), doy = unique(eas$doy))
 # new_latitudes <- expand.grid(latitude = c(21, 19, 17), longitude = unique(eas$longitude), doy = unique(eas$doy))
 # new_latitudes <- expand.grid(latitude = c(27, 25, 23), longitude = unique(eas$longitude), doy = unique(eas$doy))
-new_latitudes <- expand.grid(latitude = c(51, 53, 55), longitude = unique(eas$longitude), doy = unique(eas$doy))
+# new_latitudes <- expand.grid(latitude = c(51, 53, 55), longitude = unique(eas$longitude), doy = unique(eas$doy))
+new_latitudes <- expand.grid(latitude = c(57, 59, 61, 63, 65), longitude = unique(eas$longitude), doy = unique(eas$doy))
 new_latitudes$seasind <- NA
 new_latitudes$acchours <- NA
 eas <- rbind(eas, new_latitudes)

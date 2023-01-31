@@ -1,4 +1,4 @@
-doy <- as.integer(format(as.Date("2022-05-04"),"%j"))
+doy <- as.integer(format(as.Date("2022-03-06"),"%j"))
 
   
 th <- 15
@@ -10,15 +10,15 @@ doy_end <- doy + th
 query <- paste0("SELECT observations.*, host.species AS host, gall.generation FROM observations
                 LEFT JOIN species AS host ON observations.host_id = host.species_id
                 INNER JOIN species AS gall ON observations.gall_id = gall.species_id
-                WHERE gall_id IN (SELECT species_id FROM species WHERE (genus = 'Neuroterus')) AND DOY BETWEEN ", doy_start, " AND ", doy_end)
-# 
+                WHERE  DOY BETWEEN ", doy_start, " AND ", doy_end)
+# gall_id IN (SELECT species_id FROM species WHERE (genus = 'Neuroterus')) AND
 
 # Execute the query using dbGetQuery()
 input <- dbGetQuery(gallphen, query)
 
 data <- input
-# data <- data[(data$generation=="sexgen"),]
-# data <- data[!(data$generation=="agamic"),]
+data <- data[(data$generation=="sexgen"),]
+# data <- data[(data$generation=="agamic"),]
 # data <- data[data$doy>200,]
 data <- data[!(data$phenophase=="developing"),]
 data <- data[!(data$phenophase=="dormant"),]

@@ -3,9 +3,9 @@ library(tidygeocoder)
 # data <- dbGetQuery(gallphen, "SELECT * FROM observations WHERE sourceURL = 'https://www.gallformers.org/source/9'")
 
 #import file
-fnsites <- read.csv(paste0(wd,"/FNsites.csv"))
-fnsites <- fnsites[,1:5]
-lit <- read.csv(paste0(wd,"/SD_Druon_agamic.csv"))
+# fnsites <- read.csv(paste0(wd,"/FNsites.csv"))
+# fnsites <- fnsites[,1:5]
+lit <- read.csv(paste0(wd,"/SD_3.csv"))
 lit <- lit[!is.na(lit$gf_id),]
 
 #remove duplicates (K decidua, K rileyi, X q forticorne, D q flocci)
@@ -25,6 +25,8 @@ lit$host_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM specie
                                                       WHERE genus = '${lit$genus[i]}' AND species LIKE '%${lit$species[i]}%'"))
 }
 
+lit$doy <- yday(lit$date)
+
 lit[lit$host_id=="integer(0)",5] <- NA
 
 #convert new ID columns back to vectors
@@ -34,7 +36,7 @@ lit$host_id <- unlist(lit$host_id)
 # convert XXXX- dates to doy and delete
 for (i in 1:dim(lit)[1]){
   if (grepl('xxxx',lit$date[i],ignore.case = TRUE)){
-    lit$date[i] <- gsub('xxxx','2021',lit$date[i], ignore.case = TRUE)
+    # lit$date[i] <- gsub('xxxx','2021',lit$date[i], ignore.case = TRUE)
     lit$doy[i] <- yday(lit$date[i])
     lit$date[i] <- NA
   } else {

@@ -36,6 +36,8 @@ gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
 # prev <- read.csv(paste0(wd, "/USgridagdd.csv" ))
 # write.csv(eas, file = "phenogrid.csv", row.names = FALSE)
 eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
+# eas <- eas[eas$latitude>30,]
+# eas <- eas[eas$latitude<48,]
 # eas <- eas[eas$latitude>22,]
 # max(eas$latitude)
 # eas <- prev[prev$longitude>-103,]

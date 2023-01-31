@@ -1,28 +1,29 @@
-# input <- dbGetQuery(gallphen, str_interp("SELECT observations.*, host.species AS host, gall.generation FROM observations
-#                              LEFT JOIN species AS host ON observations.host_id = host.species_id
-#                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
-#                              WHERE gall_id in (SELECT species_id FROM species
-#                              WHERE inatcode = '1400820') "))
-#                              
 input <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation, gall.species FROM observations 
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
                              WHERE gall_id IN (SELECT species_id FROM species
-                             WHERE (genus = 'Neuroterus') AND species LIKE '%sbatatus%') AND country NOT IN ('Mexico','Costa Rica')")
+                             WHERE (genus = 'Disholandricus')) AND country NOT IN ('Mexico','Costa Rica')")
 
-# AND species LIKE '%spalustr%' AND generation = 'sexgen'
+# AND species LIKE '%ellips%'  ) AND country NOT IN ('Mexico','Costa Rica') 
+#AND country NOT IN ('Mexico','Costa Rica') 
+#AND species LIKE '%spalustr%' AND generation = 'sexgen'
 #AND (species LIKE '%confluenta%' OR species LIKE '%spongif%')
 #AND species LIKE '%mamma%' 
 #AND (species LIKE '%floccos%' OR species LIKE '%verruc%')
 # input <- input[!(input$gall_id=="1084"),]
 # input <- input[!(input$state=="TX"),]
+# input <- seasonIndex(input)
+# input <- acchours(input)
+# input[input$latitude>50,"latitude"] <- 50
 data <- input
+
 # data <- data[data$gall_id == '803',]
-# data <- data[data$latitude>31,]
+# data <- data[data$latitude<25,]
 # data <- filter(data, viability != "")
 data <- data[(data$generation=="agamic"),]
 # data <- data[(data$generation=="sexgen"),]
-# data <- data[data$doy>200,]
+# data <- data[data$doy>120&data$doy<280,]
+
 data <- data[!(data$phenophase=="developing"),]
 data <- data[!(data$phenophase=="dormant"),]
 data <- data[!(data$phenophase=="oviscar"),]
@@ -31,8 +32,7 @@ data <- data[!(data$phenophase=="oviscar"),]
 data <- data[!is.na(data$obs_id),]
 # data <- data[!(data$phenophase=="perimature"),]
 # data <- data[!(data$phenophase=="maturing"),]
-data <- seasonIndex(data)
-data <- acchours(data)
+
 doy <- sort(data$doy)
 #sort by doy
 x <- data[sort(data$doy),]
@@ -41,7 +41,7 @@ diffs <- diff(doy)
 # Find the maximum difference
 max_diff <- max(diffs)
 
-if (max_diff>89|min(data$doy)>171){
+if (max_diff>85|min(data$doy)>171){
 
 # Find the index of the element that precedes the largest gap
 split_index <- which(diffs == max_diff)
@@ -53,22 +53,75 @@ fall <- data[data$doy > doy[split_index], ]
 var <- "seasind"
 thr <- 0.02
 
+left <-  0.2
+right <-  0.98
+
 left <- mean(unique(spring[spring$doy==max(spring$doy),"seasind"]))
 right <- mean(unique(fall[fall$doy==min(fall$doy),"seasind"]))
+
+
 
 } else {
   var <- "acchours"
   left <-  min(data$acchours)
   right <-  max(data$acchours)
 
-  # left <-  250
-  # right <-  500
+  # left <-  730
+  # right <-  1300
 
-  # left <- mean(unique(data[data$doy==min(data$acchours),"acchours"]))
-  # right <- mean(unique(data[data$doy==max(data$acchours),"acchours"]))
+  # left <- mean(unique(data[data$doy==min(data$doy),"acchours"]))
+  # right <- mean(unique(data[data$doy==max(data$doy),"acchours"]))
   thr <- ((left+right)/2)*0.08
 }
 
+range <- max(data$doy, na.rm=TRUE) - min(data$doy, na.rm=TRUE)
+
+# if (max_diff>89|min(data$doy)>171){
+# 
+# # Find the index of the element that precedes the largest gap
+# split_index <- which(diffs == max_diff)
+# 
+# # Divide the dataset into two subsets based on the split index
+# spring <- data[data$doy <= doy[split_index], ]
+# fall <- data[data$doy > doy[split_index], ]
+# 
+# var <- "seasind"
+# thr <- 0.02
+# 
+# # left <-  0.2
+# # right <-  0.98
+# 
+# left <- mean(unique(spring[spring$doy==max(spring$doy),"seasind"]))
+# right <- mean(unique(fall[fall$doy==min(fall$doy),"seasind"]))
+# 
+# 
+# 
+# } else {if (range>60){
+#     var <- "acchours"
+#     left <-  min(data$acchours)
+#     right <-  max(data$acchours)
+# 
+#     # left <-  1000
+#     # right <-  3300
+# 
+#     # left <- mean(unique(data[data$doy==min(data$acchours),"acchours"]))
+#     # right <- mean(unique(data[data$doy==max(data$acchours),"acchours"]))
+#     thr <- ((left+right)/2)*0.08
+# }
+#   
+#   else {
+#   var <- "seasind"
+#   left <- min(data$seasind)
+#   right <- max(data$seasind)
+# 
+#   # left <-  730
+#   # right <-  1300
+# 
+#   # left <- mean(unique(data[data$doy==min(data$acchours),"acchours"]))
+#   # right <- mean(unique(data[data$doy==max(data$acchours),"acchours"]))
+#   thr <- ((left+right)/2)*0.08
+#   }
+#   }
 
 
 y <- eas
@@ -144,17 +197,19 @@ x$alpha[i] <- ifelse(isTRUE(!is.na(x$lifestage[i]) | x$viability[i] == "viable")
 
 p = ggplot(data = x, aes(x = doy, y = latitude, color = color, shape=phenophase,size=22, alpha = alpha)) +
   geom_point()+
-  xlim(0,365)+
-  ylim(23,55)+
+  ylim(20,55)+
   # ylim(ymin,ymax)+
   scale_color_manual(values = c("NA"="black","sexgen" = "blue", "agamic"="red"))+
   scale_shape_manual(values=shapes)+
+  # geom_vline(xintercept=55)+
+  # geom_vline(xintercept=315)+
   geom_abline(intercept = y$lowyint[1], slope=y$lowslope[1], color="#E41A1C")+
-  geom_abline(intercept = y$highyint[1], slope=y$highslope[1], color="#E41A1C")
+  geom_abline(intercept = y$highyint[1], slope=y$highslope[1], color="#E41A1C")+
+  xlim(0,365)
 p
 
 
-testlat <- 41.3
+testlat <- 42.6
 as.Date(((testlat - lowyint)/lowslope),"2023-01-01")
 # testlat <- 44
 as.Date(((testlat - highyint)/highslope),"2023-01-01")

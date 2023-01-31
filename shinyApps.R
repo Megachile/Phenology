@@ -1,0 +1,2 @@
+runApp("speciesList")
+runApp("doyCalc")
