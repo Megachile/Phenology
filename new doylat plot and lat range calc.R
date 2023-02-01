@@ -2,7 +2,7 @@ input <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
                              WHERE gall_id IN (SELECT species_id FROM species
-                             WHERE (genus = 'Disholandricus')) AND country NOT IN ('Mexico','Costa Rica')")
+                             WHERE (genus = 'Melikaiella') AND species LIKE '%flora%' ) AND country NOT IN ('Mexico','Costa Rica')")
 
 # AND species LIKE '%ellips%'  ) AND country NOT IN ('Mexico','Costa Rica') 
 #AND country NOT IN ('Mexico','Costa Rica') 

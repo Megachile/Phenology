@@ -1,5 +1,11 @@
 library(shiny)
 library(shinyjs)
+library(pracma)
+library(solrad)
+pos_part <- function(x) {
+  return(sapply(x, max, 0))
+}
+eq = function(x,lat=49) {((2*(24/(2*pi))*acos(-tan((lat*pi/180))*tan((pi*Declination(x)/180))))-(0.1*lat+5)) }
 btwmod <- function(doy, min, max,mod){
   if (min<0|max>365){
     btw <- (doy >= (min %% mod)|doy <= (max %% mod))
