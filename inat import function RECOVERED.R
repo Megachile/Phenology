@@ -47,7 +47,7 @@ eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 # eas[eas$doy>365,"acchours"] <- NA
 
 #input iNat code or GF code
-spcode <- "1260100"
+spcode <- "883743"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -99,7 +99,9 @@ new[new$id==prob,"Life_Stage"] <- NA
 # 
 missing <- findMissing(new)
 print(dim(missing)[1])
-for (i in 1:20){
+missing <- new[new$Gall_generation=="",]
+
+for (i in 21:35){
   browseURL(missing$uri[i])
 }
 
@@ -568,7 +570,7 @@ checkHost <- function(df){
   return(hosts)
 }
 
-
+x <- new
 # this function renames columns and adds columns as needed go from the output of the iNat export to the input to the database.  
 # Only works if column inputs are not altered
 PrepAppend <- function(x){
@@ -585,6 +587,9 @@ PrepAppend <- function(x){
   x$site <- NA
   x$state <- NA
   x$sourceURL <- "inaturalist.org"
+  if (is.null(x$lifestage)){
+    x$lifestage <- NA
+  }
   if (is.null(x$country)){
     x$country <- NA
   }
@@ -660,6 +665,9 @@ PrepAppend <- function(x){
     }
     x$host_id <- as.numeric(x$host_id)
     #if the generation is tagged, get gall_id for each accordingly
+    # x$gall_id <- "1154"
+    
+    
     if (is.null(x$Gall_generation)){
       for (i in 1:dim(x)[1]){
         x$gall_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM species
@@ -697,6 +705,7 @@ PrepAppend <- function(x){
   x$Gall_generation <- NULL
   x$Host_Plant_ID <- NULL
   return(as.data.frame(x))
+
 }
 
 # functions to calculate a new column for the accumulated hours (adjusted for latitude) and the percent of same (seasonality index) of each observation in a dataframe

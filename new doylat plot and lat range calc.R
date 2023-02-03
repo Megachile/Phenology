@@ -2,7 +2,7 @@ input <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
                              WHERE gall_id IN (SELECT species_id FROM species
-                             WHERE (genus = 'Melikaiella') AND species LIKE '%flora%' ) AND country NOT IN ('Mexico','Costa Rica')")
+                             WHERE (genus = 'Neuroterus') AND species LIKE '%niger%' ) AND country NOT IN ('Mexico','Costa Rica')")
 
 # AND species LIKE '%ellips%'  ) AND country NOT IN ('Mexico','Costa Rica') 
 #AND country NOT IN ('Mexico','Costa Rica') 
@@ -108,7 +108,7 @@ range <- max(data$doy, na.rm=TRUE) - min(data$doy, na.rm=TRUE)
 #     # right <- mean(unique(data[data$doy==max(data$acchours),"acchours"]))
 #     thr <- ((left+right)/2)*0.08
 # }
-#   
+# 
 #   else {
 #   var <- "seasind"
 #   left <- min(data$seasind)

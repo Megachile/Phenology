@@ -9,7 +9,7 @@ library(ggplot2)
 library(lubridate)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
-gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
+gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
 gfall <- dbConnect(RSQLite::SQLite(), "gallformers.sqlite")
 dbDisconnect(gallphen)
 dbDisconnect(gfall)
@@ -155,16 +155,16 @@ WHERE species.genus = inatcodes.genus AND species.species LIKE '%' || inatcodes.
 
 
 dbGetQuery(gallphen,"SELECT * FROM species WHERE species_id = '1362'")
-dbGetQuery(gallphen,"SELECT * FROM species WHERE genus = 'Diplolepis' AND species LIKE '%radic%'")
+dbGetQuery(gallphen,"SELECT * FROM species WHERE genus = 'Neuroterus' AND species LIKE '%niger%'")
 
 
 sen <- input[which(input$phenophase=="dormant"&input$doy>20&input$doy<60),]
 query <- paste0("WHERE obs_id IN (", paste(sprintf("'%s'",sen$obs_id), collapse = ","),")")
-query <- paste0("WHERE gall_id IN ('1362') ")
+query <- paste0("WHERE PageURL = 'https://www.inaturalist.org/observations/75122877'")
 
 select <- paste0("SELECT * FROM observations ", query)
 dbGetQuery(gallphen, select)
-# update <- paste0("UPDATE observations SET gall_id ='1364' ", query)
+# update <- paste0("UPDATE observations SET gall_id = '961' ", query)
 # dbExecute(gallphen, update)
  # delete <- paste0("DELETE FROM observations ", query)
  # dbExecute(gallphen, delete)
