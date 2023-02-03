@@ -73,9 +73,6 @@ server <- function(input, output) {
       addRectangles(lng1 = lng1, lat1 = lat1, lng2 = lng2, lat2 = lat2, layerId = "rect", color = "red", fillOpacity = 0.3)
   })
   
-  
-  
-  
   observeEvent(input$mode, {
     if (input$mode) {
       show("thr")

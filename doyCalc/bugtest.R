@@ -1,8 +1,28 @@
+exists("onRender")
+library(htmlwidgets)
+install.packages("htmlwidgets")
+
+
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 observations <- read.csv("observations.csv")
 eas <- read.csv("phenogrid.csv")
-select <- observations
+plotted <- observations[1:100,]
+
+p = ggplot(data = plotted, aes(x = doy, y = latitude)) +
+  geom_point()+
+  ylim(20,55)+
+  labs(x="Month", y="Latitude")+
+  xlim(0,366)
+p
+
+
+p = ggplot(data = plotted, aes(x = as.Date(as.numeric(doy), origin = "1970-01-01"), y = latitude)) +
+  geom_point() +
+  ylim(20,55) +
+  labs(x="Month", y="Latitude") +
+  scale_x_date(date_labels = "%b", limits = as.Date(c("1970-01-01", "1970-12-31")))
+p
 
 # sexrear <- filter(select, viability == "viable" & generation == "sexgen")
 # sexem <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & generation == "sexgen")
