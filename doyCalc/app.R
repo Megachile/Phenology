@@ -1,31 +1,28 @@
 library(shiny)
 library(dplyr)
-# library(lubridate)
 library(ggplot2)
 library(shinyjs)
 library(shinyWidgets)
 library(data.table)
 library(stringr)
 library(DT)
+library(rlang)
 eas <- read.csv("phenogrid.csv")
 observations <- read.csv("observations.csv")
 doyLatCalc <- function (df){
   if (dim(df)[1]>0){
-
-    doy <- sort(df$doy)
-    # x <- df[sort(df$doy),]
+    
     if (dim(df)[1]==1){
       left <- 0.9*df$seasind[1]
       right <- ifelse(1.1 * df$seasind[1] > 1, 1, 1.1 * df$seasind[1])
       var <- "seasind"
       thr <- 0.02
     } else {
-      # Compute the differences between successive elements
+      doy <- sort(df$doy)
       diffs <- diff(doy)
-      # Find the maximum difference
       max_diff <- max(diffs)
 
-      range <- max(df$doy, na.rm=TRUE) - min(df$doy, na.rm=TRUE)
+      # range <- max(df$doy, na.rm=TRUE) - min(df$doy, na.rm=TRUE)
 
       if (max_diff>85|min(df$doy)>171){
 
@@ -43,35 +40,37 @@ doyLatCalc <- function (df){
         right <- mean(unique(fall[fall$doy==min(fall$doy),"seasind"]))
 
       }
-      # else {
-      #   if (range>48){
-      #   var <- "acchours"
-      #   left <-  min(df$acchours)
-      #   right <-  max(df$acchours)
-      #
-      #   thr <- ((left+right)/2)*0.12
+      else {
+        # if (range>35){
+        var <- "acchours"
+        left <-  min(df$acchours)
+        right <-  max(df$acchours)
+
+        thr <- ((left+right)/2)*0.12
       # }
-    else {
-      var <- "seasind"
-      left <- min(df$seasind)
-      right <- max(df$seasind)
-      thr <- 0.02
+    # else {
+    #   var <- "seasind"
+    #   left <- min(df$seasind)
+    #   right <- max(df$seasind)
+    #   thr <- 0.02
     # }
     }
     }
 
-    y <- eas
+    y <- eas %>% select(-longitude)
     y <- distinct(y)
 
     tf <- y[which(between(y[[var]],(left-thr),(left+thr)  )),]
     tf <- unique(tf)
     # Group the data by y value
-    tf_grouped <- tf %>% group_by(latitude)
-
+    tf <- tf %>% group_by(latitude)
     # Remove all but the point with the lowest x value for each group
-    tf <- tf_grouped %>% filter(doy == max(doy))
-
-    if (dim(tf)[1]>1){
+    if (length(tf$doy) > 0) {
+      tf <- tf %>% filter(doy == min(doy))
+    } else {
+      tf <- NULL
+    }  
+    if (is_true(dim(tf)[1]>2)){
       mod <- lm(tf$latitude~tf$doy)
       low <- coefficients(mod)
     } else {
@@ -81,11 +80,14 @@ doyLatCalc <- function (df){
     tf <- y[which(between(y[[var]],(right-thr),(right+thr)  )),]
     tf <- unique(tf)
     # Group the data by latitude
-    tf_grouped <- tf %>% group_by(latitude)
+    tf <- tf %>% group_by(latitude)
     # Remove all but the point with the lowest doy value for each group
-    tf <- tf_grouped %>% filter(doy == min(doy))
-
-    if (dim(tf)[1]>1){
+    if (length(tf$doy) > 0) {
+      tf <- tf %>% filter(doy == min(doy))
+    } else {
+      tf <- NULL
+    }
+    if (is_true(dim(tf)[1]>2)){
       mod <- lm(tf$latitude~tf$doy)
       high <- coefficients(mod)
     } else {
@@ -125,7 +127,6 @@ dateText <- function (df, lat, string){
 shapes <- c(0,1,17,2,18,8)
 names(shapes) <- c('dormant','developing','maturing','perimature','Adult','oviscar')
 
-
 ui <- fluidPage(
   useShinyjs(),
   # App title ----
@@ -133,11 +134,11 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       textInput("species",label="Search within results by character string", value = ""),
-      sliderInput("lat", label="What latitude are you interested in?", min = 20, max=55, value = 40),
-      radioButtons("gen",label="Filter by generation:", choices = c("sexgen","agamic","all"),selected = "all"),
+     radioButtons("gen",label="Filter by generation:", choices = c("sexgen","agamic","all"),selected = "all"),
       multiInput("phen",label="Filter by phenophase:", choices = c("oviscar","developing","dormant","maturing","Adult","perimature"),selected = c("oviscar","developing","dormant","maturing","Adult","perimature")),
       radioButtons("mode", label="Select output mode:", choices = c("Calculate dates", "Select data points", "List Species"), selected = "Select data points"),
-      actionButton("button", "Go"),
+     sliderInput("lat", label="What latitude would like to calculate dates for?", min = 20, max=55, value = 40),
+     actionButton("button", "Go"),
     ),
     mainPanel(
       plotOutput(outputId = "plot",
@@ -166,9 +167,11 @@ server <- function(input, output) {
       show("agemRange")
       show("rearRange")
       show("emRange")
+      show("lat")
       hide("brush_info")
       hide("brush_list")     
     } else if (input$mode == "Select data points") {
+      hide("lat")
       hide("sexrearRange")
       hide("sexemRange")
       hide("agrearRange")
@@ -178,6 +181,7 @@ server <- function(input, output) {
       show("brush_info")
       hide("brush_list")    
     } else if (input$mode == "List Species") {
+      hide("lat")
       hide("sexrearRange")
       hide("sexemRange")
       hide("agrearRange")
@@ -228,8 +232,9 @@ emparam <- doyLatCalc(em)
 plotted <- plotted()
 
 # Assign colors to different groups of points
-plotted$color <- ifelse(plotted$generation == "agamic", "agamic",
-                       ifelse(plotted$generation =="sexgen","sexgen","NA"))
+plotted$color <- ifelse(is.na(plotted$generation), "Blank",
+                        ifelse(plotted$generation == "agamic", "agamic",
+                               ifelse(plotted$generation == "sexgen", "sexgen", "Blank")))
 
 # Assign alpha to different groups of points
 plotted$lifestage[plotted$lifestage == ""] <- NA
@@ -237,11 +242,22 @@ for (i in 1:dim(plotted)[1]){
   plotted$alpha[i] <- ifelse(isTRUE(!is.na(plotted$lifestage[i]) | plotted$viability[i] == "viable"), 1, 0.2)
 }
 
-p = ggplot(data = plotted, aes(x = doy, y = latitude, color = color, shape=phenophase,size=22, alpha = alpha)) +
+if (min(plotted$latitude) < 20) {
+  ymin <- min(plotted$latitude)
+} else {
+  ymin <- 20
+}
+
+if (max(plotted$latitude) > 55) {
+  ymax <- max(plotted$latitude)
+} else {
+  ymax <- 55
+}
+
+p = ggplot(data = plotted, aes(x = doy, y = latitude, color = color, shape=phenophase, size=22, alpha = alpha)) +
   geom_point()+
-  ylim(20,55)+
-  # ylim(ymin,ymax)+
-  scale_color_manual(values = c("NA"="black","sexgen" = "blue", "agamic"="red"))+
+  ylim(ymin,ymax)+
+  scale_color_manual(values = c("Blank"="black","sexgen" = "blue", "agamic"="red"))+
   scale_shape_manual(values=shapes)+
   geom_hline(yintercept=input$lat)+
   geom_abline(intercept = sexrearparam$lowyint[1], slope=sexrearparam$lowslope[1], linetype="dotted", color="blue")+
@@ -256,7 +272,7 @@ p = ggplot(data = plotted, aes(x = doy, y = latitude, color = color, shape=pheno
   geom_abline(intercept = rearparam$highyint[1], slope=rearparam$highslope[1], linetype="dotted", color="black")+
   geom_abline(intercept = emparam$lowyint[1], slope=emparam$lowslope[1], color="black")+
   geom_abline(intercept = emparam$highyint[1], slope=emparam$highslope[1], color="black")+
-  xlim(0,365)
+  xlim(0,366)
 return(p)
 })
 
