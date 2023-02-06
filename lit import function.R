@@ -1,11 +1,13 @@
 library(tidygeocoder)
-
+library(DBI)
 # data <- dbGetQuery(gallphen, "SELECT * FROM observations WHERE sourceURL = 'https://www.gallformers.org/source/9'")
-
+gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
 #import file
 # fnsites <- read.csv(paste0(wd,"/FNsites.csv"))
 # fnsites <- fnsites[,1:5]
-lit <- read.csv(paste0(wd,"/SD_3.csv"))
+wd <- "C:/Users/adam/Documents/GitHub/Phenology"
+setwd(wd)
+lit <- read.csv(paste0(wd,"/SD4.csv"))
 lit <- lit[!is.na(lit$gf_id),]
 
 #remove duplicates (K decidua, K rileyi, X q forticorne, D q flocci)
@@ -25,7 +27,7 @@ lit$host_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM specie
                                                       WHERE genus = '${lit$genus[i]}' AND species LIKE '%${lit$species[i]}%'"))
 }
 
-lit$doy <- yday(lit$date)
+# lit$doy <- yday(lit$date)
 
 lit[lit$host_id=="integer(0)",5] <- NA
 
@@ -35,18 +37,18 @@ lit$host_id <- unlist(lit$host_id)
 
 # convert XXXX- dates to doy and delete
 for (i in 1:dim(lit)[1]){
-  if (grepl('xxxx',lit$date[i],ignore.case = TRUE)){
-    # lit$date[i] <- gsub('xxxx','2021',lit$date[i], ignore.case = TRUE)
+  if (grepl('xxxx', lit$date[i], ignore.case = TRUE)) {
+    lit$date[i] <- gsub('xxxx', '2021', lit$date[i], ignore.case = TRUE)
     lit$doy[i] <- yday(lit$date[i])
     lit$date[i] <- NA
   } else {
-        
     date_string <- lit$date[i]
-    date_object <- strptime(date_string, "%m/%d/%Y")
-    lit$date[i] <- as.character(date_object, format = "%Y-%m-%d")
+    if (grepl("/", date_string)) {
+      date_object <- strptime(date_string, "%m/%d/%Y")
+      lit$date[i] <- as.character(date_object, format = "%Y-%m-%d")
+    }
     lit$doy[i] <- yday(lit$date[i])
-      }
-    
+  }
 }
 
 # site <- unique(lit$site)

@@ -6,8 +6,67 @@ install.packages("htmlwidgets")
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 observations <- read.csv("observations.csv")
+max(observations$latitude)
 eas <- read.csv("phenogrid.csv")
 plotted <- observations[1:100,]
+
+
+
+species_limits <- observations %>%
+  select(binom, latitude, longitude) %>%
+  group_by(binom) %>%
+  summarise(min_lat = min(latitude),
+            max_lat = max(latitude),
+            min_long = min(longitude),
+            max_long = max(longitude))
+
+
+doy <- as.integer(format(as.Date("2023-04-15"),"%j"))
+min <- doy-15
+max <- doy+15
+mod <- 365
+doyrange <- btwmod(observations$doy, min, max, mod)
+
+if("all" %in% c("sexgen", "agamic")) {
+  filtered_observations <- observations %>%
+    filter(grepl("", binom, ignore.case = TRUE) & phenophase %in% c("maturing", "perimature", "Adult") & doyrange & generation == "all")
+} else {
+  filtered_observations <- observations %>%
+    filter(grepl("", binom, ignore.case = TRUE) & phenophase %in% c("maturing", "perimature", "Adult") & doyrange)
+}
+
+filtered_species_limits <- species_limits %>%
+  filter(min_lat >= min(20) & max_lat <= max(40)) %>%
+  filter(min_long >= min(-120) & max_long <= max(-50))
+
+result <- filtered_observations %>%
+  inner_join(filtered_species_limits, by = c("binom" = "binom"))
+
+display <- result %>%
+  select(binom) %>%
+  unique() %>%
+  arrange(binom) %>%
+  pull(binom)
+
+
+class(display)
+
+
+
+eurosta <- observations %>%
+  filter(grepl("Eurosta", binom, ignore.case = TRUE))
+
+filtered_species_limits <- species_limits %>%
+  filter(min_lat >= min(input$latrange) & max_lat <= max(input$latrange)) %>%
+  filter(min_long >= min(input$longrange) & max_long <= max(input$longrange))
+
+filtered_observations %>%
+  inner_join(filtered_species_limits, by = c("binom" = "binom"))
+
+
+
+
+
 
 p = ggplot(data = plotted, aes(x = doy, y = latitude)) +
   geom_point()+

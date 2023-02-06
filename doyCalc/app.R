@@ -9,6 +9,7 @@ library(htmlwidgets)
 library(stringr)
 library(DT)
 library(rlang)
+library(shinyBS)
 eas <- read.csv("phenogrid.csv")
 observations <- read.csv("observations.csv")
 
@@ -144,20 +145,21 @@ ui <- fluidPage(
   titlePanel("When does a species emerge?"),
   sidebarLayout(
     sidebarPanel(
-      textInput("species",label="Search by genus, species, or gallformers code", value = ""),
+     textInput("species",label="Search by genus, species, or gallformers code", value = ""),
      radioButtons("gen",label="Filter by generation:", choices = c("sexgen","agamic","all"),selected = "all"),
-      multiInput("phen",label="Filter by phenophase (affects plot but not lines/date ranges):", choices = c("oviscar","developing","dormant","maturing","Adult","perimature"),selected = c("oviscar","developing","dormant","maturing","Adult","perimature")),
-      radioButtons("mode", label="Select output mode:", choices = c("Calculate dates", "Select data points", "List Species"), selected = "Select data points"),
+     actionButton("button", "Go"), 
+     multiInput("phen",label="Filter by phenophase (affects plot but not lines/date ranges):", choices = c("oviscar","developing","dormant","maturing","Adult","perimature"),selected = c("oviscar","developing","dormant","maturing","Adult","perimature")),
+     radioButtons("mode", label="Select output mode:", choices = c("Calculate dates", "Select data points", "List Species"), selected = "Select data points"),
+     sliderInput("lat", label="What latitude would like to calculate dates for?", min = 20, max=55, value = 40),
      sliderInput("latrange", label="Latitude bounds:", min = 10, max = 60, value = c(10, 60)),
      sliderInput("longrange", label="Longitude bounds:", min = -170, max = -50, value = c(-170, -50)),
-     sliderInput("lat", label="What latitude would like to calculate dates for?", min = 20, max=55, value = 40),
-     actionButton("button", "Go"),
+     leafletOutput("map", height = "500px"),  
     ),
     mainPanel(
       plotOutput(outputId = "plot",
                  brush = brushOpts(
                    id = "plot1_brush")),
-      leafletOutput("map", height = "500px"),
+
       verbatimTextOutput("bounds"),
       textOutput("no_data"),
       textOutput("sexrearRange"),
@@ -172,8 +174,7 @@ ui <- fluidPage(
   )
 )
 
-server <- function(input, output) {
-  
+server <- function(input, output, session) {
   output$map <- renderLeaflet({
     leaflet() %>% addTiles() %>%
       setView(lng = -101, lat = 47, zoom = 3)
@@ -238,7 +239,7 @@ match <- eventReactive(input$button, {
   filtered_species_limits <- species_limits %>%
     filter(min_lat >= min(input$latrange) & max_lat <= max(input$latrange)) %>%
     filter(min_long >= min(input$longrange) & max_long <= max(input$longrange))
-  
+
   filtered_observations %>%
     inner_join(filtered_species_limits, by = c("binom" = "binom"))
   
@@ -308,6 +309,8 @@ p = ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=p
   labs(x="Month", y="Latitude")+
   geom_hline(yintercept=input$lat)+
   # xlim(0,366)+
+  scale_size(guide = "none")+
+  scale_alpha(guide = "none")+
   geom_abline(intercept = sexrearparam$lowyint[1], slope=sexrearparam$lowslope[1], linetype="dotted", color="blue")+
   geom_abline(intercept = sexrearparam$highyint[1], slope=sexrearparam$highslope[1], linetype="dotted", color="blue")+
   geom_abline(intercept = sexemparam$lowyint[1], slope=sexemparam$lowslope[1], color="blue")+

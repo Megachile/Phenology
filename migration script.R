@@ -1,3 +1,5 @@
+library(tidyr)
+library(sjmisc)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
