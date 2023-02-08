@@ -151,8 +151,8 @@ ui <- fluidPage(
      multiInput("phen",label="Filter by phenophase (affects plot but not lines/date ranges):", choices = c("oviscar","developing","dormant","maturing","Adult","perimature"),selected = c("oviscar","developing","dormant","maturing","Adult","perimature")),
      radioButtons("mode", label="Select output mode:", choices = c("Calculate dates", "Select data points", "List Species"), selected = "Select data points"),
      sliderInput("lat", label="What latitude would like to calculate dates for?", min = 20, max=55, value = 40),
-     sliderInput("latrange", label="Latitude bounds:", min = 10, max = 60, value = c(10, 60)),
-     sliderInput("longrange", label="Longitude bounds:", min = -170, max = -50, value = c(-170, -50)),
+     sliderInput("latrange", label="Latitude:", min = 10, max = 65, value = c(10, 65)),
+     sliderInput("longrange", label="Longitude:", min = -140, max = -55, value = c(-140, -55)),
      leafletOutput("map", height = "500px"),  
     ),
     mainPanel(
@@ -170,6 +170,7 @@ ui <- fluidPage(
       textOutput("emRange"),
       dataTableOutput("brush_info"),
       dataTableOutput("brush_list"),
+      downloadButton("downloadData", "Download")
     )
   )
 )
@@ -203,7 +204,8 @@ server <- function(input, output, session) {
       show("emRange")
       show("lat")
       hide("brush_info")
-      hide("brush_list")     
+      hide("brush_list")
+      hide("downloadData")
     } else if (input$mode == "Select data points") {
       hide("lat")
       hide("sexrearRange")
@@ -213,7 +215,8 @@ server <- function(input, output, session) {
       hide("rearRange")
       hide("emRange")
       show("brush_info")
-      hide("brush_list")    
+      hide("brush_list")
+      show("downloadData")
     } else if (input$mode == "List Species") {
       hide("lat")
       hide("sexrearRange")
@@ -223,7 +226,8 @@ server <- function(input, output, session) {
       hide("rearRange")
       hide("emRange")
       hide("brush_info")
-      show("brush_list")  
+      show("brush_list")
+      show("downloadData")
     }
   })
 
@@ -376,7 +380,7 @@ return(p)
 
   output$brush_info <- renderDT({
     brushed_data <- brushedPoints(plotted(), input$plot1_brush)
-    brushed_data_reordered <- brushed_data[,c("obs_id","binom","phenophase","lifestage","viability", "host", "date","latitude","longitude", "sourceURL","pageURL")]
+    brushed_data_reordered <- brushed_data[,c("obs_id","binom","phenophase","lifestage","viability", "host","doy", "date","latitude","longitude", "sourceURL","pageURL")]
     DT::datatable(brushed_data_reordered,
                   rownames = FALSE,
                   escape = FALSE,
@@ -395,6 +399,24 @@ return(p)
     if(length(unique_binoms) == 0) unique_binoms <- c("No data available")
     DT::datatable(data.frame(binom = unique_binoms), rownames = FALSE)
   })
+  
+  output$downloadData <- 
+    downloadHandler(
+      filename = "selectedData.csv",
+      content = function(file) {
+        if (input$mode == "List Species") {
+          brushed_data <- brushedPoints(plotted(), input$plot1_brush)
+          unique_binoms <- sort(unique(brushed_data$binom))
+          write.csv(unique_binoms, file, row.names = FALSE)
+        } else if (input$mode == "Select data points") {
+          brushed_data <- brushedPoints(plotted(), input$plot1_brush)
+          brushed_data_reordered <- brushed_data[,c("obs_id","binom","phenophase","lifestage","viability", "host","doy", "date","latitude","longitude", "sourceURL","pageURL")]
+          write.csv(brushed_data_reordered, file, row.names = FALSE)
+        } else {
+          return(NULL)
+        }
+      }
+    )
 
 }
 shinyApp(ui = ui, server = server)

@@ -6,7 +6,7 @@ install.packages("htmlwidgets")
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 observations <- read.csv("observations.csv")
-max(observations$latitude)
+max(observations$longitude)
 eas <- read.csv("phenogrid.csv")
 plotted <- observations[1:100,]
 

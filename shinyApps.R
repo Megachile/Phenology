@@ -1,6 +1,7 @@
 library(rsconnect)
 library(pracma)
 library(solrad)
+library(DBI)
 # runApp("speciesList")
 # runApp("doyCalc")
 # functions to calculate a new column for the accumulated hours (adjusted for latitude) and the percent of same (seasonality index) of each observation in a dataframe
@@ -40,12 +41,17 @@ seasonIndex <- function(x){
 rsconnect::setAccountInfo(name='megachile', token='E0503725A47C8E1AA250F80A49C2A015', secret='vqQZJcHij1sJHt+8LtDwrCfLZURzoiSDyqzmXNdT')
 rsconnect::deployApp('C:/Users/adam/Documents/GitHub/Phenology/doyCalc')
 rsconnect::deployApp('C:/Users/adam/Documents/GitHub/Phenology/speciesList')
-
+wd <- "C:/Users/adam/Documents/GitHub/Phenology"
+setwd(wd)
+gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
 # update the observations dataframe for both apps
 # gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
-observations <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation, gall.species, gall.genus FROM observations
+
+observations <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation, gall.species, gall.genus, gall.gf_id FROM observations
            LEFT JOIN species AS host ON observations.host_id = host.species_id
            INNER JOIN species AS gall ON observations.gall_id = gall.species_id")
+
+observations$gfURL <- paste0("https://gallformers.org/gall/", observations$gf_id)
 observations$binom <- paste(observations$genus, observations$species)
 observations[observations$lifestage == "Adult"&observations$phenophase== "","phenophase"] <- "Adult"
 observations <- seasonIndex(observations)

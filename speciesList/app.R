@@ -45,88 +45,52 @@ ui <- fluidPage(
       # helpText("Seasind compensates for limited data by extrapolating along linear doy-lat isoclines. Overcompensates in that it doesn't distinguish fall/winter and will extrapolate species well outside their known ranges. Use lat and long limits below to compensate for that as desired."),
       dateInput("date", label="observation date (ignore year)", value ="2023-01-01"),
       textInput("species",label="Search within results by character string", value = ""),
+      radioButtons("gen",label="Filter by generation:", choices = c("sexgen","agamic","all"),selected = "all"),
       sliderInput("days", label="how many days before or after the observation do you want to look?", min = 1, max = 183, value = 10),
       sliderInput("thr", label="how far from the observation do you want to look?", min = 0.005, max = 0.5005, value = 0.05),
-      radioButtons("gen",label="Filter by generation:", choices = c("sexgen","agamic","all"),selected = "all"),
       numericInput("lat", label="What is the latitude of your site of interest?", min = 10, max = 65, value = 40),
-      # leafletOutput("map"),
-      sliderInput("latrange", label="How far north-south of your site do you want to look for matching species?", min = 10, max = 65, value = c(20, 40)),
-      sliderInput("longrange", label="How far east-west of your site do you want to look for matching species??", min = -170, max = -50, value = c(-125, -66)),
+      leafletOutput("map"),
+      sliderInput("latrange", label="How far north-south of your site do you want to look for matching species?", min = 10, max = 65, value = c(10, 65)),
+      sliderInput("longrange", label="How far east-west of your site do you want to look for matching species?", min = -140, max = -50, value = c(-140, -50))
     ),
     mainPanel(
     textOutput("species_count"),
-    tableOutput("species"),
+    dataTableOutput("species"),
+    downloadButton("downloadData", "Download as CSV")
     )
   )
 )
 
 server <- function(input, output) {
-  # output$map <- renderLeaflet({
-  #   leaflet() %>% addTiles()
-  # })
-  
-  # observe({
-  #   lat1 <- input$latrange[1]
-  #   lat2 <- input$latrange[2]
-  #   lng1 <- input$longrange[1]
-  #   lng2 <- input$longrange[2]
-  #   leafletProxy("map", data = "rect") %>%
-  #     clearShapes() %>%
-  #     addRectangles(lng1 = lng1, lat1 = lat1, lng2 = lng2, lat2 = lat2, layerId = "rect", color = "red", fillOpacity = 0.3)
-  # })
+  output$map <- renderLeaflet({
+    leaflet() %>% addTiles()
+  })
+
+  observe({
+    lat1 <- input$latrange[1]
+    lat2 <- input$latrange[2]
+    lng1 <- input$longrange[1]
+    lng2 <- input$longrange[2]
+    leafletProxy("map", data = "rect") %>%
+      clearShapes() %>%
+      addRectangles(lng1 = lng1, lat1 = lat1, lng2 = lng2, lat2 = lat2, layerId = "rect", color = "red", fillOpacity = 0.3)
+  })
   
   observeEvent(input$mode, {
     if (input$mode) {
       show("thr")
+      show("lat")
       hide("days")
     } else {
       hide("thr")
+      hide("lat")
       show("days")
     }
   })
   
-  observe({
+  species_data <- reactive({
     
-      req(!input$mode)
-      doy <- as.integer(format(as.Date(input$date),"%j"))
-      min <- doy-input$days
-      max <- doy+input$days
-      mod <- 365
-      doyrange <- btwmod(observations$doy, min, max, mod)
-
-         if(input$gen %in% c("sexgen", "agamic")) {
-          filtered_observations <- observations %>%
-            filter(grepl(input$species, binom, ignore.case = TRUE) & phenophase %in% c("maturing", "perimature", "Adult") & doyrange & generation == input$gen)
-        } else {
-          filtered_observations <- observations %>%
-            filter(grepl(input$species, binom, ignore.case = TRUE) & phenophase %in% c("maturing", "perimature", "Adult") & doyrange)
-        }
-
-      filtered_species_limits <- species_limits %>%
-        filter(min_lat >= min(input$latrange) & max_lat <= max(input$latrange)) %>%
-        filter(min_long >= min(input$longrange) & max_long <= max(input$longrange))
-      
-      result <- filtered_observations %>%
-        inner_join(filtered_species_limits, by = c("binom" = "binom"))
-      
-      display <- result %>%
-        select(binom) %>%
-        unique() %>%
-        arrange(binom) %>%
-        pull(binom)
-      
-      if (length(display) == 0) {
-        output$species_count <- renderText("There are no matching species.")
-        output$species <- renderTable(NULL)
-      } else {
-        output$species_count <- renderText(paste("There are", length(display), "matching species."))
-        output$species <- renderTable({display})
-      }
-  })
-  
-  observe({
-
-      req(input$mode)
+    if (input$mode) {
       doy <- as.integer(format(as.Date(input$date),"%j"))
       si <- singlesi(doy, input$lat)
       min <- si-input$thr
@@ -148,21 +112,82 @@ server <- function(input, output) {
 
       result <- filtered_observations %>%
         inner_join(filtered_species_limits, by = c("binom" = "binom"))
-
-      display <- result %>%
-        select(binom) %>%
-        unique() %>%
-        arrange(binom) %>%
-        pull(binom)
+  
+      result <- result %>%
+        mutate(link = paste0("<a href=", result$gfURL, ">", result$binom, "</a>"))
       
-      if (length(display) == 0) {
-        output$species_count <- renderText("There are no matching species.")
-        output$species <- renderTable(NULL)
+      display <- result %>%
+        select(binom, link) %>%
+        unique() %>%
+        arrange(binom)
+      
+      return(data.frame(display))
+    } else {
+
+      doy <- as.integer(format(as.Date(input$date),"%j"))
+      min <- doy-input$days
+      max <- doy+input$days
+      mod <- 365
+      doyrange <- btwmod(observations$doy, min, max, mod)
+      
+      if(input$gen %in% c("sexgen", "agamic")) {
+        filtered_observations <- observations %>%
+          filter(grepl(input$species, binom, ignore.case = TRUE) & phenophase %in% c("maturing", "perimature", "Adult") & doyrange & generation == input$gen)
       } else {
-        output$species_count <- renderText(paste("There are", length(display), "matching species."))
-        output$species <- renderTable({display})
+        filtered_observations <- observations %>%
+          filter(grepl(input$species, binom, ignore.case = TRUE) & phenophase %in% c("maturing", "perimature", "Adult") & doyrange)
       }
-    
+      
+      filtered_species_limits <- species_limits %>%
+        filter(min_lat >= min(input$latrange) & max_lat <= max(input$latrange)) %>%
+        filter(min_long >= min(input$longrange) & max_long <= max(input$longrange))
+      
+      result <- filtered_observations %>%
+        inner_join(filtered_species_limits, by = c("binom" = "binom"))
+      
+      result <- result %>%
+        mutate(link = paste0("<a href=", result$gfURL, ">", result$binom, "</a>"))
+      
+      display <- result %>%
+        select(binom, link) %>%
+        unique() %>%
+        arrange(binom)
+      
+      return(data.frame(display))
+    }
+      
   })
+  
+  output$species_count <- renderText({
+    if (nrow(species_data()) == 0) {
+      "There are no matching species."
+    } else {
+      paste("There are", nrow(species_data()), "matching species.")
+    }
+  })
+  
+  output$species <- renderDT({
+    if (nrow(species_data()) == 0) {
+      NULL
+    } else {
+      DT::datatable(data.frame(species_data()$link), rownames = FALSE, escape = FALSE)
+    }
+  })
+  
+  #  observeEvent(, {
+  #     return(NULL)
+  #   } else {
+  #     downloadButton("downloadData", label = "Download as CSV")
+  #   }
+  # })
+
+  output$downloadData <- 
+    downloadHandler(
+      filename = "specieslist.csv",
+      content = function(file) {
+        write.csv(species_data()$binom, file, row.names = FALSE)
+      }
+    )
+
 }
 shinyApp(ui = ui, server = server)
