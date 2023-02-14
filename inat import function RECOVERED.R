@@ -27,7 +27,6 @@ library(solrad)
 # library(units)
 # library(stats)
 library(pracma)
-library(DBI)
 library(stringr)
 # library(glmm)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"

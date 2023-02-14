@@ -10,16 +10,17 @@ library(stringr)
 library(DT)
 library(rlang)
 library(shinyBS)
+library(RLumShiny)
 eas <- read.csv("phenogrid.csv")
 observations <- read.csv("observations.csv")
 
-species_limits <- observations %>%
-  select(binom, latitude, longitude) %>%
-  group_by(binom) %>%
-  summarise(min_lat = min(latitude),
-            max_lat = max(latitude),
-            min_long = min(longitude),
-            max_long = max(longitude))
+# species_limits <- observations %>%
+#   select(binom, latitude, longitude) %>%
+#   group_by(binom) %>%
+#   summarise(min_lat = min(latitude),
+#             max_lat = max(latitude),
+#             min_long = min(longitude),
+#             max_long = max(longitude))
 
 doyLatCalc <- function (df){
   if (dim(df)[1]>0){
@@ -136,24 +137,57 @@ dateText <- function (df, lat, string){
   }
 }
 
-shapes <- c(0,1,17,2,18,8)
-names(shapes) <- c('dormant','developing','maturing','perimature','Adult','oviscar')
+# shapes <- c(0,1,17,2,18,8)
+# names(shapes) <- c('dormant','developing','maturing','perimature','Adult','oviscar')
 
+shapes <- c(8,1,0,17,18,2)
+names(shapes) <- c('oviscar','developing','dormant','maturing','Adult','perimature')
 ui <- fluidPage(
   useShinyjs(),
   # App title ----
   titlePanel("When does a species emerge?"),
   sidebarLayout(
     sidebarPanel(
-     textInput("species",label="Search by genus, species, or gallformers code", value = ""),
+     textInput("species",label="Search by genus, species, or gallformers code", value = "Dryocosmus quercuspalustris"),
      radioButtons("gen",label="Filter by generation:", choices = c("sexgen","agamic","all"),selected = "all"),
-     actionButton("button", "Go"), 
-     multiInput("phen",label="Filter by phenophase (affects plot but not lines/date ranges):", choices = c("oviscar","developing","dormant","maturing","Adult","perimature"),selected = c("oviscar","developing","dormant","maturing","Adult","perimature")),
+   tags$button(
+       "Key",
+       `data-toggle` = "popover",
+       `data-placement` = "bottom",
+       `data-html` = "true",
+       title = "Phenophases",
+       `data-content` = '<b>Oviscar:</b> Scars indicate eggs have been laid, but no gall is evident. Refers to generation of egg, not mother.<br><br>
+                  <b>Developing:</b> Gall is actively growing; inducer needs continued contact with the plant.<br><br>
+                  <b>Dormant:</b> Gall development is complete; inducer can mature if gall is removed from the plant.<br><br>
+                  <b>Maturing:</b> Inducer was observed emerging from the gall on this day.<br><br>
+                  <b>Adult:</b> A free-living inducer was observed apart from its gall.<br><br>
+                  <b>Perimature:</b> Inducer was inferred to have emerged from the gall shortly before this day.'
+       ),
+     tags$style(
+       '
+    .popover {
+      max-width: 300px;
+    }
+    .popover-content {
+      font-size: 16px;
+      font-weight: normal;
+      color: black;
+    }
+    '
+     ),
+     tags$script(
+       '
+    $(function () {
+      $(\'[data-toggle="popover"]\').popover()
+    })
+    '
+     ),
+    multiInput("phen",label="Filter by phenophase (affects plot but not lines/date ranges):", choices = c("oviscar","developing","dormant","maturing","Adult","perimature"),selected = c("oviscar","developing","dormant","maturing","Adult","perimature")),
      radioButtons("mode", label="Select output mode:", choices = c("Calculate dates", "Select data points", "List Species"), selected = "Select data points"),
-     sliderInput("lat", label="What latitude would like to calculate dates for?", min = 20, max=55, value = 40),
-     sliderInput("latrange", label="Latitude:", min = 10, max = 65, value = c(10, 65)),
-     sliderInput("longrange", label="Longitude:", min = -140, max = -55, value = c(-140, -55)),
-     leafletOutput("map", height = "500px"),  
+     sliderInput("lat", label="What latitude would like to calculate dates for?", min = 8, max=65, value = 40),
+     # sliderInput("latrange", label="Latitude:", min = 10, max = 65, value = c(10, 65)),
+     # sliderInput("longrange", label="Longitude:", min = -140, max = -55, value = c(-140, -55)),
+     # leafletOutput("map", height = "500px"),  
     ),
     mainPanel(
       plotOutput(outputId = "plot",
@@ -170,26 +204,26 @@ ui <- fluidPage(
       textOutput("emRange"),
       dataTableOutput("brush_info"),
       dataTableOutput("brush_list"),
-      downloadButton("downloadData", "Download")
+      downloadButton("downloadData", "Download as CSV")
     )
   )
 )
 
 server <- function(input, output, session) {
-  output$map <- renderLeaflet({
-    leaflet() %>% addTiles() %>%
-      setView(lng = -101, lat = 47, zoom = 3)
-  })
-  
-  observe({
-    lat1 <- input$latrange[1]
-    lat2 <- input$latrange[2]
-    lng1 <- input$longrange[1]
-    lng2 <- input$longrange[2]
-    leafletProxy("map", data = "rect") %>%
-      clearShapes() %>%
-      addRectangles(lng1 = lng1, lat1 = lat1, lng2 = lng2, lat2 = lat2, layerId = "rect", color = "red", fillOpacity = 0.3)
-  })
+  # output$map <- renderLeaflet({
+  #   leaflet() %>% addTiles() %>%
+  #     setView(lng = -101, lat = 47, zoom = 3)
+  # })
+  # 
+  # observe({
+  #   lat1 <- input$latrange[1]
+  #   lat2 <- input$latrange[2]
+  #   lng1 <- input$longrange[1]
+  #   lng2 <- input$longrange[2]
+  #   leafletProxy("map", data = "rect") %>%
+  #     clearShapes() %>%
+  #     addRectangles(lng1 = lng1, lat1 = lat1, lng2 = lng2, lat2 = lat2, layerId = "rect", color = "red", fillOpacity = 0.3)
+  # })
   
 
   ###
@@ -231,7 +265,7 @@ server <- function(input, output, session) {
     }
   })
 
-match <- eventReactive(input$button, {
+match <- reactive({
   if(input$gen %in% c("sexgen", "agamic")) {
     filtered_observations <- observations %>%
       filter(grepl(input$species, binom, ignore.case = TRUE) & generation == input$gen)
@@ -240,29 +274,32 @@ match <- eventReactive(input$button, {
       filter(grepl(input$species, binom, ignore.case = TRUE))
   }
   
-  filtered_species_limits <- species_limits %>%
-    filter(min_lat >= min(input$latrange) & max_lat <= max(input$latrange)) %>%
-    filter(min_long >= min(input$longrange) & max_long <= max(input$longrange))
-
-  filtered_observations %>%
-    inner_join(filtered_species_limits, by = c("binom" = "binom"))
+  # filtered_species_limits <- species_limits %>%
+  #   filter(min_lat >= min(input$latrange) & max_lat <= max(input$latrange)) %>%
+  #   filter(min_long >= min(input$longrange) & max_long <= max(input$longrange))
+  # 
+  # filtered_observations %>%
+  #   inner_join(filtered_species_limits, by = c("binom" = "binom"))
+  # 
   
 })
 
 plotted <- reactive({
+  if (!is.null(match())){
   plotted <- filter(match(), phenophase %in% input$phen)
   plotted$dateUse <- as.Date(as.numeric(plotted$doy), origin = "1970-01-01")
   return(plotted)
+  }
   })
 
 output$no_data <- renderText({
-  if (nrow(match())==0)
+  if (nrow(plotted())==0)
   {"There are no observations matching this query."}
   else {""}
 })
 
 output$plot <- renderPlot({
-req(nrow(match())>0)
+req(nrow(plotted())>0)
 select <- match()
 
 sexrear <- filter(select, viability == "viable" & generation == "sexgen")
@@ -306,28 +343,34 @@ if (max(plotted$latitude) > 55) {
 
 p = ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=phenophase, size=22, alpha = alpha)) +
   geom_point()+
+  scale_linetype_manual(name = "Line Type", values = c("Rearing" = "dotted", "Emergence" = "solid", "Prediction Latitude" = "dashed"))+
   ylim(ymin,ymax)+
   scale_x_date(date_labels = "%b", limits = as.Date(c("1970-01-01", "1971-01-02")))+
   scale_color_manual(values = c("Blank"="black","sexgen" = "blue", "agamic"="red"))+
-  scale_shape_manual(values=shapes)+
-  labs(x="Month", y="Latitude")+
-  geom_hline(yintercept=input$lat)+
-  # xlim(0,366)+
+  scale_shape_manual(values= shapes)+
+  geom_hline(yintercept=input$lat, linetype="dashed")+
   scale_size(guide = "none")+
   scale_alpha(guide = "none")+
-  geom_abline(intercept = sexrearparam$lowyint[1], slope=sexrearparam$lowslope[1], linetype="dotted", color="blue")+
-  geom_abline(intercept = sexrearparam$highyint[1], slope=sexrearparam$highslope[1], linetype="dotted", color="blue")+
-  geom_abline(intercept = sexemparam$lowyint[1], slope=sexemparam$lowslope[1], color="blue")+
-  geom_abline(intercept = sexemparam$highyint[1], slope=sexemparam$highslope[1], color="blue")+
-  geom_abline(intercept = agrearparam$lowyint[1], slope=agrearparam$lowslope[1], linetype="dotted", color="red")+
-  geom_abline(intercept = agrearparam$highyint[1], slope=agrearparam$highslope[1], linetype="dotted", color="red")+
-  geom_abline(intercept = agemparam$lowyint[1], slope=agemparam$lowslope[1], color="red")+
-  geom_abline(intercept = agemparam$highyint[1], slope=agemparam$highslope[1], color="red")+
-  geom_abline(intercept = rearparam$lowyint[1], slope=rearparam$lowslope[1], linetype="dotted", color="black")+
-  geom_abline(intercept = rearparam$highyint[1], slope=rearparam$highslope[1], linetype="dotted", color="black")+
-  geom_abline(intercept = emparam$lowyint[1], slope=emparam$lowslope[1], color="black")+
-  geom_abline(intercept = emparam$highyint[1], slope=emparam$highslope[1], color="black")
-return(p)
+  geom_abline(aes(intercept = sexrearparam$lowyint[1], slope=sexrearparam$lowslope[1], linetype="Rearing"), color="blue")+
+  geom_abline(aes(intercept = sexrearparam$highyint[1], slope=sexrearparam$highslope[1], linetype="Rearing"), color="blue")+
+  geom_abline(aes(intercept = sexemparam$lowyint[1], slope=sexemparam$lowslope[1], linetype="Emergence"), color="blue")+
+  geom_abline(aes(intercept = sexemparam$highyint[1], slope=sexemparam$highslope[1], linetype="Emergence"), color="blue")+
+  geom_abline(aes(intercept = agrearparam$lowyint[1], slope=agrearparam$lowslope[1], linetype="Rearing"), color="red")+
+  geom_abline(aes(intercept = agrearparam$highyint[1], slope=agrearparam$highslope[1], linetype="Rearing"), color="red")+
+  geom_abline(aes(intercept = agemparam$lowyint[1], slope=agemparam$lowslope[1], linetype="Emergence"), color="red")+
+  geom_abline(aes(intercept = agemparam$highyint[1], slope=agemparam$highslope[1], linetype="Emergence"), color="red")+
+  geom_abline(aes(intercept = rearparam$lowyint[1], slope=rearparam$lowslope[1], linetype="Rearing"), color="black")+
+  geom_abline(aes(intercept = rearparam$highyint[1], slope=rearparam$highslope[1], linetype="Rearing"), color="black")+
+  geom_abline(aes(intercept = emparam$lowyint[1], slope=emparam$lowslope[1], linetype="Emergence"), color="black")+
+  geom_abline(aes(intercept = emparam$highyint[1], slope=emparam$highslope[1], linetype="Emergence"), color="black")+
+  theme(
+    axis.text = element_text(size = rel(1.5)),
+    axis.title = element_text(size = rel(1.5)),
+    legend.text = element_text(size = rel(1.5)),
+    legend.title = element_text(size = rel(1.5))
+  )+ 
+  guides(shape = guide_legend(override.aes = list(size = 5)))
+  return(p)
 })
 
   output$sexemRange <- renderText({
@@ -344,7 +387,6 @@ return(p)
     sexrearparam <- doyLatCalc(sexrear)
     dateText(sexrearparam, input$lat, "galls of the sexual generation can likely be successfully collected for rearing")
   })
-
   output$agemRange <- renderText({
     req(any(match()$generation=="agamic"))
     select <- match()
@@ -352,7 +394,6 @@ return(p)
     agemparam <- doyLatCalc(agem)
     return(dateText(agemparam, input$lat, "adults of the agamic generation are expected to emerge"))
   })
-
   output$agrearRange <- renderText({
     req(any(match()$generation=="agamic"))
     select <- match()
@@ -360,8 +401,6 @@ return(p)
     agrearparam <- doyLatCalc(agrear)
     return(dateText(agrearparam, input$lat, "galls of the agamic generation can likely be successfully collected for rearing"))
   })
-
-
   output$emRange <- renderText({
     req(any(is.na(match()$generation))|any(match()$generation==""))
     select <- match()
@@ -369,7 +408,6 @@ return(p)
     emparam <- doyLatCalc(em)
     return(dateText(emparam, input$lat, "adults are expected to emerge"))
   })
-
   output$rearRange <- renderText({
     req(any(is.na(match()$generation))|any(match()$generation==""))
     select <- match()
@@ -386,18 +424,28 @@ return(p)
                   escape = FALSE,
                   options = list(
                     columnDefs = list(
-                      list(targets = 9,
-                           render = JS("function(data, type, row, meta) {\n if (type === 'display') {\n return '<a href=' + data + ' target=\\'_blank\\'>' + data + '</a>';\n } else {\n return data;\n }\n }")),
                       list(targets = 10,
+                           render = JS("function(data, type, row, meta) {\n if (type === 'display') {\n return '<a href=' + data + ' target=\\'_blank\\'>' + data + '</a>';\n } else {\n return data;\n }\n }")),
+                      list(targets = 11,
                            render = JS("function(data, type, row, meta) {\n if (type === 'display') {\n return '<a href=' + data + ' target=\\'_blank\\'>' + data + '</a>';\n } else {\n return data;\n }\n }"))
                     )))
   })
 
   output$brush_list <- renderDT({
     brushed_data <- brushedPoints(plotted(), input$plot1_brush)
-    unique_binoms <- sort(unique(brushed_data$binom))
-    if(length(unique_binoms) == 0) unique_binoms <- c("No data available")
-    DT::datatable(data.frame(binom = unique_binoms), rownames = FALSE)
+    # Apply URL transformation
+    brushed_data <- brushed_data %>%
+      mutate(link = paste0("<a href=", gfURL, ">", binom, "</a>"))
+    
+    # Create datatable object
+    unique_binoms <- sort(unique(brushed_data$link))
+    
+    if (length(unique_binoms) == 0) {
+      unique_binoms <- "No data available"
+    }
+    data <- data.frame(unique_binoms)
+    colnames(data) <- "Species"
+    DT::datatable(data, rownames = FALSE, escape = FALSE) 
   })
   
   output$downloadData <- 

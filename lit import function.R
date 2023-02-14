@@ -1,13 +1,14 @@
-library(tidygeocoder)
+# library(tidygeocoder)
 library(DBI)
 # data <- dbGetQuery(gallphen, "SELECT * FROM observations WHERE sourceURL = 'https://www.gallformers.org/source/9'")
-gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
+
 #import file
 # fnsites <- read.csv(paste0(wd,"/FNsites.csv"))
 # fnsites <- fnsites[,1:5]
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
-lit <- read.csv(paste0(wd,"/SD4.csv"))
+gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
+lit <- read.csv(paste0(wd,"/litdates9.csv"))
 lit <- lit[!is.na(lit$gf_id),]
 
 #remove duplicates (K decidua, K rileyi, X q forticorne, D q flocci)
@@ -19,7 +20,7 @@ lit$gall_id[i] <- dbGetQuery(gallphen, str_interp("SELECT species_id FROM specie
                                                       WHERE gf_id = '${lit$gf_id[i]}'"))
 }
 
-# lit[lit$gall_id=="integer(0)",]
+lit <- lit[lit$gall_id != "integer(0)", ]
 
 # use host_species to fill host_id
 for (i in 1:dim(lit)[1]){

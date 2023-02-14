@@ -1,3 +1,8 @@
+library(DBI)
+wd <- "C:/Users/adam/Documents/GitHub/Phenology"
+setwd(wd)
+gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
+eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 input <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation, gall.species FROM observations 
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
@@ -200,14 +205,18 @@ p = ggplot(data = x, aes(x = doy, y = latitude, color = color, shape=phenophase,
   ylim(20,55)+
   # ylim(ymin,ymax)+
   scale_color_manual(values = c("NA"="black","sexgen" = "blue", "agamic"="red"))+
-  scale_shape_manual(values=shapes)+
+  # scale_shape_manual(values=shapes)+
+  scale_linetype_manual(
+    name = "Line Type",
+    values = c("Rearing" = "dotted", "Emergence" = "solid"))+
   # geom_vline(xintercept=55)+
   # geom_vline(xintercept=315)+
-  geom_abline(intercept = y$lowyint[1], slope=y$lowslope[1], color="#E41A1C")+
-  geom_abline(intercept = y$highyint[1], slope=y$highslope[1], color="#E41A1C")+
+  geom_abline(aes(intercept = y$lowyint[1], slope=y$lowslope[1], linetype="Rearing"), color="#E41A1C")+
+  geom_abline(aes(intercept = y$highyint[1], slope=y$highslope[1], linetype="Emergence"), color="#E41A1C")+
+  scale_size(guide = "none")+
+  scale_alpha(guide = "none")+
   xlim(0,365)
 p
-
 
 testlat <- 42.6
 as.Date(((testlat - lowyint)/lowslope),"2023-01-01")
