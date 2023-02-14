@@ -369,7 +369,8 @@ p = ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=p
     legend.text = element_text(size = rel(1.5)),
     legend.title = element_text(size = rel(1.5))
   )+ 
-  guides(shape = guide_legend(override.aes = list(size = 5)))
+  guides(shape = guide_legend(override.aes = list(size = 5)))+
+  labs(x = "", y = "Latitude", title = "")
   return(p)
 })
 
