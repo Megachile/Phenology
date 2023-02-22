@@ -8,7 +8,7 @@ library(DBI)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
-lit <- read.csv(paste0(wd,"/litdates9.csv"))
+lit <- read.csv(paste0(wd,"/litdates10.csv"))
 lit <- lit[!is.na(lit$gf_id),]
 
 #remove duplicates (K decidua, K rileyi, X q forticorne, D q flocci)

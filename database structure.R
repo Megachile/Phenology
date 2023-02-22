@@ -160,11 +160,11 @@ dbGetQuery(gallphen,"SELECT * FROM species WHERE genus = 'Neuroterus' AND specie
 
 sen <- input[which(input$phenophase=="dormant"&input$doy>20&input$doy<60),]
 query <- paste0("WHERE obs_id IN (", paste(sprintf("'%s'",sen$obs_id), collapse = ","),")")
-query <- paste0("WHERE pageURL = 'scott.digweed@gmail.com'")
+query <- paste0("WHERE obs_id = '30862'")
 
 select <- paste0("SELECT * FROM observations ", query)
 dbGetQuery(gallphen, select)
-# update <- paste0("UPDATE observations SET SourceURL = 'Scott Digweed unpublished data'", query)
+# update <- paste0("UPDATE observations SET lifestage = 'Adult'", query)
 # dbExecute(gallphen, update)
  # delete <- paste0("DELETE FROM observations ", query)
  # dbExecute(gallphen, delete)

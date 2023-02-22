@@ -45,8 +45,12 @@ ui <- fluidPage(
     sidebarPanel(
 
       checkboxInput("mode",label="Correct for latitude?", value=FALSE),
-      popover("Explain", "Selecting this option filters by Season Index rather than day of year. Season Index is the percent of annual daylight hours at a given latitude that have accumulated by a given day. It excludes species emerging at the same date but much further north or south of your site of interest, and allows some extrapolation for species with limited data. However, at wider thresholds it overcorrects by lumping late fall and early spring galls together."),
-      dateInput("date", label="Observation date (ignore year)", value ="2023-01-01"),
+      div(id = "myPopover",
+          popover("Explain", "Selecting this option filters by Season Index rather than day of year. Season Index is the percent of annual daylight hours at a given latitude that have accumulated by a given day. It excludes species emerging at the same date but much further north or south of your site of interest, and allows some extrapolation for species with limited data. However, at wider thresholds it overcorrects by lumping late fall and early spring galls together.")
+      ),
+      
+      # popover("Explain", "Selecting this option filters by Season Index rather than day of year. Season Index is the percent of annual daylight hours at a given latitude that have accumulated by a given day. It excludes species emerging at the same date but much further north or south of your site of interest, and allows some extrapolation for species with limited data. However, at wider thresholds it overcorrects by lumping late fall and early spring galls together."),
+      dateInput("date", label="Observation date (ignore year)", value =Sys.Date()),
       textInput("species",label="Search within results by character string", value = ""),
       radioButtons("gen",label="Filter by generation:", choices = c("sexgen","agamic","all"),selected = "all"),
       sliderInput("days", label="How many days before or after the observation do you want to look?", min = 1, max = 183, value = 10),
@@ -84,10 +88,12 @@ server <- function(input, output) {
       show("thr")
       show("lat")
       hide("days")
+
     } else {
       hide("thr")
       hide("lat")
       show("days")
+
     }
   })
   
