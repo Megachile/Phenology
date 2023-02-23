@@ -30,6 +30,8 @@ singlesi <- function(doy, lat){
 }
 
 eas <- read.csv("phenogrid.csv")
+y <- eas %>% select(-longitude)
+y <- distinct(y)
 observations <- read.csv("observations.csv")
 
 # species_limits <- observations %>%
@@ -40,14 +42,39 @@ observations <- read.csv("observations.csv")
 #             min_long = min(longitude),
 #             max_long = max(longitude))
 
+lineCalc <- function(side, var, thr){
+  tf <- y[which(between(y[[var]],(side-thr),(side+thr)  )),]
+  tf <- unique(tf)
+  tf <- tf %>% group_by(latitude)
+  if (length(tf$doy) > 0) {
+    tf <- tf %>% filter(doy == min(doy))
+  } else {
+    tf <- NULL
+  }  
+  if (is_true(dim(tf)[1]>2)){
+    mod <- lm(tf$latitude~tf$doy)
+    param <- coefficients(mod)
+  } else {
+    param <- c(-9999,0)
+  }
+  return(param)
+}
+
 doyLatCalc <- function (df){
   if (dim(df)[1]>0){
     
     if (dim(df)[1]==1){
+      if (df$doy[1]>171){
       left <- 0.9*df$seasind[1]
       right <- ifelse(1.1 * df$seasind[1] > 1, 1, 1.1 * df$seasind[1])
       var <- "seasind"
       thr <- 0.02
+      } else {
+        var <- "acchours"
+        left <- 0.9*df$acchours[1]
+        right <- 1.1*df$acchours[1]
+        thr <- ((left+right)/2)*0.12
+      }
     } else {
       doy <- sort(df$doy)
       diffs <- diff(doy)
@@ -88,42 +115,8 @@ doyLatCalc <- function (df){
     }
     }
 
-    y <- eas %>% select(-longitude)
-    y <- distinct(y)
-
-    tf <- y[which(between(y[[var]],(left-thr),(left+thr)  )),]
-    tf <- unique(tf)
-    # Group the data by y value
-    tf <- tf %>% group_by(latitude)
-    # Remove all but the point with the lowest x value for each group
-    if (length(tf$doy) > 0) {
-      tf <- tf %>% filter(doy == min(doy))
-    } else {
-      tf <- NULL
-    }  
-    if (is_true(dim(tf)[1]>2)){
-      mod <- lm(tf$latitude~tf$doy)
-      low <- coefficients(mod)
-    } else {
-      low <- c(-9999,0)
-    }
-
-    tf <- y[which(between(y[[var]],(right-thr),(right+thr)  )),]
-    tf <- unique(tf)
-    # Group the data by latitude
-    tf <- tf %>% group_by(latitude)
-    # Remove all but the point with the lowest doy value for each group
-    if (length(tf$doy) > 0) {
-      tf <- tf %>% filter(doy == min(doy))
-    } else {
-      tf <- NULL
-    }
-    if (is_true(dim(tf)[1]>2)){
-      mod <- lm(tf$latitude~tf$doy)
-      high <- coefficients(mod)
-    } else {
-      high <- c(-9999,0)
-    }
+    low <- lineCalc(left, var, thr)
+    high <- lineCalc(right, var, thr)
 
   } else {
     low <- c(-9999,0)
@@ -141,6 +134,7 @@ doyLatCalc <- function (df){
   colnames(param) <- c("lowslope","lowyint","highslope","highyint")
   return(param)
 }
+
 dateText <- function (df, lat, string){
   if (!(df$highslope==0|df$lowslope==0)){
     start <- format(as.Date(((lat - df$lowyint[1])/df$lowslope[1]),origin="2023-01-01"), "%B %d")
@@ -155,11 +149,9 @@ dateText <- function (df, lat, string){
   }
 }
 
-# shapes <- c(0,1,17,2,18,8)
-# names(shapes) <- c('dormant','developing','maturing','perimature','Adult','oviscar')
-
 shapes <- c(8,1,0,17,18,2)
 names(shapes) <- c('oviscar','developing','dormant','maturing','Adult','perimature')
+
 ui <- fluidPage(
   useShinyjs(),
   # App title ----
@@ -382,8 +374,6 @@ output$no_data <- renderText({
   else {""}
 })
 
-
-  
 P <- reactive({
 req(nrow(plotted())>0)
 select <- match()
@@ -427,8 +417,8 @@ if (max(plotted$latitude) > 55) {
   ymax <- 55
 }
 
-p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=phenophase, size=22, alpha = alpha)) +
-  geom_point()+
+p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=phenophase, size=22)) +
+  geom_point(aes(alpha = alpha))+
   scale_linetype_manual(name = "Line Type", values = c("Rearing" = "dotted", "Emergence" = "solid", "Prediction Latitude" = "dashed"))+
   ylim(ymin,ymax)+
   scale_x_date(date_labels = "%b", limits = as.Date(c("1970-01-01", "1971-01-02")))+
@@ -436,7 +426,17 @@ p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=
   scale_shape_manual(values= shapes)+
   scale_size(guide = "none")+
   scale_alpha(guide = "none")+
-  geom_abline(aes(intercept = sexrearparam$lowyint[1], slope=sexrearparam$lowslope[1], linetype="Rearing"), color="blue")+
+  theme(
+    axis.text = element_text(size = rel(1.5)),
+    axis.title = element_text(size = rel(1.5)),
+    legend.text = element_text(size = rel(1.5)),
+    legend.title = element_text(size = rel(1.5))
+  )+
+  guides(shape = guide_legend(override.aes = list(size = 5)))+
+  labs(x = "", y = "Latitude", title = "")
+
+  if (input$mode != "List species") {
+  p <- p + geom_abline(aes(intercept = sexrearparam$lowyint[1], slope=sexrearparam$lowslope[1], linetype="Rearing"), color="blue")+
   geom_abline(aes(intercept = sexrearparam$highyint[1], slope=sexrearparam$highslope[1], linetype="Rearing"), color="blue")+
   geom_abline(aes(intercept = sexemparam$lowyint[1], slope=sexemparam$lowslope[1], linetype="Emergence"), color="blue")+
   geom_abline(aes(intercept = sexemparam$highyint[1], slope=sexemparam$highslope[1], linetype="Emergence"), color="blue")+
@@ -447,22 +447,49 @@ p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=
   geom_abline(aes(intercept = rearparam$lowyint[1], slope=rearparam$lowslope[1], linetype="Rearing"), color="black")+
   geom_abline(aes(intercept = rearparam$highyint[1], slope=rearparam$highslope[1], linetype="Rearing"), color="black")+
   geom_abline(aes(intercept = emparam$lowyint[1], slope=emparam$lowslope[1], linetype="Emergence"), color="black")+
-  geom_abline(aes(intercept = emparam$highyint[1], slope=emparam$highslope[1], linetype="Emergence"), color="black")+
-  theme(
-    axis.text = element_text(size = rel(1.5)),
-    axis.title = element_text(size = rel(1.5)),
-    legend.text = element_text(size = rel(1.5)),
-    legend.title = element_text(size = rel(1.5))
-  )+ 
-  guides(shape = guide_legend(override.aes = list(size = 5)))+
-  labs(x = "", y = "Latitude", title = "")
-
+  geom_abline(aes(intercept = emparam$highyint[1], slope=emparam$highslope[1], linetype="Emergence"), color="black")
+} 
   if (input$mode == "Calculate dates") {
     p <- p + geom_hline(yintercept = input$lat, linetype = "dashed")
   } else if (input$mode == "List species") {
-    p <- p + geom_vline(xintercept = (as.integer(format(as.Date(input$date),"%j")) - input$days)) +
-      geom_vline(xintercept = (as.integer(format(as.Date(input$date),"%j")) + input$days))
-  }
+    doy <- as.integer(format(as.Date(input$date),"%j"))
+    if (input$correct){
+      si <- singlesi(doy, input$lat)
+      min <- (si-0.02) %% 1
+      max <- (si+0.02) %% 1
+      low <- lineCalc(min, "seasind", input$thr)
+      high <- lineCalc(max, "seasind", input$thr)
+      
+      # Calculate the x-values for the left corners
+      xbl <- (ymin - low[1])/low[2] %% 365
+      xul <- (ymax - low[1])/low[2] %% 365
+      
+      # Calculate the x-values for the right corners
+      xbr <- (ymin - high[1])/high[2] %% 365
+      xur <- (ymax - high[1])/high[2] %% 365
+      
+      x <- c(xbl, xbr, xur, xul)
+      
+      trapezoid <- data.frame(
+        x = as.Date(x, origin = "1970-01-01"),
+        y = c(ymin, ymin, ymax, ymax)
+      )
+      p <- p +   geom_polygon(data = trapezoid, aes(x = x, y = y), fill = "green", alpha = 0.2,inherit.aes = FALSE)+
+        geom_abline(aes(intercept = low[1], slope=low[2]), color="green")+
+        geom_abline(aes(intercept = high[1], slope=high[2]), color="green")
+      } else {
+      low <- as.Date(((doy - input$days) %% 365), origin = "1970-01-01")
+      high <- as.Date(((doy + input$days) %% 365), origin = "1970-01-01")
+      rect <- data.frame(
+        xmin = low,
+        xmax = high,
+       ymin=ymin,
+       ymax=ymax)
+    
+      p <- p + geom_rect(data = rect, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill = "green", alpha = 0.2, inherit.aes = FALSE)
+      # + geom_vline(xintercept = low, color="green") + geom_vline(xintercept = high, color="green") +
+      }
+ }
   return(p)
 })
 
