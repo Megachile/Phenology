@@ -1,3 +1,4 @@
+print("launch")
 library(shiny)
 library(dplyr)
 library(ggplot2)
@@ -13,6 +14,7 @@ library(shinyBS)
 library(RLumShiny)
 library(pracma)
 library(solrad)
+library(Hmisc)
 pos_part <- function(x) {
   return(sapply(x, max, 0))
 }
@@ -62,20 +64,30 @@ lineCalc <- function(side, var, thr){
 
 doyLatCalc <- function (df){
   if (dim(df)[1]>0){
-    
-    if (dim(df)[1]==1){
-      if (df$doy[1]>171){
-      left <- 0.9*df$seasind[1]
-      right <- ifelse(1.1 * df$seasind[1] > 1, 1, 1.1 * df$seasind[1])
+    print(paste("Range is", max(df$seasind)-min(df$seasind)))
+    print(paste("min Seasind is", min(df$seasind)))
+     if ((max(df$seasind)-min(df$seasind)<0.07)&&min(df$seasind)<0.94){
+      print("Narrow range corrected")
+      if (max(df$doy)>171){
+        print("seasind")
+      left <- 0.85*mean(df$seasind)
+      right <- ifelse(1.15 * mean(df$seasind)> 1, 1, 1.15 * mean(df$seasind))
       var <- "seasind"
       thr <- 0.02
       } else {
         var <- "acchours"
-        left <- 0.9*df$acchours[1]
-        right <- 1.1*df$acchours[1]
+        if (mean(df$acchours)>0){
+        left <- 0.8*mean(df$acchours)
+        right <- 1.2*mean(df$acchours)
+        } else {
+          left <- 0
+          right <- 1000
+        }
         thr <- ((left+right)/2)*0.12
       }
-    } else {
+    }
+    
+    else {
       doy <- sort(df$doy)
       diffs <- diff(doy)
       max_diff <- max(diffs)
@@ -130,6 +142,12 @@ doyLatCalc <- function (df){
   highslope <- coef[2,2]
   highyint <- coef[2,1]
 
+  if ((lowslope<0&&highslope<0)&&abs(lowslope-highslope)<0.05) {
+    print("Fixing similar slopes")
+    highslope <- 10^10
+    highyint <- -10^10*365 
+  }
+  
   param <- as.data.frame(t(c(lowslope,lowyint,highslope,highyint)))
   colnames(param) <- c("lowslope","lowyint","highslope","highyint")
   return(param)
@@ -192,16 +210,43 @@ ui <- fluidPage(
     })
     '
      ),
-    multiInput("phen",label="Filter by phenophase (affects plot but not lines/date ranges):", choices = c("oviscar","developing","dormant","maturing","Adult","perimature"),selected = c("maturing","Adult","perimature")),
-    radioButtons("mode", label="Select output mode:", choices = c("Calculate dates", "View data points", "Select species from plot", "List species"), selected = "Calculate dates"),
-   checkboxInput("correct",label="Correct for latitude?", value=FALSE),
-   div(id = "myPopover",
-       popover("Explain", "Selecting this option filters by Season Index rather than day of year. Season Index is the percent of annual daylight hours at a given latitude that have accumulated by a given day. It excludes species emerging at the same date but much further north or south of your site of interest, and allows some extrapolation for species with limited data. However, at wider thresholds it overcorrects by lumping late fall and early spring galls together.")
+   multiInput("phen",label="Filter by phenophase (affects plot but not lines/date ranges):", choices = c("oviscar","developing","dormant","maturing","Adult","perimature"),selected = c("maturing","Adult","perimature")),
+   radioButtons("mode", label="Selection mode:", choices = c("Click and drag", "Date range", "Season index"), selected = "Click and drag"),
+   tags$button(
+     "Explain Season Index",
+     `data-toggle` = "popover",
+     `data-placement` = "bottom",
+     `data-html` = "true",
+     title = "Season Index",
+     `data-content` = "Season Index is the percent of annual daylight hours at a given latitude that have accumulated by a given day. Minimum and maximum Season Index values calculated based on the date, latitude, and threshold you select are plotted and used to filter the observations or species listed below."
    ),
+   tags$style(
+     '
+.popover {
+  max-width: 300px;
+}
+.popover-content {
+  font-size: 16px;
+  font-weight: normal;
+  color: black;
+}
+'
+   ),
+   tags$script(
+     '
+$(function () {
+  $(\'[data-toggle="popover"]\').popover()
+})
+'
+   ),
+   radioButtons("display", label="Output mode:", choices = c("Calculate dates", "View data points", "List species"), selected = "View data points"),
+   radioButtons("lines", label="Plot predicted start-end dates by latitude?", choices = c("Yes","No")),
+   # checkboxInput("correct",label="Correct for latitude?", value=FALSE),
+
    dateInput("date", label="Observation date (ignore year)", value =Sys.Date()),
    sliderInput("days", label="How many days before or after the observation do you want to look?", min = 1, max = 183, value = 10),
    sliderInput("thr", label="How far from the observation do you want to look?", min = 0.005, max = 0.5, value = 0.05),
-   sliderInput("lat", label="What latitude are you interested in?", min = 8, max=65, value = 40),
+   sliderInput("lat", label="What latitude are you interested in?", min = 8, max=65, value = 40)
    
    # sliderInput("latrange", label="Latitude:", min = 10, max = 65, value = c(10, 65)),
      # sliderInput("longrange", label="Longitude:", min = -140, max = -55, value = c(-140, -55)),
@@ -221,8 +266,7 @@ ui <- fluidPage(
       textOutput("agemRange"),
       textOutput("rearRange"),
       textOutput("emRange"),
-      dataTableOutput("brush_info"),
-      dataTableOutput("brush_list"),
+      dataTableOutput("data_table"),
       downloadButton("downloadData", "Download as CSV")
     )
   )
@@ -244,110 +288,68 @@ server <- function(input, output, session) {
   #     addRectangles(lng1 = lng1, lat1 = lat1, lng2 = lng2, lat2 = lat2, layerId = "rect", color = "red", fillOpacity = 0.3)
   # })
   
-  observeEvent(input$mode, {
-    if (input$mode == "Calculate dates") {
+  observeEvent(input$display, {
+    if(input$display == "Calculate dates"){
+      hide("species_count")
       show("sexrearRange")
       show("sexemRange")
       show("agrearRange")
       show("agemRange")
       show("rearRange")
       show("emRange")
-      show("lat")
-      hide("brush_info")
-      hide("brush_list")
+      hide("data_table")
+      hide("species_table")
       hide("downloadData")
-      shinyjs::hide("myPopover")
-      hide("thr")
-      hide("correct")
-      hide("days")
-      hide("date")
+    }
+    if(input$display ==  "View data points"){
       hide("species_count")
-      hide("species_table")
-    } else if (input$mode == "View data points") {
-      hide("lat")
       hide("sexrearRange")
       hide("sexemRange")
       hide("agrearRange")
       hide("agemRange")
       hide("rearRange")
       hide("emRange")
-      show("brush_info")
-      hide("brush_list")
-      show("downloadData")
-      shinyjs::hide("myPopover")
-      hide("thr")
-      hide("correct")
-      hide("days")
-      hide("date")
-      hide("species_count")
+      show("data_table")
       hide("species_table")
-    } else if (input$mode == "Select species from plot") {
-      hide("lat")
-      hide("sexrearRange")
-      hide("sexemRange")
-      hide("agrearRange")
-      hide("agemRange")
-      hide("rearRange")
-      hide("emRange")
-      hide("brush_info")
-      show("brush_list")
-      shinyjs::hide("myPopover")
-      show("downloadData")
-      hide("thr")
-      hide("correct")
-      hide("days")
-      hide("date")
-      hide("species_count")
-      hide("species_table")
-    } else if (input$mode == "List species") {
-      updateTextInput(session, "species", value = "")
-      show("correct")
-      if (input$correct) {
-        show("thr")
-        show("lat")
-        hide("days")
-      } else {
-        hide("thr")
-        hide("lat")
-        show("days")
-      }
-      shinyjs::show("myPopover")
-      hide("sexrearRange")
-      hide("sexemRange")
-      hide("agrearRange")
-      hide("agemRange")
-      hide("rearRange")
-      hide("emRange")
-      hide("brush_info")
-      hide("brush_list")
-      show("downloadData")
-      show("date")
+      show("downloadData")    
+    }
+    if(input$display == "List species") {
       show("species_count")
+      hide("sexrearRange")
+      hide("sexemRange")
+      hide("agrearRange")
+      hide("agemRange")
+      hide("rearRange")
+      hide("emRange")
+      hide("data_table")
       show("species_table")
+      show("downloadData")  
     }
   })
   
-  observeEvent(input$correct, {
-    if (input$mode == "List species") {
-      if (input$correct) {
-        show("thr")
-        show("lat")
-        hide("days")
-      } else {
-        hide("thr")
-        hide("lat")
-        show("days")
-      }
-    }
+  observeEvent(input$mode, {
+    if (input$mode == "Click and drag") {
+      hide("thr")
+      hide("days")
+      hide("date")
+    } else if (input$mode == "Date range") {
+      hide("thr")
+      show("days")
+      show("date")
+    } else if (input$mode == "Season index") {
+      show("thr")
+      hide("days")
+      show("date")
+    } 
   })
-
+  
   match <- reactive({
   if(input$gen %in% c("sexgen", "agamic")) {
     filtered_observations <- observations %>%
-      filter(grepl(input$species, binom, ignore.case = TRUE) & generation == input$gen)
+      filter(grepl(escapeRegex(input$species), binom, ignore.case = TRUE) & generation == input$gen)
   } else {
     filtered_observations <- observations %>%
-      filter(grepl(input$species, binom, ignore.case = TRUE))
+      filter(grepl(escapeRegex(input$species), binom, ignore.case = TRUE))
   }
   
   # filtered_species_limits <- species_limits %>%
@@ -356,7 +358,6 @@ server <- function(input, output, session) {
   # 
   # filtered_observations %>%
   #   inner_join(filtered_species_limits, by = c("binom" = "binom"))
-  # 
   
 })
 
@@ -406,23 +407,23 @@ for (i in 1:dim(plotted)[1]){
 }
 
 if (min(plotted$latitude) < 20) {
-  ymin <- min(plotted$latitude)
+  ymin <- min(plotted$latitude)-2
 } else {
   ymin <- 20
 }
 
 if (max(plotted$latitude) > 55) {
-  ymax <- max(plotted$latitude)
+  ymax <- max(plotted$latitude)+2
 } else {
   ymax <- 55
 }
 
 p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=phenophase, size=22)) +
   geom_point(aes(alpha = alpha))+
-  scale_linetype_manual(name = "Line Type", values = c("Rearing" = "dotted", "Emergence" = "solid", "Prediction Latitude" = "dashed"))+
+  scale_linetype_manual(name = "Line Type", values = c("Rearing" = "dotted", "Emergence" = "solid", "Prediction Latitude" = "dashed", "Selection bounds" = "twodash"))+
   ylim(ymin,ymax)+
   scale_x_date(date_labels = "%b", limits = as.Date(c("1970-01-01", "1971-01-02")))+
-  scale_color_manual(values = c("Blank"="black","sexgen" = "blue", "agamic"="red"))+
+  scale_color_manual(values = c("Blank"="black","sexgen" = "blue", "agamic"="red", "Selection bounds" = "green"))+
   scale_shape_manual(values= shapes)+
   scale_size(guide = "none")+
   scale_alpha(guide = "none")+
@@ -433,9 +434,11 @@ p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=
     legend.title = element_text(size = rel(1.5))
   )+
   guides(shape = guide_legend(override.aes = list(size = 5)))+
+  guides(color = guide_legend(override.aes = list(size = 7)))+
+  guides(linetype = guide_legend(override.aes = list(lwd = 0.75)))+
   labs(x = "", y = "Latitude", title = "")
 
-  if (input$mode != "List species") {
+  if (input$lines == "Yes") {
   p <- p + geom_abline(aes(intercept = sexrearparam$lowyint[1], slope=sexrearparam$lowslope[1], linetype="Rearing"), color="blue")+
   geom_abline(aes(intercept = sexrearparam$highyint[1], slope=sexrearparam$highslope[1], linetype="Rearing"), color="blue")+
   geom_abline(aes(intercept = sexemparam$lowyint[1], slope=sexemparam$lowslope[1], linetype="Emergence"), color="blue")+
@@ -449,56 +452,63 @@ p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=
   geom_abline(aes(intercept = emparam$lowyint[1], slope=emparam$lowslope[1], linetype="Emergence"), color="black")+
   geom_abline(aes(intercept = emparam$highyint[1], slope=emparam$highslope[1], linetype="Emergence"), color="black")
 } 
-  if (input$mode == "Calculate dates") {
+  if (input$display == "Calculate dates") {
     p <- p + geom_hline(yintercept = input$lat, linetype = "dashed")
-  } else if (input$mode == "List species") {
-    doy <- as.integer(format(as.Date(input$date),"%j"))
-    if (input$correct){
-      si <- singlesi(doy, input$lat)
-      min <- (si-0.02) %% 1
-      max <- (si+0.02) %% 1
-      low <- lineCalc(min, "seasind", input$thr)
-      high <- lineCalc(max, "seasind", input$thr)
-      
-      # Calculate the x-values for the left corners
-      xbl <- (ymin - low[1])/low[2] %% 365
-      xul <- (ymax - low[1])/low[2] %% 365
-      
-      # Calculate the x-values for the right corners
-      xbr <- (ymin - high[1])/high[2] %% 365
-      xur <- (ymax - high[1])/high[2] %% 365
-      
-      x <- c(xbl, xbr, xur, xul)
-      
-      trapezoid <- data.frame(
-        x = as.Date(x, origin = "1970-01-01"),
-        y = c(ymin, ymin, ymax, ymax)
-      )
-      p <- p +   geom_polygon(data = trapezoid, aes(x = x, y = y), fill = "green", alpha = 0.2,inherit.aes = FALSE)+
-        geom_abline(aes(intercept = low[1], slope=low[2]), color="green")+
-        geom_abline(aes(intercept = high[1], slope=high[2]), color="green")
-      } else {
+  } 
+ if (input$mode == "Date range") {
+      doy <- as.integer(format(as.Date(input$date),"%j"))
       low <- as.Date(((doy - input$days) %% 365), origin = "1970-01-01")
       high <- as.Date(((doy + input$days) %% 365), origin = "1970-01-01")
       rect <- data.frame(
         xmin = low,
         xmax = high,
-       ymin=ymin,
-       ymax=ymax)
-    
-      p <- p + geom_rect(data = rect, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill = "green", alpha = 0.2, inherit.aes = FALSE)
-      # + geom_vline(xintercept = low, color="green") + geom_vline(xintercept = high, color="green") +
-      }
- }
+        ymin=ymin,
+        ymax=ymax)
+
+      p <- p +
+      # geom_rect(data = rect, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill = "gray", alpha = 0.4, inherit.aes = FALSE)
+       geom_vline(xintercept = low, linetype = "twodash", color="green") + geom_vline(xintercept = high, linetype = "twodash", color="green") 
+    }
+    if (input$mode == "Season index") {
+      doy <- as.integer(format(as.Date(input$date),"%j"))
+      si <- singlesi(doy, input$lat)
+      min <- (si-input$thr) %% 1
+      max <- (si+input$thr) %% 1
+      low <- lineCalc(min, "seasind", 0.02)
+      high <- lineCalc(max, "seasind", 0.02)
+      p <- p + geom_abline(aes(intercept = low[1], slope=low[2]), linetype = "twodash", color="green")+
+        geom_abline(aes(intercept = high[1], slope=high[2]), linetype = "twodash", color="green")
+
+      highline  <- function(x) as.integer(format(as.Date(x),"%j"))*high[2]+high[1]
+      lowline <- function(x) as.integer(format(as.Date(x),"%j"))*low[2]+low[1]
+
+#       if (high[2]<0&&low[2]>0){
+#       #  triangles
+#         print("triangles in")
+#         p <- p + geom_ribbon(mapping = aes(ymin = after_stat(lowline(y)), ymax = after_stat(highline(y)) ),
+#                              fill = 'lightblue', alpha = 0.5, color="transparent", inherit.aes = FALSE)
+# 
+# 
+#       } else if (high[2]>0&&low[2]<0) {
+#         #triangles backwards
+#         print("triangles out")
+#         
+#         p <- p + geom_polygon(stat = 'function', fun = highline,
+#                              mapping = aes(ymin = after_stat(y), ymax = Inf),
+#                              fill = 'lightblue', alpha = 0.5, color="transparent", inherit.aes = FALSE)+
+#           geom_polygon(stat = 'function', fun = lowline,
+#                       mapping = aes(ymin = after_stat(y), ymax = Inf),
+#                       fill = 'lightblue', alpha = 0.5, color="transparent", inherit.aes = FALSE)
+# }
+
+    }
   return(p)
 })
-
 
 
 output$plot <- renderPlot({
   P()
 })
-
 
   output$sexemRange <- renderText({
     req(any(match()$generation=="sexgen"))
@@ -543,10 +553,58 @@ output$plot <- renderPlot({
     return(dateText(rearparam, input$lat, "galls can likely be successfully collected for rearing"))
   })
 
-  output$brush_info <- renderDT({
-    brushed_data <- brushedPoints(plotted(), input$plot1_brush)
-    brushed_data_reordered <- brushed_data[,c("obs_id","binom","phenophase","lifestage","viability", "host","doy", "date","latitude","longitude", "sourceURL","pageURL")]
-    DT::datatable(brushed_data_reordered,
+  data <- reactive({
+    doy <- as.integer(format(as.Date(input$date),"%j"))
+    if (input$mode == "Click and drag"){
+      brushed_data <- brushedPoints(plotted(), input$plot1_brush)
+      return(brushed_data)
+    } else if (input$mode == "Date range") {
+      min <- (doy - input$days) %% 365
+      max <- (doy + input$days) %% 365
+      if (min > max) {
+        # Values straddle 0, so flip the selection filter
+        date_data <- subset(plotted(), doy <= max | doy >= min)
+      } else {
+        date_data <- subset(plotted(), doy >= min & doy <= max)
+      }
+      return(date_data) 
+    } else if (input$mode == "Season index") {
+      si <- singlesi(doy, input$lat)
+      min <- (si-input$thr) %% 1
+      max <- (si+input$thr) %% 1
+      if (min > max) {
+        # Values straddle 0, so flip the selection filter
+        si_data <- subset(plotted(), seasind <= max | seasind >= min)
+      } else {
+        si_data <- subset(plotted(), seasind >= min & seasind <= max)
+      }
+      return(si_data) 
+  }
+  })
+  
+  species_list <- reactive({
+    data <- data()
+    data <- data %>%
+      mutate(link = paste0("<a href=", gfURL, ">", binom, "</a>"))
+    
+    unique_binoms <- sort(unique(data$binom))
+    
+    if (length(unique_binoms) == 0) {
+      unique_binoms <- "No data available"
+    }
+    species <- data.frame(unique_binoms)
+    colnames(species) <- "Species"
+    return(species)
+  })
+  
+  output$species_table <- renderDT({  
+    DT::datatable(species_list(), rownames = FALSE, escape = FALSE) 
+  })
+  
+  output$data_table <- renderDT({  
+    data <- data()
+    data_reordered <- data[,c("obs_id","binom","phenophase","lifestage","viability", "host","doy", "date","latitude","longitude", "sourceURL","pageURL")]
+    DT::datatable(data_reordered,
                   rownames = FALSE,
                   escape = FALSE,
                   options = list(
@@ -558,128 +616,25 @@ output$plot <- renderPlot({
                     )))
   })
 
-  output$brush_list <- renderDT({
-    brushed_data <- brushedPoints(plotted(), input$plot1_brush)
-    # Apply URL transformation
-    brushed_data <- brushed_data %>%
-      mutate(link = paste0("<a href=", gfURL, ">", binom, "</a>"))
-    
-    # Create datatable object
-    unique_binoms <- sort(unique(brushed_data$link))
-    
-    if (length(unique_binoms) == 0) {
-      unique_binoms <- "No data available"
-    }
-    data <- data.frame(unique_binoms)
-    colnames(data) <- "Species"
-    DT::datatable(data, rownames = FALSE, escape = FALSE) 
-  })
-  
-  species_data <- reactive({
-    
-    if (input$correct) {
-      doy <- as.integer(format(as.Date(input$date),"%j"))
-      si <- singlesi(doy, input$lat)
-      min <- si-input$thr
-      max <- si+input$thr
-      mod <- 1
-      sirange <- btwmod(observations$seasind, min, max, mod)
-      
-      if(input$gen %in% c("sexgen", "agamic")) {
-        filtered_observations <- observations %>%
-          filter(grepl(input$species, binom, ignore.case = TRUE) & phenophase %in% c("maturing", "perimature", "Adult") & sirange & generation == input$gen)
-      } else {
-        filtered_observations <- observations %>%
-          filter(grepl(input$species, binom, ignore.case = TRUE) & phenophase %in% c("maturing", "perimature", "Adult") & sirange)
-      }
-      result <- filtered_observations
-      # filtered_species_limits <- species_limits %>%
-      #   filter(min_lat >= min(input$latrange) & max_lat <= max(input$latrange)) %>%
-      #   filter(min_long >= min(input$longrange) & max_long <= max(input$longrange))
-      # 
-      # result <- filtered_observations %>%
-      #   inner_join(filtered_species_limits, by = c("binom" = "binom"))
-      
-      result <- result %>%
-        mutate(link = paste0("<a href=", result$gfURL, ">", result$binom, "</a>"))
-      
-      display <- result %>%
-        select(binom, link) %>%
-        unique() %>%
-        arrange(binom)
-      
-      return(data.frame(display))
-    } else {
-      
-      doy <- as.integer(format(as.Date(input$date),"%j"))
-      min <- doy-input$days
-      max <- doy+input$days
-      mod <- 365
-      doyrange <- btwmod(observations$doy, min, max, mod)
-      
-      if(input$gen %in% c("sexgen", "agamic")) {
-        filtered_observations <- observations %>%
-          filter(grepl(input$species, binom, ignore.case = TRUE) & phenophase %in% c("maturing", "perimature", "Adult") & doyrange & generation == input$gen)
-      } else {
-        filtered_observations <- observations %>%
-          filter(grepl(input$species, binom, ignore.case = TRUE) & phenophase %in% c("maturing", "perimature", "Adult") & doyrange)
-      }
-      result <- filtered_observations
-      # filtered_species_limits <- species_limits %>%
-      #   filter(min_lat >= min(input$latrange) & max_lat <= max(input$latrange)) %>%
-      #   filter(min_long >= min(input$longrange) & max_long <= max(input$longrange))
-      # 
-      # result <- filtered_observations %>%
-      #   inner_join(filtered_species_limits, by = c("binom" = "binom"))
-      
-      result <- result %>%
-        mutate(link = paste0("<a href=", result$gfURL, ">", result$binom, "</a>"))
-      
-      display <- result %>%
-        select(binom, link) %>%
-        unique() %>%
-        arrange(binom)
-      
-      return(data.frame(display))
-    }
-    
-  })
-  
   output$species_count <- renderText({
-    if (nrow(species_data()) == 0) {
+    if (nrow(species_list()) == 0) {
       "There are no matching species."
     } else {
-      paste("There are", nrow(species_data()), "matching species.")
+      paste("There are", nrow(species_list()), "matching species.")
     }
   })
-  
-  output$species_table <- renderDT({
-    if (nrow(species_data()) == 0) {
-      NULL
-    } else {
-      data <- data.frame(species_data()$link)
-      colnames(data) <- "Species"
-      DT::datatable(data, rownames = FALSE, escape = FALSE)  
-    }
-  })
-  
-
   
   output$downloadData <- 
     downloadHandler(
       filename = "selectedData.csv",
       content = function(file) {
-        if (input$mode == "Select species from plot") {
-          brushed_data <- brushedPoints(plotted(), input$plot1_brush)
-          unique_binoms <- sort(unique(brushed_data$binom))
-          write.csv(unique_binoms, file, row.names = FALSE)
-        } else if (input$mode == "View data points") {
-          brushed_data <- brushedPoints(plotted(), input$plot1_brush)
-          brushed_data_reordered <- brushed_data[,c("obs_id","binom","phenophase","lifestage","viability", "host","doy", "date","latitude","longitude", "sourceURL","pageURL")]
-          write.csv(brushed_data_reordered, file, row.names = FALSE)
-        } else if (input$mode == "List species"){
-          write.csv(species_data()$binom, file, row.names = FALSE)
-          } else {
+        if (input$display == "List species") {
+          write.csv(species_list(), file, row.names = FALSE)
+        } else if (input$display == "View data points") {
+          data <- data()
+          data_reordered <- data[,c("obs_id","binom","phenophase","lifestage","viability", "host","doy", "date","latitude","longitude", "sourceURL","pageURL")]
+          write.csv(data_reordered, file, row.names = FALSE)
+        } else {
           return(NULL)
         }
       }

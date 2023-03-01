@@ -42,6 +42,8 @@ setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
 # update the observations dataframe for both apps
 # gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
+observations <- read.csv("observations.csv")
+
 
 observations <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.generation, gall.species, gall.genus, gall.gf_id FROM observations
            LEFT JOIN species AS host ON observations.host_id = host.species_id
@@ -58,6 +60,9 @@ write.csv(observations, file = "observations.csv", row.names = FALSE)
 write.csv(observations, file = paste0(wd, "/doyCalc/observations.csv"), row.names = FALSE)
 write.csv(observations, file = paste0(wd, "/speciesList/observations.csv"), row.names = FALSE)
 
+result <- observations %>% filter(phenophase %in% c("maturing", "perimature", "Adult")) %>% 
+  group_by(binom) %>% filter(n()==2) %>% distinct(binom)
+
 rsconnect::setAccountInfo(name='megachile', token='E0503725A47C8E1AA250F80A49C2A015', secret='vqQZJcHij1sJHt+8LtDwrCfLZURzoiSDyqzmXNdT')
 rsconnect::deployApp('C:/Users/adam/Documents/GitHub/Phenology/doyCalc')
-rsconnect::deployApp('C:/Users/adam/Documents/GitHub/Phenology/speciesList')
+# rsconnect::deployApp('C:/Users/adam/Documents/GitHub/Phenology/speciesList')
