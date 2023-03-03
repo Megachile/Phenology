@@ -46,7 +46,7 @@ eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 # eas[eas$doy>365,"acchours"] <- NA
 
 #input iNat code or GF code
-spcode <- "883743"
+spcode <- "1241321"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -304,7 +304,7 @@ urlMaker <- function(code) {
     
     url <-
       str_interp(
-        "https://api.inaturalist.org/v1/observations?quality_grade=anyverifiable=true&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&any&field%3Agallformers%2Bcode=${code}"
+        "https://api.inaturalist.org/v1/observations?quality_grade=any&verifiable=true&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&any&field%3Agallformers%2Bcode=${code}"
       )
   } else {
     #checks to see if the code matches anything in the db

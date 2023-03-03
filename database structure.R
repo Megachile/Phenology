@@ -160,7 +160,7 @@ dbGetQuery(gallphen,"SELECT * FROM species WHERE genus = 'Callirhytis' AND speci
 
 sen <- input[which(input$phenophase=="dormant"&input$doy>20&input$doy<60),]
 query <- paste0("WHERE obs_id IN (", paste(sprintf("'%s'",sen$obs_id), collapse = ","),")")
-query <- paste0("WHERE obs_id = '15328'")
+query <- paste0("WHERE obs_id = '20257'")
 
 select <- paste0("SELECT * FROM observations ", query)
 dbGetQuery(gallphen, select)
