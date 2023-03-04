@@ -46,7 +46,7 @@ eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 # eas[eas$doy>365,"acchours"] <- NA
 
 #input iNat code or GF code
-spcode <- "1241321"
+spcode <- "143876"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -56,6 +56,10 @@ url <- urlMaker(spcode)
 
 #for a specific user (Antoine G now)
 # url <- "https://api.inaturalist.org/v1/observations?quality_grade=any&user_id=antoine_guiguet_&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775"
+
+#with a specific phenophase (developing now)
+url <- "https://api.inaturalist.org/v1/observations?quality_grade=any&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=143876&field:Gall%20phenophase=developing"
+
 
 #iNat API call
 obs <- iNatCall(url)
@@ -87,11 +91,14 @@ for (i in 1:20){
 
 
 
-prob <- "470969"
+prob <- "117461027"
+new[new$id==prob,"Life_Stage"] <- NA
+
+
 # new[new$id==prob,"Gall_phenophase"] <- "dormant"
 # new[new$id==prob,"Gall_generation"] <- "unisexual"
 # new[new$id==prob,"Host_Plant_ID"] <- "49006"
-new[new$id==prob,"Life_Stage"] <- NA
+
 # new[new$uri==prob,"taxon.name"] <- "Acraspis villosa"
 
 # creates a *new* dataframe with only rows missing data
