@@ -585,14 +585,19 @@ output$plot <- renderPlot({
   species_list <- reactive({
     data <- data()
     data <- data %>%
-      mutate(link = paste0("<a href=", gfURL, ">", binom, "</a>"))
+      mutate(link = paste0("<a href=", data$gfURL, ">", data$binom, "</a>"))
     
-    unique_binoms <- sort(unique(data$binom))
+    unique_binoms <- data %>%
+      select(binom, link) %>%
+      unique() %>%
+      arrange(binom)
+    
+    # unique_binoms <- sort(unique(data$binom))
     
     if (length(unique_binoms) == 0) {
       unique_binoms <- "No data available"
     }
-    species <- data.frame(unique_binoms)
+    species <- data.frame(unique_binoms$link)
     colnames(species) <- "Species"
     return(species)
   })

@@ -46,7 +46,7 @@ eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 # eas[eas$doy>365,"acchours"] <- NA
 
 #input iNat code or GF code
-spcode <- "143876"
+spcode <- "1088144"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -56,10 +56,6 @@ url <- urlMaker(spcode)
 
 #for a specific user (Antoine G now)
 # url <- "https://api.inaturalist.org/v1/observations?quality_grade=any&user_id=antoine_guiguet_&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775"
-
-#with a specific phenophase (developing now)
-url <- "https://api.inaturalist.org/v1/observations?quality_grade=any&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=143876&field:Gall%20phenophase=developing"
-
 
 #iNat API call
 obs <- iNatCall(url)
@@ -89,11 +85,8 @@ for (i in 1:20){
   browseURL(ena$uri[i])
 }
 
-
-
-prob <- "117461027"
+prob <- "73694224"
 new[new$id==prob,"Life_Stage"] <- NA
-
 
 # new[new$id==prob,"Gall_phenophase"] <- "dormant"
 # new[new$id==prob,"Gall_generation"] <- "unisexual"
@@ -107,7 +100,7 @@ missing <- findMissing(new)
 print(dim(missing)[1])
 missing <- new[new$Gall_generation=="",]
 
-for (i in 21:35){
+for (i in 1:26){
   browseURL(missing$uri[i])
 }
 
@@ -149,10 +142,12 @@ append[append$pageURL==prob,"lifestage"] <- NA
 #add to the database
 # dbAppendTable(gallphen, "observations",append)
 
-test<-dbGetQuery(gallphen, "SELECT *FROM observations WHERE phenophase = 'Emerging leaves'")
-
 # update the last updated date to the current date
 setUpdate(spcode)
+
+# test<-dbGetQuery(gallphen, "SELECT *FROM observations WHERE phenophase = 'Emerging leaves'")
+
+
 
 dbGetQuery(gallphen, "SELECT inatcode FROM species WHERE species_id in (SELECT DISTINCT gall_id FROM observations)")
 
@@ -181,7 +176,7 @@ data <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS host, gall.
                              LEFT JOIN species AS host ON observations.host_id = host.species_id
                              INNER JOIN species AS gall ON observations.gall_id = gall.species_id
                              WHERE gall_id IN (SELECT species_id FROM species
-                             WHERE genus = 'Eurosta')")
+                             WHERE genus = 'Amphibolips' AND species LIKE '%quercusinanis%')")
 
 # dbExecute(gallphen, "SELECT genus ")
 
@@ -289,13 +284,19 @@ dbGetQuery(gallphen, "SELECT * FROM species WHERE genus = 'Quercus' and species 
 
 
 
+
+
+
+
+
+
+
+
+
 #functions
 
 # checks to see when a species (by iNat code) was last updated 
 datecheck <- function(code){
-  
-  library(DBI)
-  gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
   if (grepl("-",code,fixed=TRUE)){
     return(dbGetQuery(gallphen, str_interp("SELECT update_date FROM specieshistory WHERE species_id = (SELECT species_id FROM species WHERE species LIKE '${code}')")))
   } else {
@@ -489,15 +490,15 @@ iNatCall <- function(url) {
 
 # checks to see if observations are in the baddata table or already in the observations table; outputs a new dataframe without those observations
 checkData <- function(df){
-  library(DBI)
-  gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
-  
   remove <- 1:dim(df)[1]
   id <- NA
   remove <- as.data.frame(cbind(remove, id))
   for (i in 1:dim(df)[1]) {
     bad <- dbGetQuery(gallphen, str_interp("SELECT 1 FROM baddata WHERE obs_id = '${df$id[i]}'"))
-    exist <- dbGetQuery(gallphen, str_interp("SELECT 1 FROM observations WHERE pageURL = '${df$uri[i]}'"))
+    hyperlink <- df$uri[i]
+    inatid <- sub(".*/", "", hyperlink)
+    exist <- dbGetQuery(gallphen, str_interp("SELECT 1 FROM observations WHERE pageURL LIKE '%${inatid}%'"))
+    
     if (dim(bad)[1]!=0||dim(exist)[1]!=0) {
       remove$id[i] <- df$id[i]
     } 
@@ -1193,9 +1194,6 @@ doyLatPlot <- function(x, y) {
 
 # input a single observation ID (not URL or species code) to delete it from observations table and blacklist the id in baddata
 markBad <- function(code) {
-  library(DBI)
-  gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
-  
   # is the obs code already in the baddata table?
   check <- dbGetQuery(gallphen, str_interp("SELECT 1 FROM baddata WHERE obs_id = '${code}'"))
   
@@ -1222,8 +1220,6 @@ markBad <- function(code) {
 
 # input an inat species code to set the date updated for that species to the current date
 setUpdate <- function(code) {
-  library(DBI)
-  gallphen <- dbConnect(RSQLite::SQLite(), "gallphen.sqlite")
   date <- Sys.Date()
   count <- dbExecute(gallphen, str_interp("UPDATE specieshistory SET update_date = '${date}' WHERE species_id IN (SELECT species_id FROM species WHERE inatcode = '${code}')"))
   return(paste("Number of species update dates set to current date:", count))

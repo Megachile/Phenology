@@ -62,7 +62,7 @@ write.csv(observations, file = paste0(wd, "/speciesList/observations.csv"), row.
 
 # result <- observations %>% filter(phenophase %in% c("maturing", "perimature", "Adult")) %>% 
 #   group_by(binom) %>% filter(n()==2) %>% distinct(binom)
-# 
+
 # rsconnect::setAccountInfo(name='megachile', token='E0503725A47C8E1AA250F80A49C2A015', secret='vqQZJcHij1sJHt+8LtDwrCfLZURzoiSDyqzmXNdT')
 # rsconnect::deployApp('C:/Users/adam/Documents/GitHub/Phenology/doyCalc')
 # rsconnect::deployApp('C:/Users/adam/Documents/GitHub/Phenology/speciesList')
