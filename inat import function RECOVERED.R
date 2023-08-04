@@ -35,6 +35,7 @@ gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
 # prev <- read.csv(paste0(wd, "/USgridagdd.csv" ))
 # write.csv(eas, file = "phenogrid.csv", row.names = FALSE)
 eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
+ann <- get_annotation_codes()
 # eas <- eas[eas$latitude>30,]
 # eas <- eas[eas$latitude<48,]
 # eas <- eas[eas$latitude>22,]
@@ -46,7 +47,7 @@ eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 # eas[eas$doy>365,"acchours"] <- NA
 
 #input iNat code or GF code
-spcode <- "1088144"
+spcode <- "179372"
 
 #generate a URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -486,6 +487,13 @@ iNatCall <- function(url) {
   obs <- Filter(function(x)!all(is.na(x)),obs)
   return(as.data.frame(obs))
 }
+
+
+
+
+
+
+
 
 
 # checks to see if observations are in the baddata table or already in the observations table; outputs a new dataframe without those observations
