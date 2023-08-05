@@ -17,7 +17,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.inaturalist.org/observations*"],
+      "matches": ["https://www.inaturalist.org/observations/identify*"],
       "js": [ "axios.min.js", "content.js"],
       "run_at": "document_idle"
     }
