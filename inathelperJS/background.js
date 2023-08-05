@@ -105,10 +105,10 @@ async function getAccessToken() {
     if (request.action === 'makeApiCall') {
         console.log("Received 'makeApiCall' message from popup script. Using observation ID: " + observationId);
         getAccessToken().then(token => {
-            addObservationField(observationId, 5251, "unisexual", token)
+            addObservationField(observationId, request.fieldId, request.value, token)
                 .then(response => {
                     console.log(`Observation field added successfully. Response: ${JSON.stringify(response.data)}`);
-                    sendResponse({status: `Observation field added successfully to observation ${observationId}`, data: response.data});
+                    sendResponse({status: `${request.fieldId} successfully set to ${request.value} for observation ${observationId}`, data: response.data});
                 })
                 .catch(err => {
                     console.log(`Error in adding observation field: ${err}`);
