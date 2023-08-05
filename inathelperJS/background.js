@@ -7,10 +7,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'updateObservationId') {
         console.log("Received 'updateObservationId' message from content script. New observation ID: " + request.observationId);
         observationId = request.observationId;
-        sendResponse({status: 'success'});
+        sendResponse({status: 'observation ID updated'});
     } else {
-        console.log("Received unknown action: " + request.action);
-        sendResponse({status: 'error', errorMessage: 'Unknown action: ' + request.action});
+        return; 
     }
 });
    
@@ -109,13 +108,15 @@ async function getAccessToken() {
             addObservationField(observationId, 5251, "unisexual", token)
                 .then(response => {
                     console.log(`Observation field added successfully. Response: ${JSON.stringify(response.data)}`);
-                    sendResponse({status: "success", data: response.data});
+                    sendResponse({status: `Observation field added successfully to observation ${observationId}`, data: response.data});
                 })
                 .catch(err => {
                     console.log(`Error in adding observation field: ${err}`);
-                    sendResponse({status: "error", message: err.message});
+                    sendResponse({status: "Error in adding observation field", message: err.message});
                 });
         });
         return true; // To enable async sendResponse
+    } else {
+        return;
     }
 });

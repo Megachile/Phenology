@@ -70,9 +70,9 @@ let observer = new MutationObserver((mutationsList, observer) => {
                             },
                             function(response) {
                               if (chrome.runtime.lastError) {
-                                console.log(`Error sending message: ${chrome.runtime.lastError.message}`);
+                                console.log(`Error sending ID to background: ${chrome.runtime.lastError.message}`);
                               } else {
-                                console.log(`Message sent, response: ${JSON.stringify(response)}`);
+                                console.log(`ID sent to background, response: ${JSON.stringify(response)}`);
                               }
                             }
                           );
