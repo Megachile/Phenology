@@ -1,6 +1,17 @@
 console.log('Background script loaded');
 importScripts('axios.min.js');
 
+let accessToken = '';
+
+// Fetch the token at the startup
+getAccessToken().then(token => {
+    accessToken = token;
+    // Save the token in Chrome's storage
+    chrome.storage.local.set({accessToken: token}, function() {
+        console.log('Token is stored in Chrome storage');
+    });
+}).catch(err => console.error(err));
+
 let observationId = null;
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -27,8 +38,9 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     ["requestHeaders", "extraHeaders"]
   );
 
-// Function to get the access token
-async function getAccessToken() {
+  //get the access token
+  async function getAccessToken() {
+   
     const params = {
         client_id: 'e2RUzw_g08SfNA_XeckoECYgPu9g0FDefi4wQDbYXNE',
         client_secret: 'ecs1gccegsiALWnlohbctj_5MBRSCOt9-wI324D3qW8',
@@ -50,10 +62,12 @@ async function getAccessToken() {
         });
     
         const data = await response.json();
-    
+        console.log(data)
         if (response.ok) {
           console.log('Access token received:', data.access_token);
-          return data.access_token;
+          // Set accessToken and its expiration time
+          accessToken = data.access_token;
+          return accessToken;
         } else {
           console.error('Error response from server:', data);
           return null;
@@ -63,6 +77,7 @@ async function getAccessToken() {
         return null;
       }
     }
+
      
        function addObservationField(observationId, observationFieldId, value, token) {
         console.log('Adding observation field...');
@@ -100,23 +115,53 @@ async function getAccessToken() {
                 return {status: 'error', message: error.message};
             });
     }
+
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === 'makeApiCall') {
+            console.log("Received 'makeApiCall' message from popup script. Using observation ID: " + observationId);
+            
+            // Get the stored token
+            chrome.storage.local.get(['accessToken'], function(result) {
+                const token = result.accessToken;
+                
+                if (!token) {
+                    console.error('No access token found');
+                    return;
+                }
     
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'makeApiCall') {
-        console.log("Received 'makeApiCall' message from popup script. Using observation ID: " + observationId);
-        getAccessToken().then(token => {
-            addObservationField(observationId, request.fieldId, request.value, token)
-                .then(response => {
-                    console.log(`Observation field added successfully. Response: ${JSON.stringify(response.data)}`);
-                    sendResponse({status: `${request.fieldId} successfully set to ${request.value} for observation ${observationId}`, data: response.data});
-                })
-                .catch(err => {
-                    console.log(`Error in adding observation field: ${err}`);
-                    sendResponse({status: "Error in adding observation field", message: err.message});
-                });
-        });
-        return true; // To enable async sendResponse
-    } else {
-        return;
-    }
-});
+                addObservationField(observationId, request.fieldId, request.value, token)
+                    .then(response => {
+                        console.log(`Observation field added successfully. Response: ${JSON.stringify(response.data)}`);
+                        sendResponse({status: `${request.fieldId} successfully set to ${request.value} for observation ${observationId}`, data: response.data});
+                    })
+                    .catch(err => {
+                        console.log(`Error in adding observation field: ${err}`);
+                        sendResponse({status: "Error in adding observation field", message: err.message});
+                    });
+            });
+            
+            return true; // To enable async sendResponse
+        } else {
+            return;
+        }
+    });
+    
+//   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+//     if (request.action === 'makeApiCall') {
+//         console.log("Received 'makeApiCall' message from popup script. Using observation ID: " + observationId);
+//         getAccessToken().then(token => {
+//             addObservationField(observationId, request.fieldId, request.value, token)
+//                 .then(response => {
+//                     console.log(`Observation field added successfully. Response: ${JSON.stringify(response.data)}`);
+//                     sendResponse({status: `${request.fieldId} successfully set to ${request.value} for observation ${observationId}`, data: response.data});
+//                 })
+//                 .catch(err => {
+//                     console.log(`Error in adding observation field: ${err}`);
+//                     sendResponse({status: "Error in adding observation field", message: err.message});
+//                 });
+//         });
+//         return true; // To enable async sendResponse
+//     } else {
+//         return;
+//     }
+// });
