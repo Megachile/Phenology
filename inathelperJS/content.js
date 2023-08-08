@@ -1,6 +1,21 @@
 console.log('content.js has been loaded');
 
-// let apiCall = false; // Variable to store the state of whether to make API calls
+function generateRandomString() {
+    var array = new Uint32Array(28);
+    window.crypto.getRandomValues(array);
+    return Array.from(array, dec => ('0' + dec.toString(16)).substr(-2)).join('');
+}
+
+const codeVerifier = generateRandomString();
+console.log(codeVerifier)
+chrome.runtime.sendMessage({type: "CODE_VERIFIER", payload: codeVerifier}, (response) => {
+    if (chrome.runtime.lastError) {
+        console.log('Error in sending message:', chrome.runtime.lastError);
+    } else {
+        console.log('Message sent, response:', response);
+    }
+});
+
 let observationId = null; // Variable to store the current observation ID
 let lastObservationId = null; // Variable to store the last observation ID
 
@@ -71,24 +86,6 @@ addButton7.onclick = function() {
  buttonDiv.appendChild(addButton7);
  // Add the div to the body of the document
  document.body.appendChild(buttonDiv);   
-
-// I think not going to use this but if desired this will reload the current observation to show that the info has been added. 
-//It is inconvenient at speed though so undesirable for our intended use (speed)
-// function simulateNavigation() {
-//     let previousButton = document.querySelector('button[alt="Previous Observation"]');
-//     let nextButton = document.querySelector('button[alt="Next Observation"]');
-    
-//     if (previousButton && nextButton) {
-//         previousButton.click();
-
-//         // Use a timeout to wait for the page to load the previous observation
-//         setTimeout(() => {
-//             nextButton.click();
-//         }, 1);  // Adjust the delay as needed
-//     } else {
-//         console.log('Navigation buttons not found');
-//     }
-// }
 
 function addObservationField(fieldId, value) {
     // Send a message to the background script to make the API call

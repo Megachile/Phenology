@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "iNaturalist Gall Observation Field Tool",
   "version": "3.0",
-  "permissions": ["activeTab", "storage", "webRequest"],
-  "host_permissions": ["https://api.www.inaturalist.org/*"],
+  "permissions": ["activeTab", "storage", "webRequest","tabs"],
+  "host_permissions": ["https://api.www.inaturalist.org/*", "https://caiabpkbpfdelfbbhehgoakfbnfgbofj.chromium.app.org/*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
