@@ -1,5 +1,36 @@
 console.log('content.js has been loaded');
+// content.js
+chrome.runtime.sendMessage({ action: "contentScriptLoaded" });
 
+
+
+// Listen for messages from background
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('Message received in content:', message);
+
+    if (message.from === 'background' && message.subject === 'initMessage') {
+        console.log('Init message from background:', message.data);
+    }
+
+    if (message.from === 'background' && message.subject === 'helloContentResponse') {
+        console.log('Response from background:', message.data);
+    }
+});
+
+// Send an initial message to background
+chrome.runtime.sendMessage({ from: 'content', subject: 'helloBackground', data: 'Hello, Background!' });
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log("The error script received a message:", message);
+
+    if (message.action === 'showAlert') {
+        alert(message.text);
+    } else {
+        alert(`well this is awkward ~-~`);
+    }
+});
+
+           
 function generateRandomString() {
     var array = new Uint32Array(28);
     window.crypto.getRandomValues(array);
@@ -15,6 +46,8 @@ chrome.runtime.sendMessage({type: "CODE_VERIFIER", payload: codeVerifier}, (resp
         console.log('Message sent, response:', response);
     }
 });
+
+
 
 let observationId = null; // Variable to store the current observation ID
 let lastObservationId = null; // Variable to store the last observation ID
