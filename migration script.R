@@ -1,9 +1,11 @@
 library(tidyr)
+library(dplyr)
 library(sjmisc)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
-gfall <- dbConnect(RSQLite::SQLite(), "gallformersNew.sqlite")
+# update with current database backup file
+gfall <- dbConnect(RSQLite::SQLite(), "gallformers81723.sqlite")
 
 taxa <- dbGetQuery(gfall, "SELECT id, taxoncode, name FROM species")
 taxa <- dbGetQuery(gfall, "SELECT * FROM species
@@ -51,6 +53,9 @@ if (dim(observations)[1]>0){
 }
 
 #TBD tools to help manually update references would go here
+unique(observations$gall_id)
+# be aware that until the Tephritid data loss is fixed, Eurosta solidaginis (760) will show up as inconsistent; don't do anything about this
+
 
 #To append new taxa to the gallphen db
 new$inatcode <- NA
@@ -169,3 +174,4 @@ for (i in 1:dim(undescribed)[1]){
   print(dbGetQuery(gallphen, query))
 }
 
+#Congrats! Everything should be up to date now

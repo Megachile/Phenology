@@ -68,47 +68,78 @@ buttonDiv.style.zIndex = '10000'; // Ensure the div appears on top of other elem
 
 // Create the buttons
 let addButton1 = document.createElement('button');
-addButton1.innerText = "Add Generation: unisexual";
+addButton1.innerText = "Generation: unisexual";
 addButton1.onclick = function() {
     animateButton(this);
     addObservationField(5251, 'unisexual'); };
 
 let addButton2 = document.createElement('button');
-addButton2.innerText = "Add Generation: bisexual";
+addButton2.innerText = "Generation: bisexual";
 addButton2.onclick = function() { 
     animateButton(this);
     addObservationField(5251, 'bisexual'); };
 
 let addButton3 = document.createElement('button');
-addButton3.innerText = "Add Phenophase: developing";
+addButton3.innerText = "Phenophase: developing";
 addButton3.onclick = function() { 
     animateButton(this);
     addObservationField(15121, 'developing'); };
 
 let addButton4 = document.createElement('button');
-addButton4.innerText = "Add Phenophase: dormant";
+addButton4.innerText = "Phenophase: dormant";
 addButton4.onclick = function() { 
     animateButton(this);
     addObservationField(15121, 'dormant'); };
 
 let addButton5 = document.createElement('button');
-    addButton5.innerText = "Add Phenophase: maturing";
+    addButton5.innerText = "Phenophase: maturing";
     addButton5.onclick = function() { 
         animateButton(this);
         addObservationField(15121, 'maturing'); };
 
 let addButton6 = document.createElement('button');
-addButton6.innerText = "Add Phenophase: perimature";
+addButton6.innerText = "Phenophase: perimature";
 addButton6.onclick = function() { 
     animateButton(this);
     addObservationField(15121, 'perimature'); };
 
 let addButton7 = document.createElement('button');
-addButton7.innerText = "Add Phenophase: senescent";
+addButton7.innerText = "Phenophase: senescent";
 addButton7.onclick = function() { 
     animateButton(this);
     addObservationField(15121, 'senescent'); };
 
+
+      let addButton8 = document.createElement('button');
+      addButton8.innerText = `Add GF Code: `;
+      addButton8.onclick = function() { 
+          // Use inputBox.value directly here.
+          animateButton(this);
+          addObservationField(13979, inputBox.value); 
+      };
+
+      const inputBox = document.createElement('input');
+      inputBox.setAttribute('id', 'custom-extension-input');
+      inputBox.setAttribute('placeholder', 'Gallformers code');
+      inputBox.style.pointerEvents = 'auto';
+      inputBox.addEventListener('click', function(event) {
+        event.stopPropagation();
+        setTimeout(() => this.focus(), 50);
+    });
+    inputBox.setAttribute('tabindex', '0');
+    let testButton = document.createElement('button');
+testButton.innerText = "Test Focus";
+testButton.onclick = function() {
+    inputBox.focus();
+};
+buttonDiv.appendChild(testButton);
+            // Listen for changes in the inputBox and update the button text.
+    inputBox.addEventListener('input', function() {
+        addButton8.innerText = `Add GF Code: ${inputBox.value}`;
+    });
+
+
+    
  // Add the buttons to the div
  buttonDiv.appendChild(addButton1);
  buttonDiv.appendChild(addButton2);
@@ -117,7 +148,8 @@ addButton7.onclick = function() {
  buttonDiv.appendChild(addButton5);
  buttonDiv.appendChild(addButton6);
  buttonDiv.appendChild(addButton7);
- // Add the div to the body of the document
+ buttonDiv.appendChild(addButton8);
+ buttonDiv.appendChild(inputBox);
  document.body.appendChild(buttonDiv);   
 
 function addObservationField(fieldId, value) {
@@ -134,6 +166,13 @@ function addObservationField(fieldId, value) {
         }
     );
 }
+
+
+
+
+
+
+
 
 // Function to generate the API URL
 function getApiRequestUrl() {
