@@ -109,6 +109,21 @@ addButton7.onclick = function() {
     animateButton(this);
     addObservationField(15121, 'senescent'); };
 
+    let addButton9 = document.createElement('button');
+    addButton9.innerText = `Rearing: viable`;
+    addButton9.onclick = function() { 
+        // Use inputBox.value directly here.
+        animateButton(this);
+        addObservationField(15215, 'viable'); 
+    };
+
+    let addButton11 = document.createElement('button');
+    addButton11.innerText = `Rearing: pending`;
+    addButton11.onclick = function() { 
+        // Use inputBox.value directly here.
+        animateButton(this);
+        addObservationField(15215, 'pending'); 
+    };
 
       let addButton8 = document.createElement('button');
       addButton8.innerText = `Add GF Code: `;
@@ -121,25 +136,17 @@ addButton7.onclick = function() {
       const inputBox = document.createElement('input');
       inputBox.setAttribute('id', 'custom-extension-input');
       inputBox.setAttribute('placeholder', 'Gallformers code');
-      inputBox.style.pointerEvents = 'auto';
-      inputBox.addEventListener('click', function(event) {
-        event.stopPropagation();
-        setTimeout(() => this.focus(), 50);
-    });
-    inputBox.setAttribute('tabindex', '0');
-    let testButton = document.createElement('button');
-testButton.innerText = "Test Focus";
-testButton.onclick = function() {
-    inputBox.focus();
-};
-buttonDiv.appendChild(testButton);
-            // Listen for changes in the inputBox and update the button text.
+        // Listen for changes in the inputBox and update the button text.
     inputBox.addEventListener('input', function() {
         addButton8.innerText = `Add GF Code: ${inputBox.value}`;
     });
+      
+    //    let addButton10 = document.createElement('button');
+    //   addButton10.innerText = 'Dead female';
+    // need to write annotation function
+    //   };
 
 
-    
  // Add the buttons to the div
  buttonDiv.appendChild(addButton1);
  buttonDiv.appendChild(addButton2);
@@ -148,7 +155,10 @@ buttonDiv.appendChild(testButton);
  buttonDiv.appendChild(addButton5);
  buttonDiv.appendChild(addButton6);
  buttonDiv.appendChild(addButton7);
- buttonDiv.appendChild(addButton8);
+ buttonDiv.appendChild(addButton9);
+//  buttonDiv.appendChild(addButton10); 
+ buttonDiv.appendChild(addButton11); 
+ buttonDiv.appendChild(addButton8); 
  buttonDiv.appendChild(inputBox);
  document.body.appendChild(buttonDiv);   
 

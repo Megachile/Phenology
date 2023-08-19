@@ -1,0 +1,170 @@
+"","site","latitude","longitude","state","country","lat","long"
+"1","Evanston",NA,NA,"IL","USA",42.0447388,-87.6930459
+"2","Cottonwood",NA,NA,"CA","USA",40.3857161,-122.2808401
+"3","Alexandria",NA,NA,"VA","USA",38.8051095,-77.0470229
+"4","Clarendon",NA,NA,"VA","USA",38.8857615,-77.0969711
+"5","Fort Sheridan",NA,NA,"IL","USA",NA,NA
+"6","Chicago",NA,NA,"IL","USA",41.8755616,-87.6244212
+"7","Moline",NA,NA,"IL","USA",41.5058344,-90.5136642
+"8","Washington",NA,NA,"DC","USA",38.8950368,-77.0365427
+"9","Falls Church",NA,NA,"VA","USA",38.882334,-77.1710914
+"10","Chesterton",NA,NA,"IN","USA",41.6105938,-87.0641992
+"11","Wilmette",NA,NA,"IL","USA",42.0757315,-87.7193768
+"12","Holland",NA,NA,"OR","USA",42.1276157,-123.5389529
+"13","Hope",NA,NA,"IN","USA",39.303459,-85.7708349
+"14","Medina",NA,NA,"NY","USA",43.2202828,-78.3866445
+"15","Willow Springs",NA,NA,"IL","USA",41.7402308,-87.8586963
+"16","Ravinia",NA,NA,"IL","USA",42.1636368,-87.7870094
+"17","Cherrydale",NA,NA,"VA","USA",37.6259777,-77.3247012
+"18","Chevy Chase",NA,NA,"MD","USA",38.9813699,-77.0849245
+"19","Blue Canyon",NA,NA,"NM","USA",NA,NA
+"20","Nogal Canyon",NA,NA,"NM","USA",NA,NA
+"21","Hackberry",NA,NA,"AZ","USA",35.3691614,-113.7271643
+"22","Patagonia",NA,NA,"AZ","USA",31.54324,-110.747688663846
+"23","Santa Catalina Mountains",NA,NA,"AZ","USA",NA,NA
+"24","Bear Canyon",NA,NA,"AZ","USA",NA,NA
+"25","Chiricahua Mountains",NA,NA,"AZ","USA",NA,NA
+"26","Tijeras",NA,NA,"NM","USA",35.0796355,-106.3879441
+"27","Prescott",NA,NA,"AZ","USA",34.5399962,-112.468761
+"28","Lakeport",NA,NA,"CA","USA",39.0429506,-122.915829
+"29","Stanford University",NA,NA,"CA","USA",NA,NA
+"30","Paso Robles",NA,NA,"CA","USA",35.6267654,-120.6912456
+"31","Jolon",NA,NA,"CA","USA",35.9711095,-121.1749312
+"32","Huachucas",NA,NA,"AZ","USA",NA,NA
+"33","Garden of the Gods",NA,NA,"CO","USA",NA,NA
+"34","Wetmore",NA,NA,"CO","USA",39.63333,-95.811376
+"35","La Veta",NA,NA,"CO","USA",37.5050118,-105.0077747
+"36","East Falls Church",NA,NA,"VA","USA",38.887334,-77.1544242
+"37","Ironton",NA,NA,"MO","USA",37.5972724,-90.6273444
+"38","Austin",NA,NA,"TX","USA",30.2711286,-97.7436995
+"39","Boerne",NA,NA,"TX","USA",29.7946641,-98.7319703
+"40","Hoxie",NA,NA,"AR","USA",36.0504339,-90.9750717
+"41","Waukegan",NA,NA,"IL","USA",42.3636331,-87.8447938
+"42","Sequoia National Park",NA,NA,"CA","USA",NA,NA
+"43","Santa Anita",NA,NA,"CA","USA",NA,NA
+"44","Ojai",NA,NA,"CA","USA",34.4480495,-119.242889
+"45","Winnetka",NA,NA,"IL","USA",42.1080703,-87.7365286
+"46","Jacksonville",NA,NA,"FL","USA",30.3321838,-81.655651
+"47","Bisbee",NA,NA,"AZ","USA",31.4481547,-109.928408
+"48","Oracle",NA,NA,"AZ","USA",32.6099702,-110.7651843
+"49","Patagonia Mountains",NA,NA,"AZ","USA",NA,NA
+"50","Toronto",NA,NA,"ON","Canada",43.6534817,-79.3839347
+"51","Rosslyn",NA,NA,"VA","USA",38.8967784,-77.0724777
+"52","Las Vegas Hot Springs",NA,NA,"NM","USA",NA,NA
+"53","Shoemaker",NA,NA,"NM","USA",35.8164293,-104.8763867
+"54","Magdalena",NA,NA,"NM","USA",34.1169903,-107.2433729
+"55","",NA,NA,"VA","USA",37.1232245,-78.4927721
+"56","Truckee",NA,NA,"CA","USA",39.327962,-120.1832533
+"57","Tahoe City",NA,NA,"CA","USA",39.1689372,-120.143478
+"58","Pine Crest",NA,NA,"CA","USA",NA,NA
+"59","Canyonville",NA,NA,"CA","USA",NA,NA
+"60","Victoria",NA,NA,"BC","Canada",48.4283182,-123.3649533
+"61","Muskoka",NA,NA,"ON","Canada",45.1506666,-79.3440678213544
+"62","Poplar Bluff",NA,NA,"MO","USA",36.7568327,-90.3957115
+"63","Sandia Mountains",NA,NA,"NM","USA",NA,NA
+"64","Trinidad",NA,NA,"CO","USA",37.169397,-104.5005411
+"65","Palestine",NA,NA,"TX","USA",31.7621153,-95.6307891
+"66","Daytona",NA,NA,"FL","USA",29.2108147,-81.0228331
+"67","Mule Mountains",NA,NA,"AZ","USA",NA,NA
+"68","Fort Lee",NA,NA,"NJ","USA",40.8509333,-73.9701382
+"69","Apple Orchard Camp",NA,NA,"VA","USA",NA,NA
+"70","Camp Baldy",NA,NA,"CA","USA",NA,NA
+"71","Idyllwild",NA,NA,"CA","USA",33.7402774,-116.7189424
+"72","San Jose",NA,NA,"CA","USA",37.3361663,-121.890591
+"73","Pasadena",NA,NA,"CA","USA",34.1476452,-118.1444779
+"74","Piru",NA,NA,"CA","USA",34.4156137,-118.7927456
+"75","Ukiah",NA,NA,"CA","USA",39.1501662,-123.2077861
+"76","Santa Rosa",NA,NA,"CA","USA",38.4404925,-122.7141049
+"77","Santa Ana",NA,NA,"CA","USA",33.7494951,-117.8732213
+"78","Kern County",NA,NA,"CA","USA",NA,NA
+"79","Liebre Summit",NA,NA,"CA","USA",NA,NA
+"80","Lebec",NA,NA,"CA","USA",34.8416435,-118.8648189
+"81","McLeod",NA,NA,"OR","USA",42.6608098,-122.6899744
+"82","Texarkana",NA,NA,"AR","USA",33.4254259,-94.0430937
+"83","St Louis",NA,NA,"MO","USA",38.6319657,-90.2428756
+"84","Libertyville",NA,NA,"IL","USA",42.2830786,-87.9531303
+"85","Glen Ellyn",NA,NA,"IL","USA",41.8775293,-88.0670118
+"86","Fountaindale",NA,NA,"IL","USA",NA,NA
+"87","Syracuse",NA,NA,"NY","USA",43.0481221,-76.1474244
+"88","Glencoe",NA,NA,"IL","USA",42.1350268,-87.7581188
+"89","Highland park",NA,NA,"IL","USA",42.1816919,-87.8003438
+"90","Chico",NA,NA,"CA","USA",39.7284945,-121.8374777
+"91","Bartlett Springs",NA,NA,"CA","USA",39.1837784,-122.7044335
+"92","Black Mountain",NA,NA,"CA","USA",NA,NA
+"93","Ashland",NA,NA,"OR","USA",42.1972487,-122.7153995
+"94","Esperara Canyon",NA,NA,"AZ","USA",NA,NA
+"95","Santa Rita Mountains",NA,NA,"AZ","USA",NA,NA
+"96","Tumacacori Mountains",NA,NA,"AZ","USA",NA,NA
+"97","Stockton",NA,NA,"CA","USA",37.9577016,-121.2907796
+"98","Palo Alto",NA,NA,"CA","USA",37.4443293,-122.1598465
+"99","San Bernardino Mountains",NA,NA,"CA","USA",NA,NA
+"100","San Jacinto Mountains",NA,NA,"CA","USA",NA,NA
+"101","Santa Ana Range",NA,NA,"CA","USA",NA,NA
+"102","Boulevard",NA,NA,"CA","USA",32.6636712,-116.273629
+"103","Denton",NA,NA,"TX","USA",33.2150386,-97.1330516
+"104","Mount Tamalpais",NA,NA,"CA","USA",NA,NA
+"105","New Lenox",NA,NA,"IL","USA",41.5119761,-87.9656098
+"106","Kyburz",NA,NA,"CA","USA",38.7746298,-120.2968596
+"107","Paraiso Spring",NA,NA,"CA","USA",NA,NA
+"108","Lyme",NA,NA,"CT","USA",41.3910989,-72.3511531300714
+"109","Harrisburg",NA,NA,"PA","USA",40.2663107,-76.8861122
+"110","Paradise Key",NA,NA,"FL","USA",25.3734486,-80.6064498
+"111","Williams",NA,NA,"AZ","USA",35.2503394,-112.1869481
+"112","Waterbury",NA,NA,"CT","USA",41.5538091,-73.0438362
+"113","Richmond",NA,NA,"TX","USA",29.5821811,-95.7607832
+"114","Billy's Island",NA,NA,"FL","USA",NA,NA
+"115","Arlington",NA,NA,"TX","USA",32.7355816,-97.1071186
+"116","Marianna ",NA,NA,"FL","USA",30.7743596,-85.2268735
+"117","Watkins Glen",NA,NA,"NY","USA",42.3810555,-76.8705777
+"118","North East",NA,NA,"PA","USA",42.2150373,-79.8358415
+"119","Plummer Island",NA,NA,"MD","USA",NA,NA
+"120","Waterman Canyon",NA,NA,"CA","USA",NA,NA
+"121","California Redwood Park",NA,NA,"CA","USA",NA,NA
+"122","Tijeras Canyon",NA,NA,"NM","USA",NA,NA
+"123","Ithaca",NA,NA,"NY","USA",42.43717945,-76.5483623000397
+"124","New York City",NA,NA,"NY","USA",40.7127281,-74.0060152
+"125","Davis",NA,NA,"CA","USA",38.545379,-121.744583
+"126","Sacramento",NA,NA,"CA","USA",38.5810606,-121.493895
+"127","Descanso",NA,NA,"CA","USA",32.8528287,-116.6158525
+"128","Kerrville",NA,NA,"TX","USA",30.0474688,-99.1400207
+"129","Blacksburg",NA,NA,"VA","USA",37.2296566,-80.4136767
+"130","Palos Park",NA,NA,"IL","USA",41.6673636,-87.8304952
+"131","Lassen County",NA,NA,"CA","USA",NA,NA
+"132","Big Basin Redwood Park",NA,NA,"CA","USA",NA,NA
+"133","Savannah",NA,NA,"GA","USA",32.0564572,-81.0951271
+"134","Hugo",NA,NA,"OK","USA",34.0106208,-95.513122
+"135","Trinity",NA,NA,"TX","USA",30.9451862,-95.375496
+"136","Miller",NA,NA,"IN","USA",39.6206019,-86.2819349
+"137","East Hampton",NA,NA,"NY","USA",40.9633868,-72.1847598
+"138","Halifax",NA,NA,"NS","Canada",44.648618,-63.5859487
+"139","Kanawha Station",NA,NA,"WV","USA",NA,NA
+"140","College Station",NA,NA,"TX","USA",30.5955289,-96.3071042
+"141","Bedford County",NA,NA,"VA","USA",NA,NA
+"142","Dothan",NA,NA,"AL","USA",31.2237434,-85.3933906
+"143","Lake City",NA,NA,"FL","USA",30.1894252,-82.6394803
+"144","Gainesville",NA,NA,"FL","USA",29.6519684,-82.3249846
+"145","Waterport",NA,NA,"NY","USA",43.3167135,-78.2520383
+"146","Porter",NA,NA,"IN","USA",41.6156584,-87.0741735
+"147","Ottawa",NA,NA,"ON","Canada",45.4208777,-75.6901106
+"148","Bluemont",NA,NA,"VA","USA",39.1112168,-77.8338839
+"149","Farmingdale",NA,NA,"NY","USA",40.7328811,-73.4458564
+"150","Madison",NA,NA,"WI","USA",43.074761,-89.3837613
+"151","Cadet",NA,NA,"MO","USA",37.9875505,-90.6884628
+"152","Clinton",NA,NA,"IL","USA",40.152645,-88.9607122
+"153","Hillsboro",NA,NA,"NM","USA",32.9209072,-107.566974
+"154","Las Vegas",NA,NA,"NM","USA",35.5939325,-105.223896
+"155","Placerville",NA,NA,"CA","USA",38.7296252,-120.798546
+"156","Tenafly",NA,NA,"NJ","USA",40.9253766,-73.9629154
+"157","Rock Island",NA,NA,"IL","USA",41.5095446,-90.5792031
+"158","College Park",NA,NA,"MD","USA",38.980666,-76.9369189
+"159","Fairfax County",NA,NA,"VA","USA",NA,NA
+"160","Grimsby",NA,NA,"ON","Canada",43.1931881,-79.5606834
+"161","Albany",NA,NA,"OR","USA",44.6365071,-123.1059324
+"162","Glen View",NA,NA,"IL","USA",NA,NA
+"163","Rexford",NA,NA,"KS","USA",39.471671,-100.743482
+"164","Valley",NA,NA,"NE","USA",41.312758,-96.3459776
+"165","Flagstaff",NA,NA,"AZ","USA",35.1987522,-111.6518229
+"166","Dune Park",NA,NA,"IN","USA",NA,NA
+"167","Minneapolis",NA,NA,"MN","USA",44.9772995,-93.2654692
+"168","Hackensack",NA,NA,"NJ","USA",40.8871438,-74.0410865
+"169","Flatbush",NA,NA,"NY","USA",40.6520481,-73.959027
