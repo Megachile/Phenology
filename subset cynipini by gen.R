@@ -44,6 +44,8 @@ remove_genera <- c("Periclistus", "Diastrophus", "Diplolepis", "Liposthenes",
 
 # Drop rows not in cynipini
 cynipini_species <- subset(cynipid_species_details, !(genus %in% remove_genera))
+# Drop Amphibolips confluenta because we think the generation is wrong
+cynipini_species <- subset(cynipini_species, species_id != 572)
 
 # Extract species that are in both generations
 both_generations <- cynipini_species[cynipini_species$inatcode %in% 

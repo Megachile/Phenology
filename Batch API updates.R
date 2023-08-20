@@ -2,6 +2,8 @@
 library(httr)
 library(beepr) # this beeps when the run is done
 library(jsonlite)
+library(dplyr)
+library(data.table)
 
 # testurl <- "https://api.inaturalist.org/v1/observations?quality_grade=any&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=1374476"
 # testurl <- "https://api.inaturalist.org/v1/observations/173533172"
@@ -249,16 +251,9 @@ for(obsid in missing$id){
 }
 beep()
 
-
-# Apply in a batch to many species at once 
-# (ensure they're all the same generation and the correct one is selected!)
-
-#agamic first -- go to subset cynipini by gen to make these dataframes listing the inatcodes for each generation
-is.data.frame(only_agamic)
-
-
 # Function to process a specid
 process_specid <- function(specid,generation) {
+  site <- "https://api.inaturalist.org"
   # Create the URL
   url <- urlMakerRG(specid)
   
@@ -279,8 +274,19 @@ process_specid <- function(specid,generation) {
   }
 }
 
-# Apply the function to each specid of only_sexgen
-mapply(process_specid, only_sexgen$inatcode, 'bisexual')
+
+# Apply in a batch to many species at once 
+# (ensure they're all the same generation and the correct one is selected!)
+
+#agamic first -- go to subset cynipini by gen to make these dataframes listing the inatcodes for each generation
+is.data.frame(only_agamic)
 
 # Apply the function to each specid of only_agamic
 mapply(process_specid, only_agamic$inatcode, 'unisexual')
+
+is.data.frame(only_sexgen)
+
+# Apply the function to each specid of only_sexgen
+mapply(process_specid, only_sexgen$inatcode, 'bisexual')
+
+
