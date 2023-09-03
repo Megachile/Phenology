@@ -78,31 +78,53 @@ get_annotation_codes <- function() {
   return(ann)
 }
 
+fetch_data <- function(url) {
+  tryCatch(fromJSON(url),
+           error = function(e) {
+             warning("Error while fetching data: ", e$message)
+             return(NULL)
+           })
+}
+
 get_observation_pages <- function(url) {
   keep <- c("id", "observed_on","taxon.name", "location", "uri","ofvs","annotations","place_ids")
-  nobs <- NULL
-  while(is.null(nobs)){
-    nobs <- tryCatch(fromJSON(url),
-                     error = function(e)
-                       return(NULL))
-    Sys.sleep(1)}
-  npages <- ceiling(nobs$total_results / 200)
-  xout <- flatten(nobs$results)
-  xout <- xout[,keep]
-  x <- NULL
-  if (npages>1){
+  nobs <- fetch_data(url)
+
+  # Check for valid nobs data
+  if (!is.null(nobs) && !is.null(nobs$total_results) && nobs$total_results > 0 && !is.null(nobs$results) && length(nobs$results) > 0) {
+    npages <- ceiling(nobs$total_results / 200)
+    
+    xout <- flatten(nobs$results)
+    
+    if (all(keep %in% names(xout))) {
+      xout <- xout[, keep]
+    } else {
+      warning("Some columns specified in 'keep' are missing in the data.")
+    }
+  } else {
+    warning("iNat has no matching records for this species.")
+    xout <- NULL # Default value
+    npages <- 0 # Ensure that the following loop doesn't run
+  }
+  
+  if (npages > 1) {
     for(i in 2:npages) {
       page <- paste0("&page=", i)
-      while (is.null(x)){
-        x <- tryCatch(fromJSON(gsub("&page=1", page, url)),
-                      error = function(e)
-                        return(NULL))
-        Sys.sleep(1)}
-      x <- flatten(x$results)
-      x1 <- x[,keep]
-      xout <- rbind(xout,x1)
+      
       x <- NULL
-    }}
+      
+      while(is.null(x)){
+        Sys.sleep(1)
+        x <- fetch_data(gsub("&page=1", page, url))
+      }
+      
+      if(!is.null(x) && !is.null(x$results)) {
+        x <- flatten(x$results)
+        x1 <- x[, keep]
+        xout <- rbind(xout, x1)
+      }
+    }
+  }
   return(xout)
 }
 
@@ -164,8 +186,6 @@ extract_observation_fields <- function(vals, ann) {
     return(obs)
   }
 
-
-
 cast_and_concatenate <- function(obs) {
   setDT(obs)
   sum(is.na(obs$id))
@@ -198,6 +218,11 @@ cast_and_concatenate <- function(obs) {
 
 iNatCall_refactored <- function(url) {
   xout = get_observation_pages(url)
+  if (is.null(xout)) {
+    warning("xout is NULL. Exiting iNatCall_refactored.")
+    return(NULL)
+  }
+  
   vals = extract_annotations(xout, ann)
   obs = extract_observation_fields(vals, ann)
   obs = cast_and_concatenate(obs)
@@ -232,7 +257,7 @@ urlMakerRG <- function(code) {
 
 
 #add to one taxon at a time (can be genus or species etc). Add the inat taxon code
-specid <- 
+specid <- 1136826
 
 url <- urlMakerRG(specid)
 
@@ -252,13 +277,21 @@ for(obsid in missing$id){
 beep()
 
 # Function to process a specid
-process_specid <- function(specid,generation) {
+process_specid <- function(specid, generation) {
   site <- "https://api.inaturalist.org"
+  
   # Create the URL
   url <- urlMakerRG(specid)
   
   # Get the observations
   obs <- iNatCall_refactored(url)
+  
+  # Check if obs is NULL
+  if (is.null(obs)) {
+    warning(sprintf("No observations fetched for specid: %s. Skipping processing.", specid))
+    return(NULL)  # You can choose to return NULL or some other informative result.
+  }
+  
   print(obs$taxon.name[1])
   
   # Check for missing 'Gall_generation' observation fields
@@ -275,15 +308,18 @@ process_specid <- function(specid,generation) {
 }
 
 
+process_specid(1136826, 'bisexual')
+
 # Apply in a batch to many species at once 
 # (ensure they're all the same generation and the correct one is selected!)
 
-#agamic first -- go to subset cynipini by gen to make these dataframes listing the inatcodes for each generation
+#agamic -- use "subset cynipini by gen.R" to make these dataframes listing the inatcodes for each generation
 is.data.frame(only_agamic)
 
 # Apply the function to each specid of only_agamic
 mapply(process_specid, only_agamic$inatcode, 'unisexual')
 
+#sexgen
 is.data.frame(only_sexgen)
 
 # Apply the function to each specid of only_sexgen
