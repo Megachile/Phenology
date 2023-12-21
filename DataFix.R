@@ -12,13 +12,20 @@ setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
 
 # sen <- input[which(input$phenophase=="dormant"&input$doy>20&input$doy<60),]
+query <- paste0("WHERE gall_id = '3720' AND host_id = '334' ")
 # query <- paste0("WHERE obs_id IN (", paste(sprintf("'%s'",sen$obs_id), collapse = ","),")")
-query <- paste0("WHERE pageURL ='https://www.inaturalist.org/observations/72045978'")
-# query <- paste0("WHERE obs_id = '20257'")
+query <- paste0("WHERE sourceURL LIKE '%source/396%'")
+query <- paste0("WHERE obs_id = '31270'")
 
-select <- paste0("SELECT * FROM observations ", query)
+# look up ID codes. 
+# The gf_id is what you see in the URL when you search a species on gallformers. The species_id is what the pheno db uses
+select <- paste0("SELECT species_id from species WHERE gf_id = '3823'")
 dbGetQuery(gallphen, select)
-# update <- paste0("UPDATE observations SET phenophase = 'dormant'", query)
+
+#look up observations
+select <- paste0("SELECT * FROM observations ", query)
+data <- dbGetQuery(gallphen, select)
+# update <- paste0("UPDATE observations SET host_id = '334'", query)
 # dbExecute(gallphen, update)
 # delete <- paste0("DELETE FROM observations ", query)
 # dbExecute(gallphen, delete)

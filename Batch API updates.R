@@ -4,6 +4,8 @@ library(beepr) # this beeps when the run is done
 library(jsonlite)
 library(dplyr)
 library(data.table)
+library(stringr)
+library(tidyr)
 
 # testurl <- "https://api.inaturalist.org/v1/observations?quality_grade=any&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=1374476"
 # testurl <- "https://api.inaturalist.org/v1/observations/173533172"
@@ -232,7 +234,7 @@ iNatCall_refactored <- function(url) {
 urlMakerRG <- function(code) {
   url <-
     str_interp(
-      "https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=${code}"
+      "https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&without_field=Gall%20generation&order=desc&order_by=created_at&taxon_id=${code}"
     )  
   return(url)
 }
@@ -257,14 +259,13 @@ urlMakerRG <- function(code) {
 
 
 #add to one taxon at a time (can be genus or species etc). Add the inat taxon code
-specid <- 1136826
+specid <- 143877
 
 url <- urlMakerRG(specid)
-
-obs <- iNatCall_refactored(url)
+site <- "https://api.inaturalist.org"
+missing <- iNatCall_refactored(url)
 beep()
-print(obs$taxon.name[1])
-missing <- obs[obs$Gall_generation=="",]
+print(missing$taxon.name[1])
 cat("Adding these observation fields will take approximately", dim(missing)[1]/3600, "hours")
 
 for(obsid in missing$id){

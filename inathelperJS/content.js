@@ -177,13 +177,6 @@ function addObservationField(fieldId, value) {
     );
 }
 
-
-
-
-
-
-
-
 // Function to generate the API URL
 function getApiRequestUrl() {
     // Check if observationId is not null

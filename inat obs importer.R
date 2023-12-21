@@ -36,8 +36,8 @@ url <- urlMaker(spcode)
 ## limit to only observations with plant phenology (for plant observations only)
 # url <- paste0(url, "&term_id=12")
 
-## create an API call for observations from a specific user (current settings get Needs ID and RG of any cynipini observations)
-url <- "https://api.inaturalist.org/v1/observations?quality_grade=any&user_id=leah_r&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775"
+## create an API call for observations from a specific user (current settings get RG of any cynipini observations)
+url <- "https://api.inaturalist.org/v1/observations?quality_grade=research&user_id=leah_r&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775"
 
 ## iNat API call to pull a dataframe of all matching observations. This iterates in batches of 200 at a time. 
 obs <- iNatCall(url)
@@ -69,7 +69,10 @@ prob <- "73694224"
 # new[new$id==prob,"Gall_phenophase"] <- "dormant"
 # new[new$id==prob,"Gall_generation"] <- "unisexual"
 # new[new$id==prob,"Host_Plant_ID"] <- "49006"
-# new[new$uri==prob,"taxon.name"] <- "Acraspis villosa"
+# new[new$uri==prob,"taxon.name"] <- "Phylloteras poculum"
+new <- new[!(new$taxon.name == 'Phylloteras poculum'), ]
+
+
 
 # creates a *new* dataframe with only rows missing some key data
 missing <- findMissing(new)
@@ -92,6 +95,9 @@ new = new[!(new$id %in% missing$id), ]
 # In case you need to add a new host to the database (also works for galls fwiw)
 # dbExecute(gallphen, "UPDATE species SET inatcode = '119269'
 #            WHERE genus = 'Quercus' AND species = 'stellata'")
+
+# In case you want to just print the new records and edit them manually in a csv (then you can use the lit import function to add them to the db)
+write.csv(new, file = "newrecords.csv", row.names = FALSE)
 
 #remove and add columns to match database table
 # WARNING note that as currently written, prepappend will drop any rows where the 
