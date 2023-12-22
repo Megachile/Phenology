@@ -12,8 +12,6 @@ library(DT)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
-observations <- dbGetQuery(gallphen,"SELECT * FROM observations")
-colnames(observations)
 
 register_google(key = "AIzaSyDoIENLQOpwK4CumSUREYM3vWyEwq3LgKg")
 
