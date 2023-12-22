@@ -1,11 +1,12 @@
 library(tidyr)
 library(dplyr)
 library(sjmisc)
+library(DBI)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
 # update with current database backup file
-gfall <- dbConnect(RSQLite::SQLite(), "gallformers81723.sqlite")
+gfall <- dbConnect(RSQLite::SQLite(), "gallformers122223.sqlite")
 
 taxa <- dbGetQuery(gfall, "SELECT id, taxoncode, name FROM species")
 taxa <- dbGetQuery(gfall, "SELECT * FROM species
@@ -175,3 +176,4 @@ for (i in 1:dim(undescribed)[1]){
 }
 
 #Congrats! Everything should be up to date now
+
