@@ -172,5 +172,8 @@ site_with_coords <- standardize_columns(site_with_coords, full_columns)
 # Recombine dataframes
 combined_df <- rbind(no_site_with_coords, site_no_coords, site_with_coords)
 
+combined_df <- seasonIndex(combined_df)
+combined_df <- acchours(combined_df)
+
 #append to table
 # dbAppendTable(gallphen, "observations",combined_df)

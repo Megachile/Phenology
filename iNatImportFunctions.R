@@ -289,10 +289,175 @@ checkHost <- function(df){
   return(hosts)
 }
 
-x <- new
 # this function renames columns and adds columns as needed go from the output of the iNat export to the input to the database.  
 # Only works if column inputs are not altered
-PrepAppend <- function(x){
+
+#this is the refactored version
+clean_and_transform <- function(df) {
+  df$id <- NULL
+  names(df)[names(df) == "observed_on"] <- "date"
+  df$latitude <- as.numeric(df$latitude)
+  df$longitude <- as.numeric(df$longitude)
+  names(df)[names(df) == "uri"] <- "pageURL"
+  names(df)[names(df) == "Life_Stage"] <- "lifestage"
+  names(df)[names(df) == "Rearing_viability"] <- "viability"
+  df$Evidence_of_Presence <- NULL
+  df$site <- NA
+  df$state <- NA
+  df$sourceURL <- "inaturalist.org"
+  
+  # Handle NAs
+  cols_to_check <- c("lifestage", "country", "doy", "AGDD32", "AGDD50", "yearend32", "yearend50", "percent32", "percent50", "viability")
+  for (col in cols_to_check) {
+    if (is.null(df[[col]])) {
+      df[[col]] <- NA
+    }
+  }
+  
+  # Handle 'doy' specifically
+  if (is.null(df$doy)) {
+    df$doy <- yday(df$date)
+  }
+  
+  return(df)
+}
+
+separate_taxon_name <- function(df) {
+  df <- df %>% separate(taxon.name, c("genus", "species"), remove = TRUE, extra = "drop")
+  return(df)
+}
+
+assign_host_id_verbose <- function(df, gallphen) {
+  unique_host_ids <- unique(df$Host_Plant_ID[!is.na(df$Host_Plant_ID)])
+  host_id_results <- list()
+  host_to_species_map <- list()
+  
+  # Initialize host_to_species_map
+  for (host_id in unique_host_ids) {
+    host_to_species_map[[host_id]] <- 0
+  }
+  
+  # Query database for unique Host_Plant_IDs
+  for (host_id in unique_host_ids) {
+    if (numbers_only(host_id)) {
+      query <- str_interp("SELECT species_id, genus, species FROM species WHERE inatcode = '${host_id}'")
+    } else {
+      query <- str_interp("SELECT species_id, genus, species FROM species WHERE inatcode = (SELECT id FROM commonnames WHERE vernacularName LIKE '%${host_id}%')")
+    }
+    result <- dbGetQuery(gallphen, query)
+    
+    if (nrow(result) == 0) {
+      message("Missing counterpart in DB for Host_Plant_ID: ", host_id)
+      next
+    }
+    
+    species_name <- paste(result$genus, result$species)
+    host_id_results[[host_id]] <- list("species_id" = result$species_id[1], "species_name" = species_name)
+  }
+  
+  # Assign host_id values to the dataframe and update host_to_species_map
+  df$host_id <- NA
+  for (i in 1:nrow(df)) {
+    current_host_id <- df$Host_Plant_ID[i]
+    if (!is.na(current_host_id)) {
+      if (!is.null(host_id_results[[current_host_id]])) {
+        df$host_id[i] <- host_id_results[[current_host_id]]$species_id
+        host_to_species_map[[current_host_id]] <- host_to_species_map[[current_host_id]] + 1
+      } else {
+        if (is.null(host_to_species_map[[current_host_id]])) {
+          host_to_species_map[[current_host_id]] <- 1
+        } else {
+          host_to_species_map[[current_host_id]] <- host_to_species_map[[current_host_id]] + 1
+        }
+      }
+    }
+  }
+  
+  # Verbose output for species count, skipping unknowns
+  for (host_id in names(host_to_species_map)) {
+    if (!is.null(host_id_results[[host_id]]) && host_id_results[[host_id]]$species_name != "Unknown") {
+      species_name <- host_id_results[[host_id]]$species_name
+      message("Host_Plant_ID: ", host_id, " -> Species: ", species_name, " (Observation Count: ", host_to_species_map[[host_id]], ")")
+    }
+  }
+  
+  return(df)
+}
+
+assign_gall_id_verbose <- function(df, gallphen) {
+  # Preprocess Gall_generation
+  if (!is.null(df$Gall_generation)) {
+    df$Gall_generation <- gsub("unisexual", "agamic", df$Gall_generation)
+    df$Gall_generation <- gsub("bisexual", "sexgen", df$Gall_generation)
+  }
+  
+  # Extract unique combinations
+  unique_combinations <- unique(df[, c("genus", "species", "Gall_generation")])
+  
+  # Prepare a list to store query results
+  gall_id_results <- list()
+  
+  # Query database for each unique combination
+  for (i in 1:nrow(unique_combinations)) {
+    row <- unique_combinations[i, ]
+    gall_id_query <- if (!is.na(row$Gall_generation) && row$Gall_generation != "") {
+      str_interp("SELECT species_id FROM species WHERE genus = '${row$genus}' AND species LIKE '%${row$species}%' AND generation LIKE '%${row$Gall_generation}%'")
+    } else {
+      str_interp("SELECT species_id FROM species WHERE genus = '${row$genus}' AND species = '${row$species}'")
+    }
+    result <- dbGetQuery(gallphen, gall_id_query)
+    if (nrow(result) > 0) {
+      key <- paste(row$genus, row$species, row$Gall_generation, sep = "_")
+      gall_id_results[[key]] <- as.numeric(result$species_id[1])
+    }
+  }
+  
+  # Initialize a counter for each species
+  species_counter <- setNames(rep(0, length(gall_id_results)), names(gall_id_results))
+  
+  # Assign gall_id to the dataframe
+  df$gall_id <- NA
+  for (i in 1:nrow(df)) {
+    key <- paste(df$genus[i], df$species[i], df$Gall_generation[i], sep = "_")
+    if (!is.null(gall_id_results[[key]])) {
+      df$gall_id[i] <- gall_id_results[[key]]
+      species_counter[[key]] <- species_counter[[key]] + 1
+    } else {
+      warning("No gall id found for row ", i)
+    }
+  }
+  
+  # Verbose output for species and gall count
+  for (key in names(species_counter)) {
+    if (species_counter[[key]] > 0) {
+      message("Species: ", gsub("_", " ", key), " (Gall Observation Count: ", species_counter[[key]], ")")
+    }
+  }
+  
+  return(df)
+}
+
+assign_phenophase <- function(df) {
+  names(df)[names(df) == "Plant_Phenology"] <- "phenophase"
+  names(df)[names(df) == "Gall_phenophase"] <- "phenophase"
+  
+  for (i in 1:nrow(df)) {
+    if (isTRUE(df$phenophase[i] == "")) {
+      df$phenophase[i] <- df$lifestage[i]
+    }
+  }
+  
+  df$genus <- NULL
+  df$species <- NULL
+  df$Gall_generation <- NULL
+  df$Host_Plant_ID <- NULL
+  
+  return(df)
+}
+
+
+#the original version just in case
+PrepAppendOld <- function(x){
   
   x$id <- NULL
   names(x)[names(x)=="observed_on"] <- "date"
@@ -456,6 +621,9 @@ seasonIndex <- function(x){
   }
   return(x)
 }
+
+
+
 
 
 # wraps doy around the new year for agamic galls that start in fall and emerge next spring

@@ -259,7 +259,7 @@ urlMakerRG <- function(code) {
 
 
 #add to one taxon at a time (can be genus or species etc). Add the inat taxon code
-specid <- 143877
+specid <- 1094748
 
 url <- urlMakerRG(specid)
 site <- "https://api.inaturalist.org"
@@ -273,7 +273,7 @@ for(obsid in missing$id){
   Sys.sleep(1)
   
   # Add observation field
-  add_observation_field(site, obsid, 5251, "unisexual", token)
+  add_observation_field(site, obsid, 5251, "bisexual", token)
 }
 beep()
 

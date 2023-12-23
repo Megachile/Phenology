@@ -28,7 +28,7 @@ eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 ann <- get_annotation_codes()
 
 ## input iNat code or GF code for a taxon you want to pull data for
-spcode <- "179372"
+spcode <- "1094748"
 
 #generate an API call URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -63,14 +63,15 @@ for (i in 1:20){
 
 # some code to help manually correct issues that can't be fixed or it isn't convenient to fix on the iNat side. 
 # inat observation ID of a problematic record
-prob <- "73694224"
+prob <- "156651973"
 
+# new <- new[new$id != prob, ]
 # new[new$id==prob,"Life_Stage"] <- NA
 # new[new$id==prob,"Gall_phenophase"] <- "dormant"
-# new[new$id==prob,"Gall_generation"] <- "unisexual"
+# new[new$id==prob,"Gall_generation"] <- "bisexual"
 # new[new$id==prob,"Host_Plant_ID"] <- "49006"
 # new[new$uri==prob,"taxon.name"] <- "Phylloteras poculum"
-new <- new[!(new$taxon.name == 'Phylloteras poculum'), ]
+# new <- new[!(new$taxon.name == 'Phylloteras poculum'), ]
 
 
 
@@ -83,7 +84,7 @@ for (i in 1:20){
 }
 
 # drop rows that are missing key info (these are often not usable yet for a variety of reasons)
-new = new[!(new$id %in% missing$id), ]
+# new = new[!(new$id %in% missing$id), ]
 # drop rows specifically missing gall generation
 # new <- new[!(new$Gall_generation==""),]
 
@@ -93,38 +94,41 @@ new = new[!(new$id %in% missing$id), ]
 # checkHost(new)
 
 # In case you need to add a new host to the database (also works for galls fwiw)
-# dbExecute(gallphen, "UPDATE species SET inatcode = '119269'
-#            WHERE genus = 'Quercus' AND species = 'stellata'")
+# dbExecute(gallphen, "UPDATE species SET inatcode = '242521'
+#            WHERE genus = 'Quercus' AND species = 'sinuata breviloba'")
 
 # In case you want to just print the new records and edit them manually in a csv (then you can use the lit import function to add them to the db)
-write.csv(new, file = "newrecords.csv", row.names = FALSE)
+# write.csv(new, file = "newrecords.csv", row.names = FALSE)
 
 #remove and add columns to match database table
-# WARNING note that as currently written, prepappend will drop any rows where the 
+toappend <- new
+
+toappend <- clean_and_transform(toappend)
+toappend <- separate_taxon_name(toappend)
+
+# WARNING note that as currently written, these assign host and assign gall functions will drop any rows where the 
 # gall ID is not in the current local version of the database 
 # and where multiple gall IDs are not disambiguated (ie, N quercusbatatus) 
-# this function is fairly conservative and if you give it something confusing it will just toss the data. 
-# Ideally it should be refactored to be more transparent and useful about that!
-append <- PrepAppend(new)
+# the functions are fairly conservative and if you give them something confusing they will just toss the data. 
+# Pay attention to the outputs to look for any anomalies!
+
+toappend <- assign_host_id_verbose(toappend, gallphen)
+toappend <- assign_gall_id_verbose(toappend, gallphen)
+toappend <- assign_phenophase(toappend)
+toappend <- seasonIndex(toappend)
+toappend <- acchours(toappend)
 
 #specify an observation with some issue based on its URL
 # prob <- "https://www.inaturalist.org/observations/15884207"
 # fix problematic value
 # append[append$pageURL==prob,"lifestage"] <- NA
 
-#check that the hosts in the data to be appended all make sense
-# for (i in 1:5) {
-#   query <- paste0("SELECT * FROM species WHERE species_id = '", unique(append$host_id)[i+1],"'")
-#   print(dbGetQuery(gallphen, query))
-# }
-
 #add to the database
-# dbAppendTable(gallphen, "observations",append)
+# dbAppendTable(gallphen, "observations",toappend)
 
 # if this is a specific species, update the last updated date to the current date to adjust the URL to only pull new observations next time you pull data
 # this is not necessary--if you don't do it and try to re-add the same observations, they will get filtered out by checkData above
 # setUpdate(spcode)
-
 
 # enter an iNat observation ID (not a species ID!) to put it into the baddata table so it will be excluded from future imports. 
 # also deletes any records with that code in the observations table
