@@ -345,7 +345,15 @@ separate_taxon_name <- function(df) {
 }
 
 assign_host_id_verbose <- function(df, gallphen) {
-  unique_host_ids <- unique(df$Host_Plant_ID[!is.na(df$Host_Plant_ID)])
+  # Check if 'Host_Plant_ID' column exists
+  if ("Host_Plant_ID" %in% names(df)) {
+    unique_host_ids <- unique(df$Host_Plant_ID[!is.na(df$Host_Plant_ID)])
+  } else {
+    # If 'Host_Plant_ID' column doesn't exist, create an empty 'host_id' column and return the dataframe
+    df$host_id <- NA
+    return(df)
+  }
+  
   host_id_results <- list()
   host_to_species_map <- list()
   
@@ -455,15 +463,24 @@ assign_gall_id_verbose <- function(df, gallphen) {
 }
 
 assign_phenophase <- function(df) {
-  names(df)[names(df) == "Plant_Phenology"] <- "phenophase"
-  names(df)[names(df) == "Gall_phenophase"] <- "phenophase"
+  # Check if 'Plant_Phenology' or 'Gall_phenophase' exist and rename to 'phenophase'
+  if("Plant_Phenology" %in% names(df)) {
+    names(df)[names(df) == "Plant_Phenology"] <- "phenophase"
+  } else if("Gall_phenophase" %in% names(df)) {
+    names(df)[names(df) == "Gall_phenophase"] <- "phenophase"
+  } else {
+    # If neither exists, add a 'phenophase' column with NA values
+    df$phenophase <- NA
+  }
   
+  # Fill empty 'phenophase' values with 'lifestage' values
   for (i in 1:nrow(df)) {
-    if (isTRUE(df$phenophase[i] == "")) {
+    if (is.na(df$phenophase[i]) || df$phenophase[i] == "") {
       df$phenophase[i] <- df$lifestage[i]
     }
   }
   
+  # Remove specific columns
   df$genus <- NULL
   df$species <- NULL
   df$Gall_generation <- NULL
@@ -471,6 +488,7 @@ assign_phenophase <- function(df) {
   
   return(df)
 }
+
 
 
 #the original version just in case

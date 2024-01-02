@@ -17,11 +17,11 @@ observations <- dbGetQuery(gallphen, "SELECT observations.*, host.species AS hos
 observations$gfURL <- paste0("https://gallformers.org/gall/", observations$gf_id)
 observations$binom <- paste(observations$genus, observations$species)
 observations[observations$lifestage == "Adult"&observations$phenophase== "","phenophase"] <- "Adult"
-
+dbDisconnect(gallphen)
 #write the new data into the necessary folder
 write.csv(observations, file = paste0(wd, "/doyCalc/observations.csv"), row.names = FALSE)
 beep()
 #connect to the hosting service and upload the new info. You need to press Y to begin the process.
 rsconnect::setAccountInfo(name='megachile', token='E0503725A47C8E1AA250F80A49C2A015', secret='vqQZJcHij1sJHt+8LtDwrCfLZURzoiSDyqzmXNdT')
 rsconnect::deployApp(paste0(wd, '/doyCalc'))
-dbDisconnect(gallphen)
+

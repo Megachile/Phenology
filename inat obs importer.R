@@ -29,7 +29,7 @@ eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 ann <- get_annotation_codes()
 
 ## input iNat code or GF code for a taxon you want to pull data for
-spcode <- "1042931"
+spcode <- "1042625"
 
 #generate an API call URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -50,6 +50,11 @@ url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=researc
 rearing_viability <- "viable" 
 url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field:Rearing%20viability=", rearing_viability)
 
+## create an API call for only free-living adults of a given taxon
+taxon <- "1089396"
+url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=", taxon, "&term_id=1&term_value_id=2&without_field=Gall+phenophase")
+
+
 ## iNat API call to pull a dataframe of all matching observations. This iterates in batches of 200 at a time. 
 obs <- iNatCall(url)
 #Once you fetch this, check the dataframe for species you don't expect, missing data, etc
@@ -59,7 +64,12 @@ obs <- iNatCall(url)
 
 ## remove any observations missing date and observations that are marked senescent
 obs <- obs[!(obs$observed_on==""),]
-obs <- obs[!(obs$Gall_phenophase=="senescent"),]
+# Check if 'Gall_phenophase' column exists in 'obs'
+if("Gall_phenophase" %in% names(obs)) {
+  # Filter out rows where Gall_phenophase is "senescent"
+  obs <- obs[!(obs$Gall_phenophase == "senescent"),]
+}
+
 
 # remove any rows with IDs in the baddata table or already present in the observations table. Eliminates any records that are not new. 
 # only works for iNat inputs, do not run on other data!
@@ -122,15 +132,19 @@ toappend <- assign_gall_id_verbose(toappend, gallphen)
 
 # check what the records are if any gall ids weren't able to match. 
 # This usually means iNat and GF have different names and one of them needs to be corrected
-missinggallid <- subset(toappend, is.na(gall_id))
-for (i in 1:nrow(missinggallid)) {
-  browseURL(missinggallid$pageURL[i])
-}
-# drop the rows missing gall IDs
+# missinggallid <- subset(toappend, is.na(gall_id))
+# for (i in 1:nrow(missinggallid)) {
+#   browseURL(missinggallid$pageURL[i])
+# }
+# # drop the rows missing gall IDs
 toappend <- subset(toappend, !is.na(gall_id))
 
 # fill in the missing gall IDs
-# toappend$gall_id[is.na(toappend$gall_id)] <- "880"
+# look up ID codes. 
+# The gf_id is what you see in the URL when you search a species on gallformers. The species_id is what the pheno db uses
+# select <- paste0("SELECT species_id from species WHERE gf_id = '919'")
+# dbGetQuery(gallphen, select)
+# toappend$gall_id[is.na(toappend$gall_id)] <- "901"
 
 toappend <- assign_phenophase(toappend)
 toappend <- seasonIndex(toappend)
@@ -141,8 +155,21 @@ toappend <- acchours(toappend)
 # fix problematic value
 # append[append$pageURL==prob,"lifestage"] <- NA
 
-#add to the database
+## add to the database
 # dbAppendTable(gallphen, "observations",toappend)
+
+
+### in case you need an "undo" for appending data you shouldn't have 
+### WARNING note this only works immediately after you did it and otherwise just deletes the most recent data
+### num_rows_appended <- # enter the number of new rows you just appended
+# query_extract_last <- paste0("SELECT * FROM observations ORDER BY obs_id DESC LIMIT ", num_rows_appended)
+# extracted_rows <- dbGetQuery(gallphen, query_extract_last)
+# obs_ids_to_delete <- extracted_rows$obs_id
+# query_delete <- paste0("DELETE FROM observations WHERE obs_id IN (", 
+#                        paste(obs_ids_to_delete, collapse = ", "), 
+#                        ")")
+# dbExecute(gallphen, query_delete)
+
 
 # if this is a specific species, update the last updated date to the current date to adjust the URL to only pull new observations next time you pull data
 # this is not necessary--if you don't do it and try to re-add the same observations, they will get filtered out by checkData above
