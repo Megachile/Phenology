@@ -146,7 +146,6 @@ addButton7.onclick = function() {
     // need to write annotation function
     //   };
 
-
  // Add the buttons to the div
  buttonDiv.appendChild(addButton1);
  buttonDiv.appendChild(addButton2);
@@ -162,7 +161,7 @@ addButton7.onclick = function() {
  buttonDiv.appendChild(inputBox);
  document.body.appendChild(buttonDiv);   
 
-function addObservationField(fieldId, value) {
+function addObservationField(fieldId, value, button) {
     // Send a message to the background script to make the API call
     chrome.runtime.sendMessage(
         {action: "makeApiCall", fieldId: fieldId, value: value},

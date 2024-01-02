@@ -24,3 +24,4 @@ beep()
 #connect to the hosting service and upload the new info. You need to press Y to begin the process.
 rsconnect::setAccountInfo(name='megachile', token='E0503725A47C8E1AA250F80A49C2A015', secret='vqQZJcHij1sJHt+8LtDwrCfLZURzoiSDyqzmXNdT')
 rsconnect::deployApp(paste0(wd, '/doyCalc'))
+dbDisconnect(gallphen)

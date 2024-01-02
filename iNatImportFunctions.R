@@ -193,6 +193,23 @@ iNatCall <- function(url) {
 }
 
 
+get_annotation_codes <- function() {
+  a <- fromJSON("https://api.inaturalist.org/v1/controlled_terms")
+  a <- flatten(a$results)
+  l <- lapply(seq_along(a[, "values"]), function(i) {
+    cbind(idann = a$id[i], labelann = a$label[i], a[i, "values"][[1]][, c("id", "label")])
+  })
+  ann <- do.call("rbind", l)
+  return(ann)
+}
+
+fetch_data <- function(url) {
+  tryCatch(fromJSON(url),
+           error = function(e) {
+             warning("Error while fetching data: ", e$message)
+             return(NULL)
+           })
+}
 
 
 

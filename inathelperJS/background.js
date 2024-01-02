@@ -117,6 +117,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'makeApiCall') {
+         // Ensure a valid observation ID is present
+         if (!observationId || observationId === "null") {
+            sendResponse({ status: 'error', message: 'Invalid observation ID' });
+            return;
+        }
         // Get the stored token
         chrome.storage.local.get(['accessToken'], function(result) {
             const token = result.accessToken;

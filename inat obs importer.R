@@ -19,6 +19,7 @@ library(ggplot2)
 library(ggpmisc)
 library(solrad)
 library(pracma)
+library(R.utils)
 library(stringr)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
@@ -28,7 +29,7 @@ eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 ann <- get_annotation_codes()
 
 ## input iNat code or GF code for a taxon you want to pull data for
-spcode <- "1094748"
+spcode <- "1042931"
 
 #generate an API call URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -37,7 +38,17 @@ url <- urlMaker(spcode)
 # url <- paste0(url, "&term_id=12")
 
 ## create an API call for observations from a specific user (current settings get RG of any cynipini observations)
-url <- "https://api.inaturalist.org/v1/observations?quality_grade=research&user_id=leah_r&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775"
+user_id <- "leah_r"
+url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&user_id=", user_id, "&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775")
+
+## create an API call for all RG cynipini marked by a given phenophase
+phenophase <- "maturing" 
+url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field%3AGall+phenophase=", phenophase)
+
+## create an API call for all RG cynipini marked viable
+# Define the rearing viability as a variable
+rearing_viability <- "viable" 
+url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field:Rearing%20viability=", rearing_viability)
 
 ## iNat API call to pull a dataframe of all matching observations. This iterates in batches of 200 at a time. 
 obs <- iNatCall(url)
@@ -73,8 +84,6 @@ prob <- "156651973"
 # new[new$uri==prob,"taxon.name"] <- "Phylloteras poculum"
 # new <- new[!(new$taxon.name == 'Phylloteras poculum'), ]
 
-
-
 # creates a *new* dataframe with only rows missing some key data
 missing <- findMissing(new)
 print(dim(missing)[1])
@@ -83,19 +92,15 @@ for (i in 1:20){
   browseURL(missing$uri[i])
 }
 
+#check all new rows on iNat, 20 at a time (you need to manually change the values as you go)
+for (i in 1:20){
+  browseURL(new$uri[i])
+}
+
 # drop rows that are missing key info (these are often not usable yet for a variety of reasons)
 # new = new[!(new$id %in% missing$id), ]
 # drop rows specifically missing gall generation
-# new <- new[!(new$Gall_generation==""),]
-
-# append[append$pageURL=="https://www.inaturalist.org/observations/110335394","lifestage"] <- NA
-
-# Theoretically, this checks to make sure all of the host ID codes in the data you just pulled are already in our database; this function may not be working correctly though
-# checkHost(new)
-
-# In case you need to add a new host to the database (also works for galls fwiw)
-# dbExecute(gallphen, "UPDATE species SET inatcode = '242521'
-#            WHERE genus = 'Quercus' AND species = 'sinuata breviloba'")
+new <- new[!(new$Gall_generation==""),]
 
 # In case you want to just print the new records and edit them manually in a csv (then you can use the lit import function to add them to the db)
 # write.csv(new, file = "newrecords.csv", row.names = FALSE)
@@ -114,6 +119,19 @@ toappend <- separate_taxon_name(toappend)
 
 toappend <- assign_host_id_verbose(toappend, gallphen)
 toappend <- assign_gall_id_verbose(toappend, gallphen)
+
+# check what the records are if any gall ids weren't able to match. 
+# This usually means iNat and GF have different names and one of them needs to be corrected
+missinggallid <- subset(toappend, is.na(gall_id))
+for (i in 1:nrow(missinggallid)) {
+  browseURL(missinggallid$pageURL[i])
+}
+# drop the rows missing gall IDs
+toappend <- subset(toappend, !is.na(gall_id))
+
+# fill in the missing gall IDs
+# toappend$gall_id[is.na(toappend$gall_id)] <- "880"
+
 toappend <- assign_phenophase(toappend)
 toappend <- seasonIndex(toappend)
 toappend <- acchours(toappend)
