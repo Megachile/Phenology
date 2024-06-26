@@ -426,3 +426,72 @@ document.addEventListener('keydown', function(event) {
         }
     }
 });
+
+
+
+
+
+
+
+function addAnnotation(currentObservationId, attributeId, valueId) {
+    const url = 'https://api.inaturalist.org/v1/annotations';
+    const data = {
+        annotation: {
+            resource_type: "Observation",
+            resource_id: currentObservationId,
+            controlled_attribute_id: attributeId,
+            controlled_value_id: valueId
+        }
+    };
+
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get(['accessToken'], function(result) {
+            if (result.accessToken) {
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${result.accessToken}`
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Annotation added successfully:', data);
+                    resolve(data);
+                })
+                .catch(error => {
+                    console.error('Error adding annotation:', error);
+                    reject(error);
+                });
+            } else {
+                reject('No access token found');
+            }
+        });
+    });
+}
+
+function addDeadAdultAnnotations(currentObservationId) {
+    const annotations = [
+        { attribute: 17, value: 19 },  // Alive or Dead: Dead
+        { attribute: 22, value: 24 },  // Evidence of Presence: Organism
+        { attribute: 1, value: 2 }     // Life Stage: Adult
+    ];
+
+    return Promise.all(annotations.map(ann => 
+        addAnnotation(currentObservationId, ann.attribute, ann.value)
+    ));
+}
+
+let deadAdultButton = document.createElement('button');
+deadAdultButton.innerText = 'Dead Adult';
+deadAdultButton.onclick = function() {
+    if (currentObservationId) {
+        addDeadAdultAnnotations(currentObservationId)
+            .then(() => console.log('Dead Adult annotations added successfully'))
+            .catch(error => console.error('Error adding Dead Adult annotations:', error));
+    } else {
+        console.error('No current observation ID available');
+    }
+};
+buttonContainer.appendChild(deadAdultButton);
