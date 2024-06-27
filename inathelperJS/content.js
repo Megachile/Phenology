@@ -431,8 +431,10 @@ window.addEventListener('load', () => {
 });
 
 document.addEventListener('keydown', function(event) {
-    // Check if the pressed key is 'u' or 'b'
-    if (event.key.toLowerCase() === 'u' || event.key.toLowerCase() === 'b') {
+    // Check if the pressed key is 'u' or 'b' AND no modifier keys are pressed
+    if ((event.key.toLowerCase() === 'u' || event.key.toLowerCase() === 'b') && 
+        !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        
         // Check if the modal is open
         const modal = document.querySelector('.ObservationModal.FullScreenModal');
         if (modal) {
@@ -474,10 +476,6 @@ document.addEventListener('keydown', function(event) {
         }
     }
 });
-
-
-
-
 
 
 
