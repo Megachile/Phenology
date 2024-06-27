@@ -3,9 +3,40 @@ console.log('content.js has been loaded');
 let buttonPosition = 'top-left'; // Default position
 let idDisplay;
 
+let isButtonsVisible = true;
+const positions = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
+let currentPositionIndex = 0;
+
+function toggleButtonVisibility() {
+    const buttonDiv = document.getElementById('custom-extension-container').parentElement;
+    isButtonsVisible = !isButtonsVisible;
+    buttonDiv.style.display = isButtonsVisible ? 'block' : 'none';
+}
+
+function cycleButtonPosition() {
+    currentPositionIndex = (currentPositionIndex + 1) % positions.length;
+    buttonPosition = positions[currentPositionIndex];
+    updatePositions();
+    chrome.storage.sync.set({buttonPosition: buttonPosition});
+  }
+
+function handleKeyboardShortcut(event) {
+    // Use Alt + B to toggle visibility
+    if (event.altKey && event.key === 'b') {
+        toggleButtonVisibility();
+    }
+    // Use Alt + N to cycle through positions
+    if (event.altKey && event.key === 'n') {
+        cycleButtonPosition();
+    }
+}
+
+document.addEventListener('keydown', handleKeyboardShortcut);
+
 chrome.storage.sync.get('buttonPosition', function(data) {
     if (data.buttonPosition) {
         buttonPosition = data.buttonPosition;
+        currentPositionIndex = positions.indexOf(buttonPosition);
         updatePositions();
     }
 });
@@ -246,6 +277,7 @@ buttonContainer.appendChild(inputWrapper);
 buttonDiv.appendChild(buttonContainer);
 document.body.appendChild(buttonDiv);
 
+
 function addObservationField(fieldId, value, button = null) {
     return new Promise((resolve, reject) => {
         ensureCorrectObservationId((observationId) => {
@@ -255,11 +287,19 @@ function addObservationField(fieldId, value, button = null) {
                     if (chrome.runtime.lastError) {
                         console.error(`Error in adding observation field: ${chrome.runtime.lastError.message}`);
                         if (button) animateButtonResult(button, false);
-                        reject(chrome.runtime.lastError);
+                        reject({ success: false, error: chrome.runtime.lastError });
                     } else {
                         console.log(`Observation field added: ${JSON.stringify(response)}`);
-                        if (button) animateButtonResult(button, true);
-                        resolve(response);
+                        refreshObservation()
+                            .then(() => {
+                                if (button) animateButtonResult(button, true);
+                                resolve({ success: true, data: response });
+                            })
+                            .catch(error => {
+                                console.error('Error refreshing after adding field:', error);
+                                if (button) animateButtonResult(button, true); // Still consider it a success if only refresh failed
+                                resolve({ success: true, data: response, refreshError: error });
+                            });
                     }
                 }
             );
@@ -271,15 +311,11 @@ function animateButtonResult(button, success) {
     button.classList.add(success ? 'button-success' : 'button-failure');
     setTimeout(() => {
         button.classList.remove('button-success', 'button-failure');
-    }, 1500); 
+    }, 1200); 
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Message received in content:', message);
-    if (message.action === "updateButtonPosition") {
-        buttonPosition = message.position;
-        updatePositions();
-    }
     if (message.action === 'showAlert') {
         alert(message.text);
     } else if (message.from === 'background') {
@@ -307,6 +343,7 @@ style.textContent = `
   }
   #observation-id-display.updated {
     background-color: rgba(0, 255, 0, 0.7);
+    animation: pulseGreen 1.5s ease-out;
   }
   @keyframes pulseGreen {
       0% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); transform: scale(1); }
@@ -320,9 +357,11 @@ style.textContent = `
   }
   .button-success {
       animation: pulseGreen 1.5s ease-out;
+      background-color: rgba(0, 255, 0, 0.7);
   }
   .button-failure {
       animation: pulseRed 1.5s ease-out;
+      background-color: rgba(255, 0, 0, 0.7);
   }
   #custom-extension-container {
       display: flex;
@@ -336,7 +375,16 @@ style.textContent = `
     margin: 3px;
     flex-grow: 1;
     min-width: 100px;
-}
+    background-color: rgba(0, 0, 0, 0.5); /* 50% transparency */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  button:hover {
+      background-color: rgba(0, 0, 0, 0.7); /* Darker background on hover */
+  }
   #custom-extension-input {
       width: 120px;
   }
@@ -457,8 +505,14 @@ function addAnnotation(currentObservationId, attributeId, valueId) {
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Annotation added successfully:', data);
-                    resolve(data);
+                    if (data.errors) {
+                        // If there's an error (e.g., annotation already exists), resolve instead of reject
+                        console.log('Annotation not added (may already exist):', data.errors);
+                        resolve(data);
+                    } else {
+                        console.log('Annotation added successfully:', data);
+                        resolve(data);
+                    }
                 })
                 .catch(error => {
                     console.error('Error adding annotation:', error);
@@ -470,6 +524,7 @@ function addAnnotation(currentObservationId, attributeId, valueId) {
         });
     });
 }
+
 
 function addDeadAdultAnnotations(currentObservationId) {
     const annotations = [
@@ -483,15 +538,47 @@ function addDeadAdultAnnotations(currentObservationId) {
     ));
 }
 
+function refreshObservation() {
+    return new Promise((resolve, reject) => {
+        const prevButton = document.querySelector('.ObservationModal button.nav-button[alt="Previous Observation"]');
+        const nextButton = document.querySelector('.ObservationModal button.nav-button[alt="Next Observation"]');
+
+        if (!prevButton || !nextButton) {
+            console.error('Navigation buttons not found');
+            reject(new Error('Navigation buttons not found'));
+            return;
+        }
+
+        prevButton.click();
+        setTimeout(() => {
+            nextButton.click();
+            setTimeout(resolve, 1);
+        }, 1);
+    });
+}
+
 let deadAdultButton = document.createElement('button');
 deadAdultButton.innerText = 'Dead Adult';
 deadAdultButton.onclick = function() {
     if (currentObservationId) {
+        animateButton(this);
         addDeadAdultAnnotations(currentObservationId)
-            .then(() => console.log('Dead Adult annotations added successfully'))
-            .catch(error => console.error('Error adding Dead Adult annotations:', error));
+            .then(result => {
+                console.log('Annotations added, starting refresh');
+                return refreshObservation().then(() => result);
+            })
+            .then(result => {
+                console.log('Dead Adult annotations added and observation refreshed');
+                animateButtonResult(deadAdultButton, result.success);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Still consider it a success if annotations were added but refresh failed
+                animateButtonResult(deadAdultButton, error.success || false);
+            });
     } else {
         console.error('No current observation ID available');
+        animateButtonResult(deadAdultButton, false);
     }
 };
 buttonContainer.appendChild(deadAdultButton);

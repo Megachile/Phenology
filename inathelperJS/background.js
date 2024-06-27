@@ -162,20 +162,22 @@ function testAPIKey(token) {
         .then(response => {
             console.log('Add observation field response:', JSON.stringify(response, null, 2));
             if (response.status && response.status === 'error') {
-                throw new Error(`Error adding test field: ${response.message}`);
+                console.log(`Error adding test field: ${response.message}`);
+                initiateAuthFlow();
+            } else {
+                return verifyObservationField(testObservationId, testFieldId, testValue, token);
             }
-            return verifyObservationField(testObservationId, testFieldId, testValue, token);
         })
         .then(verified => {
-            console.log('Verification result:', verified);
             if (verified) {
                 console.log('API test successful. Test value added and verified.');
             } else {
-                throw new Error('Test value could not be verified');
+                console.log('Test value could not be verified');
+                initiateAuthFlow();
             }
         })
         .catch(error => {
-            console.error('API test failed:', error);
+            console.log('API test failed:', error);
             initiateAuthFlow();
         });
 }
@@ -264,7 +266,7 @@ chrome.storage.local.get(['accessToken'], function(result) {
     if (token) {
         testAPIKey(token);
     } else {
-        console.error('No access token found; initiating auth flow');
+        console.log('No access token found; initiating auth flow');
         initiateAuthFlow();
     }
 });
