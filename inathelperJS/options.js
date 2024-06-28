@@ -119,7 +119,7 @@ function displayConfigurations() {
             <div class="button-actions">
                 <label class="hide-checkbox-label">
                     <input type="checkbox" class="hide-checkbox" ${config.hidden ? 'checked' : ''}>
-                    Hide
+                    <span>Hide</span>
                 </label>
                 <button class="edit-button">Edit</button>
                 <button class="delete-button">Delete</button>
