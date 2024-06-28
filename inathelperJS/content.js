@@ -2,8 +2,9 @@ console.log('content.js has been loaded');
 
 let buttonPosition = 'top-left'; // Default position
 let idDisplay;
-
+let refreshEnabled = true;
 let isButtonsVisible = true;
+
 const positions = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
 let currentPositionIndex = 0;
 
@@ -412,15 +413,31 @@ function createOrUpdateIdDisplay(id) {
         idDisplay = document.createElement('div');
         idDisplay.id = 'observation-id-display';
         document.body.appendChild(idDisplay);
-        updatePositions(); // Position the display when it's first created
+        updatePositions();
     }
     
-    idDisplay.textContent = `Current Observation ID: ${id}`;
-    idDisplay.classList.add('updated');
+    // Clear existing content
+    idDisplay.innerHTML = '';
     
+    // Create and add ID text
+    const idText = document.createElement('span');
+    idText.textContent = `Current Observation ID: ${id}`;
+    idDisplay.appendChild(idText);
+    
+    // Create and add refresh indicator
+    const refreshIndicator = document.createElement('span');
+    refreshIndicator.id = 'refresh-indicator';
+    refreshIndicator.style.marginLeft = '10px';
+    refreshIndicator.style.padding = '5px';
+    refreshIndicator.style.borderRadius = '5px';
+    idDisplay.appendChild(refreshIndicator);
+    
+    updateRefreshIndicator();
+    
+    idDisplay.classList.add('updated');
     setTimeout(() => {
         idDisplay.classList.remove('updated');
-    }, 500);
+    }, 300);
 }
 
 window.addEventListener('load', () => {
@@ -476,6 +493,34 @@ document.addEventListener('keydown', function(event) {
         }
     }
 });
+
+document.addEventListener('keydown', function(event) {
+    // Check for Ctrl+Shift+R (Windows/Linux) or Cmd+Shift+R (Mac)
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'r') {
+        event.preventDefault(); // Prevent any default browser behavior
+        toggleRefresh();
+    }
+});
+
+function createRefreshIndicator() {
+    const indicator = document.createElement('div');
+    indicator.id = 'refresh-indicator';
+    indicator.style.display = 'inline-block';
+    indicator.style.marginLeft = '10px';
+    indicator.style.padding = '5px';
+    indicator.style.borderRadius = '5px';
+    indicator.style.transition = 'background-color 0.3s';
+    updateRefreshIndicator(indicator);
+    return indicator;
+}
+
+function updateRefreshIndicator(indicator = document.getElementById('refresh-indicator')) {
+    if (indicator) {
+        indicator.textContent = refreshEnabled ? 'Refresh On' : 'Refresh Off';
+        indicator.style.backgroundColor = refreshEnabled ? 'rgba(0, 255, 0, 0.7)' : 'rgba(255, 0, 0, 0.7)';
+    }
+}
+
 
 
 
@@ -538,6 +583,11 @@ function addDeadAdultAnnotations(currentObservationId) {
 
 function refreshObservation() {
     return new Promise((resolve, reject) => {
+        if (!refreshEnabled) {
+            console.log('Refresh is disabled');
+            resolve();
+            return;
+        }
         const prevButton = document.querySelector('.ObservationModal button.nav-button[alt="Previous Observation"]');
         const nextButton = document.querySelector('.ObservationModal button.nav-button[alt="Next Observation"]');
 
@@ -553,6 +603,11 @@ function refreshObservation() {
             setTimeout(resolve, 1);
         }, 1);
     });
+}
+
+function toggleRefresh() {
+    refreshEnabled = !refreshEnabled;
+    updateRefreshIndicator();
 }
 
 let deadAdultButton = document.createElement('button');
