@@ -80,19 +80,29 @@ function loadConfigurations() {
     });
 }
 
+function toggleHideConfiguration(index) {
+    customButtons[index].hidden = !customButtons[index].hidden;
+    chrome.storage.sync.set({customButtons: customButtons}, function() {
+        console.log('Configuration visibility toggled');
+        loadConfigurations();
+    });
+}
+
 function displayConfigurations() {
     const container = document.getElementById('buttonConfigs');
     container.innerHTML = '';
     customButtons.forEach((config, index) => {
         const configDiv = document.createElement('div');
         configDiv.className = 'config-item';
+        if (config.hidden) {
+            configDiv.classList.add('hidden-config');
+        }
         let configContent = `
-        <h3>${config.name}</h3>
-        <p>Shortcut: ${formatShortcut(config.shortcut)}</p>
-        <p>Action: ${config.actionType}</p>
-    `;
+            <h3>${config.name}</h3>
+            <p>Shortcut: ${formatShortcut(config.shortcut)}</p>
+            <p>Action: ${config.actionType}</p>
+        `;
 
-        
         if (config.actionType === 'observationField') {
             configContent += `
                 <p>Field ID: ${config.fieldId}</p>
@@ -106,16 +116,23 @@ function displayConfigurations() {
         }
         
         configContent += `
-            <button class="edit-button">Edit</button>
-            <button class="delete-button">Delete</button>
+            <div class="button-actions">
+                <label class="hide-checkbox-label">
+                    <input type="checkbox" class="hide-checkbox" ${config.hidden ? 'checked' : ''}>
+                    Hide
+                </label>
+                <button class="edit-button">Edit</button>
+                <button class="delete-button">Delete</button>
+            </div>
         `;
         
         configDiv.innerHTML = configContent;
 
-        // Add event listeners to the buttons
+        const hideCheckbox = configDiv.querySelector('.hide-checkbox');
         const editButton = configDiv.querySelector('.edit-button');
         const deleteButton = configDiv.querySelector('.delete-button');
 
+        hideCheckbox.addEventListener('change', () => toggleHideConfiguration(index));
         editButton.addEventListener('click', () => editConfiguration(index));
         deleteButton.addEventListener('click', () => deleteConfiguration(index));
 
@@ -144,7 +161,8 @@ function saveConfiguration() {
             altKey: document.getElementById('altKey').checked,
             key: document.getElementById('shortcut').value.toUpperCase()
         },
-        actionType: currentActionType
+        actionType: currentActionType,
+        hidden: false 
     };
 
     if (currentActionType === 'observationField') {
@@ -238,7 +256,9 @@ function editConfiguration(index) {
         updateAnnotationValues();
         document.getElementById('annotationValue').value = config.annotationValue;
     }
-
+    if (config.hidden !== undefined) {
+        document.querySelector('.hide-checkbox').checked = config.hidden;
+    }
     // Change the save button text and functionality
     const saveButton = document.getElementById('saveButton');
     saveButton.textContent = 'Update Configuration';
