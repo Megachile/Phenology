@@ -1,6 +1,6 @@
 console.log('content.js has been loaded');
 
-let buttonPosition = 'top-left'; // Default position
+let buttonPosition = 'bottom-right'; // Default position
 let idDisplay;
 let refreshEnabled = true;
 let isButtonsVisible = true;
@@ -635,3 +635,49 @@ deadAdultButton.onclick = function() {
     }
 };
 buttonContainer.appendChild(deadAdultButton);
+
+function createDynamicButtons() {
+    chrome.storage.sync.get('customButtons', function(data) {
+        if (data.customButtons && data.customButtons.length > 0) {
+            data.customButtons.forEach(config => {
+                let button = document.createElement('button');
+                button.innerText = config.name;
+                button.onclick = function() {
+                    if (config.actionType === 'observationField') {
+                        addObservationField(config.fieldId, config.fieldValue, this);
+                    } else if (config.actionType === 'annotation') {
+                        if (currentObservationId) {
+                            addAnnotation(currentObservationId, config.annotationField, config.annotationValue)
+                                .then(() => {
+                                    console.log('Annotation added successfully');
+                                    return refreshObservation();
+                                })
+                                .then(() => {
+                                    animateButtonResult(this, true);
+                                })
+                                .catch(error => {
+                                    console.error('Error adding annotation:', error);
+                                    animateButtonResult(this, false);
+                                });
+                        } else {
+                            console.error('No current observation ID available');
+                            animateButtonResult(this, false);
+                        }
+                    }
+                };
+                buttonContainer.appendChild(button);
+
+                if (config.shortcut) {
+                    document.addEventListener('keydown', function(event) {
+                        if (event.key === config.shortcut) {
+                            button.click();
+                        }
+                    });
+                }
+            });
+        }
+    });
+}
+
+// Call this function after your existing button creation logic
+createDynamicButtons();

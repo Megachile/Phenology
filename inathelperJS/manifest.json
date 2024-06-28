@@ -21,18 +21,5 @@
       "run_at": "document_idle"
     }
 ],
-  "commands": {
-    "toggle-visibility": {
-        "suggested_key": {
-            "default": "Alt+B"
-        },
-        "description": "Toggle button visibility"
-    },
-    "cycle-position": {
-        "suggested_key": {
-            "default": "Alt+N"
-        },
-        "description": "Cycle button position"
-    }
-}
+  "options_page": "options.html"
 }

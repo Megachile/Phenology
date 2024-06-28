@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>iNaturalist Metadata Tool Configuration</title>
+    <style>
+        body { 
+            width: 100%; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            font-family: Arial, sans-serif; 
+        }
+        input, select { 
+            width: 100%; 
+            margin-bottom: 10px; 
+            padding: 5px; 
+        }
+        button { 
+            padding: 10px; 
+            background-color: #4CAF50; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            margin-right: 10px; 
+        }
+        button:hover { 
+            background-color: #45a049; 
+        }
+        .button-container { 
+            display: flex; 
+            justify-content: flex-start; 
+            margin-bottom: 10px; 
+        }
+        #saveButton, #cancelButton { 
+            width: 48%; 
+        }
+        .hidden { 
+            display: none; 
+        }
+        #ofUrlContainer {
+            margin-bottom: 20px;  /* Add space below the URL */
+        }
+        .config-item {
+            background-color: #f0f0f0;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        #shortcutContainer {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.modifier-checkboxes {
+    display: flex;
+    margin-right: 10px;
+}
+.modifier-checkboxes label {
+    margin-right: 10px;
+}
+#shortcut {
+    width: 50px;
+}  
+    </style>
+</head>
+<body>
+    <h1>iNaturalist Metadata Tool Configuration</h1>
+    
+    <h2>Add New Custom Button</h2>
+    <input type="text" id="buttonName" placeholder="Button Name (tip: consider including the name of the Field here)">
+    <div id="shortcutContainer">
+        <div class="modifier-checkboxes">
+            <label><input type="checkbox" id="ctrlKey"> Ctrl</label>
+            <label><input type="checkbox" id="shiftKey"> Shift</label>
+            <label><input type="checkbox" id="altKey"> Alt</label>
+        </div>
+        <input type="text" id="shortcut" placeholder="Key (e.g., A, 1, F1)" maxlength="2">
+    </div>
+    <div class="button-container">
+        <button id="ofButton">Observation Field</button>
+        <button id="annotationButton">Annotation</button>
+    </div>
+    <div id="ofInputs">
+        <input type="number" id="fieldId" placeholder="Observation Field ID">
+        <input type="text" id="fieldValue" placeholder="Field Value (for taxon Fields, input an iNat taxon code)">
+        <div id="ofUrlContainer">
+            <a href="https://www.inaturalist.org/observation_fields" target="_blank">Look up Observation Field IDs</a>
+        </div>
+    </div>
+    <div id="annotationInputs" class="hidden">
+        <select id="annotationField"></select>
+        <select id="annotationValue" class="hidden"></select>
+    </div>
+    <div class="button-container">
+        <button id="saveButton">Save Configuration</button>
+        <button id="cancelButton">Cancel</button>
+    </div>
+
+    <h2>Existing Configurations</h2>
+    <div id="buttonConfigs"></div>
+ 
+    <script src="options.js"></script>
+</body>
+</html>

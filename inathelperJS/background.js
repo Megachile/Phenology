@@ -182,6 +182,10 @@ function testAPIKey(token) {
         });
 }
 
+chrome.action.onClicked.addListener((tab) => {
+    chrome.runtime.openOptionsPage();
+  });
+
 // Event Listeners
 let currentObservationId = null;
 
