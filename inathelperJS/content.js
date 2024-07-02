@@ -5,6 +5,34 @@ let idDisplay;
 let refreshEnabled = true;
 let isButtonsVisible = true;
 
+let customShortcuts = [];
+
+function handleAllShortcuts(event) {
+    if (event.altKey && event.key === 'b') {
+        toggleButtonVisibility();
+    }
+    if (event.altKey && event.key === 'n') {
+        cycleButtonPosition();
+    }
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'r') {
+        event.preventDefault(); // Prevent any default browser behavior
+        toggleRefresh();
+    }
+
+    customShortcuts.forEach(shortcut => {
+        if (event.key.toLowerCase() === shortcut.key.toLowerCase() &&
+            event.ctrlKey === shortcut.ctrlKey &&
+            event.shiftKey === shortcut.shiftKey &&
+            event.altKey === shortcut.altKey) {
+            // Find and click the corresponding button
+            const button = Array.from(document.querySelectorAll('button')).find(btn => btn.innerText === shortcut.name);
+            if (button) button.click();
+        }
+    });
+}
+
+document.addEventListener('keydown', handleAllShortcuts);
+
 const positions = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
 let currentPositionIndex = 0;
 
@@ -21,18 +49,6 @@ function cycleButtonPosition() {
     chrome.storage.sync.set({buttonPosition: buttonPosition});
   }
 
-function handleKeyboardShortcut(event) {
-    // Use Alt + B to toggle visibility
-    if (event.altKey && event.key === 'b') {
-        toggleButtonVisibility();
-    }
-    // Use Alt + N to cycle through positions
-    if (event.altKey && event.key === 'n') {
-        cycleButtonPosition();
-    }
-}
-
-document.addEventListener('keydown', handleKeyboardShortcut);
 
 chrome.storage.sync.get('buttonPosition', function(data) {
     if (data.buttonPosition) {
@@ -447,60 +463,6 @@ window.addEventListener('load', () => {
     }
 });
 
-document.addEventListener('keydown', function(event) {
-    // Check if the pressed key is 'u' or 'b' AND no modifier keys are pressed
-    if ((event.key.toLowerCase() === 'u' || event.key.toLowerCase() === 'b') && 
-        !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-        
-        // Check if the modal is open
-        const modal = document.querySelector('.ObservationModal.FullScreenModal');
-        if (modal) {
-            // Check if the active element is not an input or textarea
-            const activeElement = document.activeElement;
-            const isInput = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA';
-            
-            if (!isInput) {
-                // Prevent the default action to avoid interfering with other shortcuts
-                event.preventDefault();
-                
-                let fieldValue, buttonText;
-                if (event.key.toLowerCase() === 'u') {
-                    fieldValue = 'unisexual';
-                    buttonText = "Generation: unisexual";
-                } else {
-                    fieldValue = 'bisexual';
-                    buttonText = "Generation: bisexual";
-                }
-                
-                // Find the corresponding button
-                const button = Array.from(document.querySelectorAll('button')).find(button => button.innerText === buttonText);
-                
-                // Trigger the OF addition
-                addObservationField(5251, fieldValue)
-                    .then(() => {
-                        if (button) {
-                            animateButton(button);
-                            animateButtonResult(button, true);
-                        }
-                    })
-                    .catch(() => {
-                        if (button) {
-                            animateButton(button);
-                            animateButtonResult(button, false);
-                        }
-                    });
-            }
-        }
-    }
-});
-
-document.addEventListener('keydown', function(event) {
-    // Check for Ctrl+Shift+R (Windows/Linux) or Cmd+Shift+R (Mac)
-    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'r') {
-        event.preventDefault(); // Prevent any default browser behavior
-        toggleRefresh();
-    }
-});
 
 function createRefreshIndicator() {
     const indicator = document.createElement('div');
@@ -639,6 +601,9 @@ buttonContainer.appendChild(deadAdultButton);
 function createDynamicButtons() {
     chrome.storage.sync.get('customButtons', function(data) {
         if (data.customButtons && data.customButtons.length > 0) {
+            // Clear existing custom shortcuts
+            customShortcuts = [];
+
             data.customButtons.forEach(config => {
                 if (!config.hidden) {  // Only create buttons for non-hidden configurations
                     let button = document.createElement('button');
@@ -668,11 +633,14 @@ function createDynamicButtons() {
                     };
                     buttonContainer.appendChild(button);
 
+                    // Add shortcut to customShortcuts array instead of adding event listener
                     if (config.shortcut) {
-                        document.addEventListener('keydown', function(event) {
-                            if (event.key === config.shortcut) {
-                                button.click();
-                            }
+                        customShortcuts.push({
+                            name: config.name,
+                            key: config.shortcut.key,
+                            ctrlKey: config.shortcut.ctrlKey,
+                            shiftKey: config.shortcut.shiftKey,
+                            altKey: config.shortcut.altKey
                         });
                     }
                 }
