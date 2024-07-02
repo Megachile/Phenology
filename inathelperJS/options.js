@@ -153,24 +153,54 @@ function formatShortcut(shortcut) {
 }
 
 function saveConfiguration() {
+    const name = document.getElementById('buttonName').value.trim();
+    const shortcutKey = document.getElementById('shortcut').value.trim().toUpperCase();
+    const ctrlKey = document.getElementById('ctrlKey').checked;
+    const shiftKey = document.getElementById('shiftKey').checked;
+    const altKey = document.getElementById('altKey').checked;
+    
+    // Validation checks
+    if (!name) {
+        alert("Please enter a button name.");
+        return;
+    }
+
+    // Check if a modifier is selected but no key is specified
+    if ((ctrlKey || shiftKey || altKey) && !shortcutKey) {
+        alert("You've selected a modifier key (Ctrl, Shift, or Alt) but haven't specified a key. Please either add a key or uncheck the modifier(s).");
+        return;
+    }
+
     const newConfig = {
-        name: document.getElementById('buttonName').value,
+        name: name,
         shortcut: {
-            ctrlKey: document.getElementById('ctrlKey').checked,
-            shiftKey: document.getElementById('shiftKey').checked,
-            altKey: document.getElementById('altKey').checked,
-            key: document.getElementById('shortcut').value.toUpperCase()
+            ctrlKey: ctrlKey,
+            shiftKey: shiftKey,
+            altKey: altKey,
+            key: shortcutKey
         },
         actionType: currentActionType,
         hidden: false 
     };
 
     if (currentActionType === 'observationField') {
-        newConfig.fieldId = document.getElementById('fieldId').value;
-        newConfig.fieldValue = document.getElementById('fieldValue').value;
+        const fieldId = document.getElementById('fieldId').value.trim();
+        const fieldValue = document.getElementById('fieldValue').value.trim();
+        if (!fieldId || !fieldValue) {
+            alert("Please enter both Field ID and Field Value for Observation Field.");
+            return;
+        }
+        newConfig.fieldId = fieldId;
+        newConfig.fieldValue = fieldValue;
     } else {
-        newConfig.annotationField = document.getElementById('annotationField').value;
-        newConfig.annotationValue = document.getElementById('annotationValue').value;
+        const annotationField = document.getElementById('annotationField').value;
+        const annotationValue = document.getElementById('annotationValue').value;
+        if (!annotationField || !annotationValue) {
+            alert("Please select both Annotation Field and Annotation Value.");
+            return;
+        }
+        newConfig.annotationField = annotationField;
+        newConfig.annotationValue = annotationValue;
     }
 
     // Check if we're editing an existing config or creating a new one
@@ -190,7 +220,6 @@ function saveConfiguration() {
         clearForm();
     });
 }
-
 function getAnnotationFieldName(fieldId) {
     for (let [key, value] of Object.entries(controlledTerms)) {
         if (value.id === parseInt(fieldId)) {
