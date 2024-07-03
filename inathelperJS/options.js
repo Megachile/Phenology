@@ -121,19 +121,20 @@ function displayConfigurations() {
         }
         
         configContent += `
-        <div class="button-actions">
-          <label class="hide-checkbox-label">
-            <input type="checkbox" class="hide-button-checkbox" ${config.buttonHidden ? 'checked' : ''}>
-            <span>Hide Button</span>
-          </label>
-          <label class="disable-checkbox-label">
-            <input type="checkbox" class="disable-config-checkbox" ${config.configurationDisabled ? 'checked' : ''}>
-            <span>Disable Configuration</span>
-          </label>
-          <button class="edit-button">Edit</button>
-          <button class="delete-button">Delete</button>
-        </div>
-        `;
+    <div class="button-actions">
+      <label class="hide-checkbox-label">
+        <input type="checkbox" class="hide-button-checkbox" ${config.buttonHidden ? 'checked' : ''}>
+        <span>Hide Button</span>
+      </label>
+      <label class="disable-checkbox-label">
+        <input type="checkbox" class="disable-config-checkbox" ${config.configurationDisabled ? 'checked' : ''}>
+        <span>Disable Configuration</span>
+      </label>
+      <button class="edit-button">Edit</button>
+      <button class="duplicate-button">Duplicate</button>
+      <button class="delete-button">Delete</button>
+    </div>
+    `;
         
         configDiv.innerHTML = configContent;
 
@@ -141,7 +142,9 @@ function displayConfigurations() {
         const disableConfigCheckbox = configDiv.querySelector('.disable-config-checkbox');
         const editButton = configDiv.querySelector('.edit-button');
         const deleteButton = configDiv.querySelector('.delete-button');
+        const duplicateButton = configDiv.querySelector('.duplicate-button');
 
+        duplicateButton.addEventListener('click', () => duplicateConfiguration(index));
         hideButtonCheckbox.addEventListener('change', () => toggleHideButton(index));
         disableConfigCheckbox.addEventListener('change', () => toggleDisableConfiguration(index));
         editButton.addEventListener('click', () => editConfiguration(index));
@@ -180,6 +183,32 @@ function formatShortcut(shortcut) {
     return parts.join(' + ');
 }
 
+function duplicateConfiguration(index) {
+    const config = customButtons[index];
+    
+    // Populate form fields with the configuration data
+    document.getElementById('buttonName').value = `${config.name} (Copy)`;
+    document.getElementById('ctrlKey').checked = config.shortcut.ctrlKey;
+    document.getElementById('shiftKey').checked = config.shortcut.shiftKey;
+    document.getElementById('altKey').checked = config.shortcut.altKey;
+    document.getElementById('shortcut').value = config.shortcut.key;
+
+    setActionType(config.actionType);
+    if (config.actionType === 'observationField') {
+        document.getElementById('fieldId').value = config.fieldId;
+        document.getElementById('fieldValue').value = config.fieldValue;
+    } else {
+        document.getElementById('annotationField').value = config.annotationField;
+        updateAnnotationValues();
+        document.getElementById('annotationValue').value = config.annotationValue;
+    }
+
+    // Change the save button text and functionality
+    const saveButton = document.getElementById('saveButton');
+    saveButton.textContent = 'Save New Configuration';
+    delete saveButton.dataset.editIndex; // Remove the edit index to treat this as a new configuration
+}
+
 function saveConfiguration() {
     const name = document.getElementById('buttonName').value.trim();
     const shortcutKey = document.getElementById('shortcut').value.trim().toUpperCase();
@@ -205,24 +234,21 @@ function saveConfiguration() {
         return;
     }
 
-    // Check if we're editing an existing config or creating a new one
+    // Check for conflicts with existing custom shortcuts
     const editIndex = parseInt(document.getElementById('saveButton').dataset.editIndex);
-    
-// Check for conflicts with existing custom shortcuts
-const conflictingShortcut = customButtons.find((button, index) => 
-    button.shortcut &&
-    button.shortcut.key === shortcutKey &&
-    button.shortcut.ctrlKey === ctrlKey &&
-    button.shortcut.shiftKey === shiftKey &&
-    button.shortcut.altKey === altKey &&
-    index !== editIndex  // Exclude the current configuration if we're editing
-);
+    const conflictingShortcut = customButtons.find((button, index) => 
+        button.shortcut &&
+        button.shortcut.key === shortcutKey &&
+        button.shortcut.ctrlKey === ctrlKey &&
+        button.shortcut.shiftKey === shiftKey &&
+        button.shortcut.altKey === altKey &&
+        index !== editIndex  // Exclude the current configuration if we're editing
+    );
 
-if (conflictingShortcut) {
-    alert(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
-    return;
-}
-
+    if (conflictingShortcut) {
+        alert(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
+        return;
+    }
     const newConfig = {
         name: name,
         shortcut: {
