@@ -144,6 +144,17 @@ function extractObservationId() {
         }
     } else {
         console.log('Modal not found');
+        clearObservationId();
+        chrome.runtime.sendMessage(
+            { action: "updateObservationId", observationId: null },
+            function(response) {
+                if (chrome.runtime.lastError) {
+                    console.error(`Error sending cleared ID to background: ${chrome.runtime.lastError.message}`);
+                } else {
+                    console.log(`Cleared ID sent to background, response:`, response);
+                }
+            }
+        );
     }
 }
 
@@ -181,7 +192,10 @@ const observer = new MutationObserver((mutations) => {
                 startObservationCheck();
             } else {
                 stopObservationCheck();
-                document.querySelector('.tooltip').style.display = 'none';
+                clearObservationId();
+                if (idDisplay) {
+                    idDisplay.style.display = 'none';
+                }
             }
             break;
         }
@@ -297,30 +311,36 @@ document.body.appendChild(buttonDiv);
 
 function addObservationField(fieldId, value, button = null) {
     return new Promise((resolve, reject) => {
-        ensureCorrectObservationId((observationId) => {
-            chrome.runtime.sendMessage(
-                {action: "makeApiCall", fieldId: fieldId, value: value, observationId: observationId},
-                function(response) {
-                    if (chrome.runtime.lastError) {
-                        console.error(`Error in adding observation field: ${chrome.runtime.lastError.message}`);
-                        if (button) animateButtonResult(button, false);
-                        reject({ success: false, error: chrome.runtime.lastError });
-                    } else {
-                        console.log(`Observation field added: ${JSON.stringify(response)}`);
-                        refreshObservation()
-                            .then(() => {
-                                if (button) animateButtonResult(button, true);
-                                resolve({ success: true, data: response });
-                            })
-                            .catch(error => {
-                                console.error('Error refreshing after adding field:', error);
-                                if (button) animateButtonResult(button, true); // Still consider it a success if only refresh failed
-                                resolve({ success: true, data: response, refreshError: error });
-                            });
-                    }
+        if (!currentObservationId) {
+            console.log('No current observation ID available. Please select an observation first.');
+            if (button) animateButtonResult(button, false);
+            // Instead of rejecting, we'll resolve with a specific status
+            resolve({ success: false, error: 'No current observation ID' });
+            return;
+        }
+
+        chrome.runtime.sendMessage(
+            {action: "makeApiCall", fieldId: fieldId, value: value, observationId: currentObservationId},
+            function(response) {
+                if (chrome.runtime.lastError) {
+                    console.error(`Error in adding observation field: ${chrome.runtime.lastError.message}`);
+                    if (button) animateButtonResult(button, false);
+                    resolve({ success: false, error: chrome.runtime.lastError.message });
+                } else {
+                    console.log(`Observation field added: ${JSON.stringify(response)}`);
+                    refreshObservation()
+                        .then(() => {
+                            if (button) animateButtonResult(button, true);
+                            resolve({ success: true, data: response });
+                        })
+                        .catch(error => {
+                            console.error('Error refreshing after adding field:', error);
+                            if (button) animateButtonResult(button, true); // Still consider it a success if only refresh failed
+                            resolve({ success: true, data: response, refreshError: error });
+                        });
                 }
-            );
-        });
+            }
+        );
     });
 }
 
@@ -432,21 +452,16 @@ function createOrUpdateIdDisplay(id) {
         updatePositions();
     }
     
-    // Clear existing content
-    idDisplay.innerHTML = '';
+    idDisplay.innerHTML = `Current Observation ID: ${id}`;
+    idDisplay.style.display = 'block'; // Ensure it's visible
     
-    // Create and add ID text
-    const idText = document.createElement('span');
-    idText.textContent = `Current Observation ID: ${id}`;
-    idDisplay.appendChild(idText);
-    
-    // Create and add refresh indicator
-    const refreshIndicator = document.createElement('span');
-    refreshIndicator.id = 'refresh-indicator';
-    refreshIndicator.style.marginLeft = '10px';
-    refreshIndicator.style.padding = '5px';
-    refreshIndicator.style.borderRadius = '5px';
-    idDisplay.appendChild(refreshIndicator);
+    // Add refresh indicator if it doesn't exist
+    if (!idDisplay.querySelector('#refresh-indicator')) {
+        const refreshIndicator = document.createElement('span');
+        refreshIndicator.id = 'refresh-indicator';
+        refreshIndicator.style.marginLeft = '10px';
+        idDisplay.appendChild(refreshIndicator);
+    }
     
     updateRefreshIndicator();
     
@@ -483,7 +498,13 @@ function updateRefreshIndicator(indicator = document.getElementById('refresh-ind
     }
 }
 
-
+function clearObservationId() {
+    currentObservationId = null;
+    if (idDisplay) {
+        idDisplay.textContent = 'Current Observation ID: None';
+    }
+    console.log('Observation ID cleared');
+}
 
 
 function addAnnotation(currentObservationId, attributeId, valueId) {
