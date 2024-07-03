@@ -205,19 +205,23 @@ function saveConfiguration() {
         return;
     }
 
-    // Check for conflicts with existing custom shortcuts
-    const conflictingShortcut = customButtons.find(button => 
-        button.shortcut &&
-        button.shortcut.key === shortcutKey &&
-        button.shortcut.ctrlKey === ctrlKey &&
-        button.shortcut.shiftKey === shiftKey &&
-        button.shortcut.altKey === altKey
-    );
+    // Check if we're editing an existing config or creating a new one
+    const editIndex = parseInt(document.getElementById('saveButton').dataset.editIndex);
+    
+// Check for conflicts with existing custom shortcuts
+const conflictingShortcut = customButtons.find((button, index) => 
+    button.shortcut &&
+    button.shortcut.key === shortcutKey &&
+    button.shortcut.ctrlKey === ctrlKey &&
+    button.shortcut.shiftKey === shiftKey &&
+    button.shortcut.altKey === altKey &&
+    index !== editIndex  // Exclude the current configuration if we're editing
+);
 
-    if (conflictingShortcut) {
-        alert(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
-        return;
-    }
+if (conflictingShortcut) {
+    alert(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
+    return;
+}
 
     const newConfig = {
         name: name,
@@ -252,9 +256,6 @@ function saveConfiguration() {
         newConfig.annotationValue = annotationValue;
     }
 
-    // Check if we're editing an existing config or creating a new one
-    const editIndex = parseInt(document.getElementById('saveButton').dataset.editIndex);
-    
     if (!isNaN(editIndex)) {
         // We're editing an existing config
         customButtons[editIndex] = newConfig;

@@ -314,7 +314,6 @@ function addObservationField(fieldId, value, button = null) {
         if (!currentObservationId) {
             console.log('No current observation ID available. Please select an observation first.');
             if (button) animateButtonResult(button, false);
-            // Instead of rejecting, we'll resolve with a specific status
             resolve({ success: false, error: 'No current observation ID' });
             return;
         }
