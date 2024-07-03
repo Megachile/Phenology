@@ -105,8 +105,8 @@ function displayConfigurations() {
         let configContent = `
             <h3>${config.name}</h3>
             <p>Shortcut: ${formatShortcut(config.shortcut)}</p>
-            <p>Action: ${config.actionType}</p>
-        `;
+             <p>Action: ${config.actionType === 'observationField' ? 'Observation Field' : 'Annotation'}</p>
+             `;
 
         if (config.actionType === 'observationField') {
             configContent += `
