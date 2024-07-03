@@ -99,8 +99,8 @@ function displayConfigurations() {
     customButtons.forEach((config, index) => {
         const configDiv = document.createElement('div');
         configDiv.className = 'config-item';
-        if (config.hidden) {
-            configDiv.classList.add('hidden-config');
+        if (config.configurationDisabled) {
+            configDiv.classList.add('disabled-config');
         }
         let configContent = `
             <h3>${config.name}</h3>
@@ -121,29 +121,52 @@ function displayConfigurations() {
         }
         
         configContent += `
-            <div class="button-actions">
-                <label class="hide-checkbox-label">
-                    <input type="checkbox" class="hide-checkbox" ${config.hidden ? 'checked' : ''}>
-                    <span>Hide</span>
-                </label>
-                <button class="edit-button">Edit</button>
-                <button class="delete-button">Delete</button>
-            </div>
+        <div class="button-actions">
+          <label class="hide-checkbox-label">
+            <input type="checkbox" class="hide-button-checkbox" ${config.buttonHidden ? 'checked' : ''}>
+            <span>Hide Button</span>
+          </label>
+          <label class="disable-checkbox-label">
+            <input type="checkbox" class="disable-config-checkbox" ${config.configurationDisabled ? 'checked' : ''}>
+            <span>Disable Configuration</span>
+          </label>
+          <button class="edit-button">Edit</button>
+          <button class="delete-button">Delete</button>
+        </div>
         `;
         
         configDiv.innerHTML = configContent;
 
-        const hideCheckbox = configDiv.querySelector('.hide-checkbox');
+        const hideButtonCheckbox = configDiv.querySelector('.hide-button-checkbox');
+        const disableConfigCheckbox = configDiv.querySelector('.disable-config-checkbox');
         const editButton = configDiv.querySelector('.edit-button');
         const deleteButton = configDiv.querySelector('.delete-button');
 
-        hideCheckbox.addEventListener('change', () => toggleHideConfiguration(index));
+        hideButtonCheckbox.addEventListener('change', () => toggleHideButton(index));
+        disableConfigCheckbox.addEventListener('change', () => toggleDisableConfiguration(index));
         editButton.addEventListener('click', () => editConfiguration(index));
         deleteButton.addEventListener('click', () => deleteConfiguration(index));
 
         container.appendChild(configDiv);
     });
 }
+
+function toggleHideButton(index) {
+    customButtons[index].buttonHidden = !customButtons[index].buttonHidden;
+    saveAndReloadConfigurations();
+  }
+  
+  function toggleDisableConfiguration(index) {
+    customButtons[index].configurationDisabled = !customButtons[index].configurationDisabled;
+    saveAndReloadConfigurations();
+  }
+  
+  function saveAndReloadConfigurations() {
+    chrome.storage.sync.set({customButtons: customButtons}, function() {
+      console.log('Configuration updated');
+      loadConfigurations();
+    });
+  }
 
 function formatShortcut(shortcut) {
     if (!shortcut || (!shortcut.ctrlKey && !shortcut.shiftKey && !shortcut.altKey && !shortcut.key)) {
@@ -205,7 +228,8 @@ function saveConfiguration() {
             key: shortcutKey
         },
         actionType: currentActionType,
-        hidden: false 
+        buttonHidden: false,
+        configurationDisabled: false
     };
 
     if (currentActionType === 'observationField') {
@@ -245,6 +269,7 @@ function saveConfiguration() {
         clearForm();
     });
 }
+
 function getAnnotationFieldName(fieldId) {
     for (let [key, value] of Object.entries(controlledTerms)) {
         if (value.id === parseInt(fieldId)) {
@@ -310,9 +335,8 @@ function editConfiguration(index) {
         updateAnnotationValues();
         document.getElementById('annotationValue').value = config.annotationValue;
     }
-    if (config.hidden !== undefined) {
-        document.querySelector('.hide-checkbox').checked = config.hidden;
-    }
+    document.querySelector('.hide-button-checkbox').checked = config.buttonHidden || false;
+    document.querySelector('.disable-config-checkbox').checked = config.configurationDisabled || false;
     // Change the save button text and functionality
     const saveButton = document.getElementById('saveButton');
     saveButton.textContent = 'Update Configuration';

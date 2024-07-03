@@ -601,46 +601,49 @@ buttonContainer.appendChild(deadAdultButton);
 function createDynamicButtons() {
     chrome.storage.sync.get('customButtons', function(data) {
         if (data.customButtons && data.customButtons.length > 0) {
-            // Clear existing custom shortcuts
             customShortcuts = [];
 
             data.customButtons.forEach(config => {
-                if (!config.hidden) {  // Only create buttons for non-hidden configurations
-                    let button = document.createElement('button');
-                    button.innerText = config.name;
-                    button.onclick = function() {
-                        if (config.actionType === 'observationField') {
-                            addObservationField(config.fieldId, config.fieldValue, this);
-                        } else if (config.actionType === 'annotation') {
-                            if (currentObservationId) {
-                                addAnnotation(currentObservationId, config.annotationField, config.annotationValue)
-                                    .then(() => {
-                                        console.log('Annotation added successfully');
-                                        return refreshObservation();
-                                    })
-                                    .then(() => {
-                                        animateButtonResult(this, true);
-                                    })
-                                    .catch(error => {
-                                        console.error('Error adding annotation:', error);
-                                        animateButtonResult(this, false);
-                                    });
-                            } else {
-                                console.error('No current observation ID available');
-                                animateButtonResult(this, false);
+                if (!config.configurationDisabled) {
+                        let button = document.createElement('button');
+                        button.innerText = config.name;
+                        button.onclick = function() {
+                            if (config.actionType === 'observationField') {
+                                addObservationField(config.fieldId, config.fieldValue, this);
+                            } else if (config.actionType === 'annotation') {
+                                if (currentObservationId) {
+                                    addAnnotation(currentObservationId, config.annotationField, config.annotationValue)
+                                        .then(() => {
+                                            console.log('Annotation added successfully');
+                                            return refreshObservation();
+                                        })
+                                        .then(() => {
+                                            animateButtonResult(this, true);
+                                        })
+                                        .catch(error => {
+                                            console.error('Error adding annotation:', error);
+                                            animateButtonResult(this, false);
+                                        });
+                                } else {
+                                    console.error('No current observation ID available');
+                                    animateButtonResult(this, false);
+                                }
                             }
-                        }
-                    };
-                    buttonContainer.appendChild(button);
+                        };
+                        button.style.display = config.buttonHidden ? 'none' : 'inline-block';
+     
+                        buttonContainer.appendChild(button);
+                    
 
-                    // Add shortcut to customShortcuts array instead of adding event listener
+                    // Add shortcut regardless of button visibility
                     if (config.shortcut) {
                         customShortcuts.push({
                             name: config.name,
                             key: config.shortcut.key,
                             ctrlKey: config.shortcut.ctrlKey,
                             shiftKey: config.shortcut.shiftKey,
-                            altKey: config.shortcut.altKey
+                            altKey: config.shortcut.altKey,
+                            button: button
                         });
                     }
                 }
