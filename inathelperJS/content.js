@@ -600,16 +600,15 @@ deadAdultButton.onclick = function() {
         addDeadAdultAnnotations(currentObservationId)
             .then(result => {
                 console.log('Annotations added, starting refresh');
-                return refreshObservation().then(() => result);
+                return refreshObservation().then(() => true);
             })
-            .then(result => {
+            .then(success => {
                 console.log('Dead Adult annotations added and observation refreshed');
-                animateButtonResult(deadAdultButton, result.success);
+                animateButtonResult(deadAdultButton, true);
             })
             .catch(error => {
                 console.error('Error:', error);
-                // Still consider it a success if annotations were added but refresh failed
-                animateButtonResult(deadAdultButton, error.success || false);
+                animateButtonResult(deadAdultButton, false);
             });
     } else {
         console.error('No current observation ID available');
