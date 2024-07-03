@@ -8,17 +8,31 @@ let isButtonsVisible = true;
 let customShortcuts = [];
 
 function handleAllShortcuts(event) {
+    // Always allow these shortcuts, even when typing
     if (event.altKey && event.key === 'b') {
         toggleButtonVisibility();
+        return;
     }
     if (event.altKey && event.key === 'n') {
         cycleButtonPosition();
+        return;
     }
     if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'r') {
-        event.preventDefault(); // Prevent any default browser behavior
+        event.preventDefault();
         toggleRefresh();
+        return;
     }
 
+    // Check if the active element is an input or textarea
+    const activeElement = document.activeElement;
+    const isTyping = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
+
+    // If user is typing, don't process other shortcuts
+    if (isTyping) {
+        return;
+    }
+
+    // Process custom shortcuts only if not typing
     customShortcuts.forEach(shortcut => {
         if (event.key.toLowerCase() === shortcut.key.toLowerCase() &&
             event.ctrlKey === shortcut.ctrlKey &&
