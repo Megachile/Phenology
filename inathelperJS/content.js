@@ -4,8 +4,8 @@ let buttonPosition = 'bottom-right'; // Default position
 let idDisplay;
 let refreshEnabled = true;
 let isButtonsVisible = true;
-
 let customShortcuts = [];
+const API_URL = 'https://api.inaturalist.org/v1';
 
 function handleAllShortcuts(event) {
     // Always allow these shortcuts, even when typing
@@ -309,78 +309,69 @@ function addObservationField(fieldId, value, button = null) {
     return ensureCorrectObservationId().then(id => {
         if (!id) {
             console.log('No current observation ID available. Please select an observation first.');
-            if (button) animateButtonResult(button, false);
             return { success: false, error: 'No current observation ID' };
         }
 
-    
-    return new Promise((resolve, reject) => {
-        if (!currentObservationId) {
-            console.log('No current observation ID available. Please select an observation first.');
-            if (button) animateButtonResult(button, false);
-            resolve({ success: false, error: 'No current observation ID' });
-            return;
-        }
-
-        chrome.storage.local.get(['accessToken'], function(result) {
-            const token = result.accessToken;
-            if (!token) {
-                console.error('No access token found');
-                if (button) animateButtonResult(button, false);
-                resolve({ success: false, error: 'No access token found' });
+        return new Promise((resolve, reject) => {
+            if (!currentObservationId) {
+                console.log('No current observation ID available. Please select an observation first.');
+                resolve({ success: false, error: 'No current observation ID' });
                 return;
             }
 
-            const requestUrl = `https://api.inaturalist.org/v1/observation_field_values`;
-            const headers = {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            };
-            const data = {
-                observation_field_value: {
-                    observation_id: currentObservationId,
-                    observation_field_id: fieldId,
-                    value: value
+            chrome.storage.local.get(['accessToken'], function(result) {
+                const token = result.accessToken;
+                if (!token) {
+                    console.error('No access token found');
+                    resolve({ success: false, error: 'No access token found' });
+                    return;
                 }
-            };
-            const options = {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify(data)
-            };
 
-            fetch(requestUrl, options)
-                .then(response => {
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            throw new Error(`Network response was not ok. Status: ${response.status}, Body: ${text}`);
-                        });
+                const requestUrl = `https://api.inaturalist.org/v1/observation_field_values`;
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                };
+                const data = {
+                    observation_field_value: {
+                        observation_id: currentObservationId,
+                        observation_field_id: fieldId,
+                        value: value
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Added observation field:', data);
-                    if (button) animateButtonResult(button, true);
-                    refreshObservation()
-                        .then(() => resolve({ success: true, data: data }))
-                        .catch(error => {
-                            console.error('Error refreshing after adding field:', error);
-                            resolve({ success: true, data: data, refreshError: error });
-                        });
-                })                
-                .catch((error) => {
-                    if (error.message.includes("Observation user does not accept fields from others")) {
-                        console.log('User does not accept fields from others:', error);
-                        return { status: 'warning', message: 'User does not accept fields from others' };
-                    } else {
-                        console.error('Error in adding observation field:', error);
-                        return { status: 'error', message: error.message };
-                    }
-                });
+                };
+                const options = {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(data)
+                };
+
+                fetch(requestUrl, options)
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.text().then(text => {
+                                throw new Error(`Network response was not ok. Status: ${response.status}, Body: ${text}`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Added observation field:', data);
+                        resolve({ success: true, data: data });
+                    })
+                    .catch(error => {
+                        if (error.message.includes("Observation user does not accept fields from others")) {
+                            console.log('User does not accept fields from others:', error);
+                            resolve({ success: false, error: 'User does not accept fields from others' });
+                        } else {
+                            console.error('Error in adding observation field:', error);
+                            resolve({ success: false, error: error.message });
+                        }
+                    });
+            });
         });
     });
-});
 }
+
 
 function animateButtonResult(button, success) {
     button.classList.add(success ? 'button-success' : 'button-failure');
@@ -665,31 +656,16 @@ deadAdultButton.onclick = function() {
 buttonContainer.appendChild(deadAdultButton);
 
 function performActions(actions) {
-    let successfulActions = 0;
-    let errors = [];
-
     return actions.reduce((promise, action) => {
         return promise.then(() => {
             if (action.type === 'observationField') {
-                return addObservationField(action.fieldId, action.taxonId || action.fieldValue)
-                    .then(() => successfulActions++)
-                    .catch(error => errors.push(error));
+                return addObservationField(action.fieldId, action.fieldValue);
             } else if (action.type === 'annotation') {
-                return addAnnotation(currentObservationId, action.annotationField, action.annotationValue)
-                    .then(() => successfulActions++)
-                    .catch(error => errors.push(error));
+                return addAnnotation(currentObservationId, action.annotationField, action.annotationValue);
             }
         });
     }, Promise.resolve()).then(() => {
-        console.log(`${successfulActions} out of ${actions.length} actions completed successfully`);
-        if (errors.length > 0) {
-            console.error('Errors occurred:', errors);
-        }
-        // Refresh only once, even if there were errors
-        return refreshObservation();
-    }).catch(error => {
-        console.error('Error in performActions:', error);
-        // Still attempt to refresh even if there was an error
+        console.log('All actions completed');
         return refreshObservation();
     });
 }
