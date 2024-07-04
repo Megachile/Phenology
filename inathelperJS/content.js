@@ -258,7 +258,7 @@ buttons.forEach(btn => {
     button.innerText = btn.text;
     button.onclick = function() {
         animateButton(this);
-        addObservationField(btn.field, btn.value, this);
+        addObservationField(btn.field, btn.fieldValue, this);
     };
     buttonContainer.appendChild(button);
 });

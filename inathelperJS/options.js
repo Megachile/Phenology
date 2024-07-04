@@ -446,7 +446,7 @@ function displayConfigurations() {
             </div>
             <div class="config-details" style="display: none;">
                 ${config.actions.map(action => `<p>${formatAction(action)}</p>`).join('')}
-                <div class="button-actions">
+                 <div class="button-actions">
                     <label><input type="checkbox" class="hide-button-checkbox" ${config.buttonHidden ? 'checked' : ''}> Hide Button</label>
                     <label><input type="checkbox" class="disable-config-checkbox" ${config.configurationDisabled ? 'checked' : ''}> Disable Configuration</label>
                     <button class="edit-button">Edit</button>
@@ -483,11 +483,8 @@ function displayConfigurations() {
 
 function formatAction(action) {
     if (action.type === 'observationField') {
-        let value = action.fieldValue;
-        if (action.taxonId) {
-            value = `${action.fieldValue} (ID: ${action.taxonId})`;
-        }
-        return `Add value "${value}" to ${action.fieldName || `Field ${action.fieldId}`}`;
+        let displayValue = action.displayValue || action.fieldValue;
+        return `Add value "${displayValue}" to ${action.fieldName || `Field ${action.fieldId}`}`;
     } else {
         const fieldName = getAnnotationFieldName(action.annotationField);
         const valueName = getAnnotationValueName(action.annotationField, action.annotationValue);
@@ -606,12 +603,12 @@ function saveConfiguration() {
             if (fieldIdElement && fieldNameElement && fieldValueElement) {
                 action.fieldId = fieldIdElement.value.trim();
                 action.fieldName = fieldNameElement.value.trim();
-                action.fieldValue = fieldValueElement.value.trim();
                 if (fieldValueElement.dataset.taxonId) {
-                    action.taxonId = fieldValueElement.dataset.taxonId;
-                    action.fieldValue = fieldValueElement.value; // This should be the taxon name
+                    action.fieldValue = fieldValueElement.dataset.taxonId; // Use the taxon ID
+                    action.displayValue = fieldValueElement.value; // Store the display name
                 } else {
                     action.fieldValue = fieldValueElement.value.trim();
+                    action.displayValue = action.fieldValue; // For non-taxon fields, display value is the same as field value
                 }
                 if (!action.fieldId || !action.fieldName || !action.fieldValue) {
                     alert("Please enter Field Name, ID, and Value for all Observation Field actions.");
@@ -834,4 +831,3 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('searchInput').addEventListener('input', filterConfigurations);
     updateSortButtonText();
 });
-
