@@ -5,6 +5,7 @@ let idDisplay;
 let refreshEnabled = true;
 let isButtonsVisible = true;
 let customShortcuts = [];
+let lastKnownUpdate = 0;
 const API_URL = 'https://api.inaturalist.org/v1';
 
 function handleAllShortcuts(event) {
@@ -46,6 +47,52 @@ function handleAllShortcuts(event) {
 }
 
 document.addEventListener('keydown', handleAllShortcuts);
+
+function checkForConfigUpdates() {
+    chrome.storage.sync.get(['lastConfigUpdate'], function(result) {
+        if (result.lastConfigUpdate) {
+            if (lastKnownUpdate === 0) {
+                // First time checking, just update lastKnownUpdate without showing notification
+                lastKnownUpdate = result.lastConfigUpdate;
+            } else if (result.lastConfigUpdate > lastKnownUpdate) {
+                // Configuration has been updated since last check
+                showUpdateNotification();
+                lastKnownUpdate = result.lastConfigUpdate;
+            }
+        }
+        // If lastConfigUpdate doesn't exist, do nothing
+    });
+}
+
+function showUpdateNotification() {
+    let notification = document.getElementById('config-update-notification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'config-update-notification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ffff00;
+            color: #000;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10001;
+            cursor: pointer;
+        `;
+        notification.textContent = 'Configuration updated. Click here to refresh.';
+        notification.addEventListener('click', () => location.reload());
+        document.body.appendChild(notification);
+    }
+    notification.style.display = 'block';
+}
+
+// Check for updates every 60 seconds
+setInterval(checkForConfigUpdates, 4000);
+
+// Initial check on page load
+document.addEventListener('DOMContentLoaded', checkForConfigUpdates);
 
 const positions = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
 let currentPositionIndex = 0;
@@ -238,70 +285,9 @@ let buttonDiv = document.createElement('div');
 buttonDiv.style.position = 'fixed';
 buttonDiv.style.zIndex = '10000';
 
-const buttons = [
-    { text: "Generation: unisexual", field: 5251, value: 'unisexual' },
-    { text: "Generation: bisexual", field: 5251, value: 'bisexual' },
-    { text: "Phenophase: developing", field: 15121, value: 'developing' },
-    { text: "Phenophase: dormant", field: 15121, value: 'dormant' },
-    { text: "Phenophase: maturing", field: 15121, value: 'maturing' },
-    { text: "Phenophase: perimature", field: 15121, value: 'perimature' },
-    { text: "Phenophase: senescent", field: 15121, value: 'senescent' },
-    { text: "Rearing: viable", field: 15215, value: 'viable' },
-    { text: "Rearing: pending", field: 15215, value: 'pending' },
-];
-
 const buttonContainer = document.createElement('div');
 buttonContainer.id = 'custom-extension-container';
 
-buttons.forEach(btn => {
-    let button = document.createElement('button');
-    button.innerText = btn.text;
-    button.onclick = function() {
-        animateButton(this);
-        addObservationField(btn.field, btn.fieldValue, this);
-    };
-    buttonContainer.appendChild(button);
-});
-
-let addButton8 = document.createElement('button');
-addButton8.innerText = `Add GF Code`;
-addButton8.onclick = function() {
-    const gfCode = inputBox.value;
-    if (gfCode) {
-        addObservationField(13979, gfCode, this);
-    }
-};
-
-const inputWrapper = document.createElement('div');
-inputWrapper.style.position = 'relative';
-inputWrapper.style.display = 'inline-block';
-
-const inputBox = document.createElement('input');
-inputBox.setAttribute('id', 'custom-extension-input');
-inputBox.setAttribute('placeholder', 'Gallformers code');
-inputBox.addEventListener('input', function() {
-    addButton8.innerText = `Add GF Code: ${inputBox.value}`;
-});
-
-const tooltip = document.createElement('div');
-tooltip.className = 'tooltip';
-tooltip.textContent = 'Close the modal to edit';
-
-inputBox.addEventListener('mouseenter', function() {
-    if (document.querySelector('.ObservationModal.FullScreenModal')) {
-        tooltip.style.display = 'block';
-    }
-});
-
-inputBox.addEventListener('mouseleave', function() {
-    tooltip.style.display = 'none';
-});
-
-inputWrapper.appendChild(inputBox);
-inputWrapper.appendChild(tooltip);
-
-buttonContainer.appendChild(addButton8);
-buttonContainer.appendChild(inputWrapper);
 buttonDiv.appendChild(buttonContainer);
 document.body.appendChild(buttonDiv);
 
@@ -589,17 +575,6 @@ function addAnnotation(currentObservationId, attributeId, valueId) {
 }
 
 
-function addDeadAdultAnnotations(currentObservationId) {
-    const annotations = [
-        { attribute: 17, value: 19 },  // Alive or Dead: Dead
-        { attribute: 22, value: 24 },  // Evidence of Presence: Organism
-        { attribute: 1, value: 2 }     // Life Stage: Adult
-    ];
-
-    return Promise.all(annotations.map(ann => 
-        addAnnotation(currentObservationId, ann.attribute, ann.value)
-    ));
-}
 
 function refreshObservation() {
     return new Promise((resolve, reject) => {
@@ -630,30 +605,6 @@ function toggleRefresh() {
     updateRefreshIndicator();
 }
 
-let deadAdultButton = document.createElement('button');
-deadAdultButton.innerText = 'Dead Adult';
-deadAdultButton.onclick = function() {
-    if (currentObservationId) {
-        animateButton(this);
-        addDeadAdultAnnotations(currentObservationId)
-            .then(result => {
-                console.log('Annotations added, starting refresh');
-                return refreshObservation().then(() => true);
-            })
-            .then(success => {
-                console.log('Dead Adult annotations added and observation refreshed');
-                animateButtonResult(deadAdultButton, true);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                animateButtonResult(deadAdultButton, false);
-            });
-    } else {
-        console.error('No current observation ID available');
-        animateButtonResult(deadAdultButton, false);
-    }
-};
-buttonContainer.appendChild(deadAdultButton);
 
 function performActions(actions) {
     return actions.reduce((promise, action) => {

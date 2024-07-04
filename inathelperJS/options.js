@@ -631,6 +631,8 @@ function saveConfiguration() {
         newConfig.actions.push(action);
     });
 
+    newConfig.lastUpdated = Date.now();
+
     if (isShortcutForbidden(newConfig.shortcut)) {
         alert("This shortcut is not allowed as it conflicts with browser functionality.");
         return;
@@ -651,7 +653,7 @@ function saveConfiguration() {
         customButtons.push(newConfig);
     }
 
-    chrome.storage.sync.set({customButtons: customButtons, observationFieldMap: observationFieldMap}, function() {
+    chrome.storage.sync.set({customButtons: customButtons, observationFieldMap: observationFieldMap, lastConfigUpdate: Date.now()}, function() {
         console.log('Configuration and field map saved');
         loadConfigurations();
         clearForm();
