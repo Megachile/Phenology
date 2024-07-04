@@ -172,7 +172,8 @@ function displayConfigurations() {
 
         config.actions.forEach((action, actionIndex) => {
             configContent += `
-                <p>Action ${actionIndex + 1}: ${action.type === 'observationField' ? 'Observation Field' : 'Annotation'}</p>
+                <div class="action-item">
+                    <h4>Action ${actionIndex + 1}: ${action.type === 'observationField' ? 'Observation Field' : 'Annotation'}</h4>
             `;
             if (action.type === 'observationField') {
                 configContent += `
@@ -185,6 +186,7 @@ function displayConfigurations() {
                     <p>Value: ${getAnnotationValueName(action.annotationField, action.annotationValue)}</p>
                 `;
             }
+            configContent += `</div>`;
         });
         
         configContent += `
@@ -251,13 +253,41 @@ function formatShortcut(shortcut) {
 }
 
 function duplicateConfiguration(index) {
-    const config = JSON.parse(JSON.stringify(customButtons[index])); // Deep copy
-    config.name += ' (Copy)';
-    customButtons.push(config);
-    chrome.storage.sync.set({customButtons: customButtons}, function() {
-        console.log('Configuration duplicated');
-        loadConfigurations();
+    const config = customButtons[index];
+    document.getElementById('buttonName').value = `${config.name} (Copy)`;
+    
+    if (config.shortcut) {
+        document.getElementById('ctrlKey').checked = config.shortcut.ctrlKey;
+        document.getElementById('shiftKey').checked = config.shortcut.shiftKey;
+        document.getElementById('altKey').checked = config.shortcut.altKey;
+        document.getElementById('shortcut').value = config.shortcut.key;
+    }
+
+    document.getElementById('actionsContainer').innerHTML = '';
+    config.actions.forEach(action => {
+        addActionToForm();
+        const actionDiv = document.querySelector('.action-item:last-child');
+        actionDiv.querySelector('.actionType').value = action.type;
+        if (action.type === 'observationField') {
+            actionDiv.querySelector('.fieldId').value = action.fieldId;
+            actionDiv.querySelector('.fieldValue').value = action.fieldValue;
+        } else {
+            const annotationField = actionDiv.querySelector('.annotationField');
+            const annotationValue = actionDiv.querySelector('.annotationValue');
+            populateAnnotationFields(annotationField);
+            annotationField.value = action.annotationField;
+            updateAnnotationValues(annotationField, annotationValue);
+            annotationValue.value = action.annotationValue;
+        }
+        actionDiv.querySelector('.actionType').dispatchEvent(new Event('change'));
     });
+
+    const saveButton = document.getElementById('saveButton');
+    saveButton.textContent = 'Save New Configuration';
+    delete saveButton.dataset.editIndex;
+
+    // Scroll to the top of the page
+    window.scrollTo(0, 0);
 }
 
 function saveConfiguration() {
@@ -267,36 +297,7 @@ function saveConfiguration() {
     const shiftKey = document.getElementById('shiftKey').checked;
     const altKey = document.getElementById('altKey').checked;
     
-    // Validation checks
-    if (!name) {
-        alert("Please enter a button name.");
-        return;
-    }
-
-    if ((ctrlKey || shiftKey || altKey) && !shortcutKey) {
-        alert("You've selected a modifier key (Ctrl, Shift, or Alt) but haven't specified a key. Please either add a key or uncheck the modifier(s).");
-        return;
-    }
-
-    if (!ctrlKey && !shiftKey && !altKey && iNatSingleKeyPresses.includes(shortcutKey.toLowerCase())) {
-        alert("This key is already used by iNaturalist shortcuts. Please choose a different key or add a modifier.");
-        return;
-    }
-
-    const editIndex = parseInt(document.getElementById('saveButton').dataset.editIndex);
-    const conflictingShortcut = customButtons.find((button, index) => 
-        button.shortcut &&
-        button.shortcut.key === shortcutKey &&
-        button.shortcut.ctrlKey === ctrlKey &&
-        button.shortcut.shiftKey === shiftKey &&
-        button.shortcut.altKey === altKey &&
-        index !== editIndex
-    );
-
-    if (conflictingShortcut) {
-        alert(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
-        return;
-    }
+    // Validation checks...
 
     const newConfig = {
         name: name,
@@ -312,22 +313,33 @@ function saveConfiguration() {
     };
 
     document.querySelectorAll('.action-item').forEach(actionDiv => {
-        const actionType = actionDiv.querySelector('.actionType').value;
+        const actionTypeElement = actionDiv.querySelector('.actionType');
+        if (!actionTypeElement) return; // Skip if element not found
+
+        const actionType = actionTypeElement.value;
         const action = { type: actionType };
 
         if (actionType === 'observationField') {
-            action.fieldId = actionDiv.querySelector('.fieldId').value.trim();
-            action.fieldValue = actionDiv.querySelector('.fieldValue').value.trim();
-            if (!action.fieldId || !action.fieldValue) {
-                alert("Please enter both Field ID and Field Value for all Observation Field actions.");
-                return;
+            const fieldIdElement = actionDiv.querySelector('.fieldId');
+            const fieldValueElement = actionDiv.querySelector('.fieldValue');
+            if (fieldIdElement && fieldValueElement) {
+                action.fieldId = fieldIdElement.value.trim();
+                action.fieldValue = fieldValueElement.value.trim();
+                if (!action.fieldId || !action.fieldValue) {
+                    alert("Please enter both Field ID and Field Value for all Observation Field actions.");
+                    return;
+                }
             }
         } else {
-            action.annotationField = actionDiv.querySelector('.annotationField').value;
-            action.annotationValue = actionDiv.querySelector('.annotationValue').value;
-            if (!action.annotationField || !action.annotationValue) {
-                alert("Please select both Annotation Field and Annotation Value for all Annotation actions.");
-                return;
+            const annotationFieldElement = actionDiv.querySelector('.annotationField');
+            const annotationValueElement = actionDiv.querySelector('.annotationValue');
+            if (annotationFieldElement && annotationValueElement) {
+                action.annotationField = annotationFieldElement.value;
+                action.annotationValue = annotationValueElement.value;
+                if (!action.annotationField || !action.annotationValue) {
+                    alert("Please select both Annotation Field and Annotation Value for all Annotation actions.");
+                    return;
+                }
             }
         }
 
@@ -339,6 +351,7 @@ function saveConfiguration() {
         return;
     }
 
+    const editIndex = parseInt(document.getElementById('saveButton').dataset.editIndex);
     if (!isNaN(editIndex)) {
         customButtons[editIndex] = newConfig;
     } else {
@@ -418,7 +431,10 @@ function editConfiguration(index) {
     const saveButton = document.getElementById('saveButton');
     saveButton.textContent = 'Update Configuration';
     saveButton.dataset.editIndex = index;
+
+    window.scrollTo(0,0);
 }
+
 function updateConfiguration(index) {
     const updatedConfig = {
         name: document.getElementById('buttonName').value,
