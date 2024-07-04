@@ -47,30 +47,28 @@
             border-radius: 5px;
         }
         .disabled-config {
-        opacity: 0.5;
+            opacity: 0.5;
         }
         .button-actions {
-    display: flex;
-    align-items: center;
-    margin-top: 10px;
-}
-
-.hide-checkbox-label,
-.disable-checkbox-label {
-    display: flex;
-    align-items: center;
-    margin-right: 20px;
-    cursor: pointer;
-}
-
-.hide-checkbox-label input,
-.disable-checkbox-label input {
-    margin-right: 8px;
-}
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .hide-checkbox-label,
+        .disable-checkbox-label {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+            cursor: pointer;
+        }
+        .hide-checkbox-label input,
+        .disable-checkbox-label input {
+            margin-right: 8px;
+        }
         .edit-button, .duplicate-button, .delete-button {
-        padding: 5px 10px;
-        margin-right: 10px;
-        cursor: pointer;
+            padding: 5px 10px;
+            margin-right: 10px;
+            cursor: pointer;
         }
         #shortcutContainer {
             display: flex;
@@ -86,7 +84,20 @@
         }
         #shortcut {
             width: 50px;
-        }  
+        }
+        #actionsContainer {
+            margin-top: 20px;
+        }
+        .action-item {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .action-item select,
+        .action-item input {
+            display: block;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -102,21 +113,11 @@
         </div>
         <input type="text" id="shortcut" placeholder="Key (e.g., A, 1, F1)" maxlength="2">
     </div>
-    <div class="button-container">
-        <button id="ofButton">Observation Field</button>
-        <button id="annotationButton">Annotation</button>
-    </div>
-    <div id="ofInputs">
-        <input type="number" id="fieldId" placeholder="Observation Field ID">
-        <input type="text" id="fieldValue" placeholder="Field Value (for taxon Fields, input an iNat taxon code)">
-        <div id="ofUrlContainer">
-            <a href="https://www.inaturalist.org/observation_fields" target="_blank">Look up Observation Field IDs</a>
-        </div>
-    </div>
-    <div id="annotationInputs" class="hidden">
-        <select id="annotationField"></select>
-        <select id="annotationValue" class="hidden"></select>
-    </div>
+    
+    <h3>Actions</h3>
+    <div id="actionsContainer"></div>
+    <button id="addActionButton">Add Action</button>
+
     <div class="button-container">
         <button id="saveButton">Save Configuration</button>
         <button id="cancelButton">Cancel</button>

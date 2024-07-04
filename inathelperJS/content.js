@@ -660,6 +660,21 @@ deadAdultButton.onclick = function() {
 };
 buttonContainer.appendChild(deadAdultButton);
 
+function performActions(actions) {
+    return actions.reduce((promise, action) => {
+        return promise.then(() => {
+            if (action.type === 'observationField') {
+                return addObservationField(action.fieldId, action.fieldValue);
+            } else if (action.type === 'annotation') {
+                return addAnnotation(currentObservationId, action.annotationField, action.annotationValue);
+            }
+        });
+    }, Promise.resolve()).then(() => {
+        console.log('All actions completed');
+        return refreshObservation();
+    });
+}
+
 function createDynamicButtons() {
     chrome.storage.sync.get('customButtons', function(data) {
         if (data.customButtons && data.customButtons.length > 0) {
@@ -667,37 +682,23 @@ function createDynamicButtons() {
 
             data.customButtons.forEach(config => {
                 if (!config.configurationDisabled) {
-                        let button = document.createElement('button');
-                        button.innerText = config.name;
-                        button.onclick = function() {
-                            if (config.actionType === 'observationField') {
-                                addObservationField(config.fieldId, config.fieldValue, this);
-                            } else if (config.actionType === 'annotation') {
-                                if (currentObservationId) {
-                                    addAnnotation(currentObservationId, config.annotationField, config.annotationValue)
-                                        .then(() => {
-                                            console.log('Annotation added successfully');
-                                            return refreshObservation();
-                                        })
-                                        .then(() => {
-                                            animateButtonResult(this, true);
-                                        })
-                                        .catch(error => {
-                                            console.error('Error adding annotation:', error);
-                                            animateButtonResult(this, false);
-                                        });
-                                } else {
-                                    console.error('No current observation ID available');
-                                    animateButtonResult(this, false);
-                                }
-                            }
-                        };
-                        button.style.display = config.buttonHidden ? 'none' : 'inline-block';
-     
-                        buttonContainer.appendChild(button);
-                    
+                    let button = document.createElement('button');
+                    button.innerText = config.name;
+                    button.onclick = function() {
+                        animateButton(this);
+                        performActions(config.actions)
+                            .then(() => {
+                                animateButtonResult(this, true);
+                            })
+                            .catch(error => {
+                                console.error('Error performing actions:', error);
+                                animateButtonResult(this, false);
+                            });
+                    };
+                    button.style.display = config.buttonHidden ? 'none' : 'inline-block';
+ 
+                    buttonContainer.appendChild(button);
 
-                    // Add shortcut regardless of button visibility
                     if (config.shortcut) {
                         customShortcuts.push({
                             name: config.name,
@@ -714,5 +715,5 @@ function createDynamicButtons() {
     });
 }
 
-// Call this function after your existing button creation logic
+
 createDynamicButtons();
