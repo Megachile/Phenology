@@ -665,16 +665,31 @@ deadAdultButton.onclick = function() {
 buttonContainer.appendChild(deadAdultButton);
 
 function performActions(actions) {
+    let successfulActions = 0;
+    let errors = [];
+
     return actions.reduce((promise, action) => {
         return promise.then(() => {
             if (action.type === 'observationField') {
-                return addObservationField(action.fieldId, action.fieldValue);
+                return addObservationField(action.fieldId, action.taxonId || action.fieldValue)
+                    .then(() => successfulActions++)
+                    .catch(error => errors.push(error));
             } else if (action.type === 'annotation') {
-                return addAnnotation(currentObservationId, action.annotationField, action.annotationValue);
+                return addAnnotation(currentObservationId, action.annotationField, action.annotationValue)
+                    .then(() => successfulActions++)
+                    .catch(error => errors.push(error));
             }
         });
     }, Promise.resolve()).then(() => {
-        console.log('All actions completed');
+        console.log(`${successfulActions} out of ${actions.length} actions completed successfully`);
+        if (errors.length > 0) {
+            console.error('Errors occurred:', errors);
+        }
+        // Refresh only once, even if there were errors
+        return refreshObservation();
+    }).catch(error => {
+        console.error('Error in performActions:', error);
+        // Still attempt to refresh even if there was an error
         return refreshObservation();
     });
 }

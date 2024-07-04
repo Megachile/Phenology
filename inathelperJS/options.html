@@ -168,6 +168,32 @@ button:hover {
 #shortcut {
     width: 50px;
 }
+.taxonSuggestions {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ddd;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.taxonSuggestion {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    cursor: pointer;
+}
+
+.taxonSuggestion:hover {
+    background-color: #f0f0f0;
+}
+
+.taxonSuggestion img {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+    object-fit: cover;
+}
     </style>
 </head>
 <body>

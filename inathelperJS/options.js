@@ -122,6 +122,47 @@ function updateFieldValueInput(field, container) {
                 input.appendChild(opt);
             });
             break;
+        case 'taxon':
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'fieldValue taxonInput';
+            input.placeholder = 'Enter species name';
+            
+            const suggestionContainer = document.createElement('div');
+            suggestionContainer.className = 'taxonSuggestions';
+            container.appendChild(input);
+            container.appendChild(suggestionContainer);
+
+            let debounceTimeout;
+            input.addEventListener('input', () => {
+                clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(() => {
+                    if (input.value.length < 2) {
+                        suggestionContainer.innerHTML = '';
+                        return;
+                    }
+                    lookupTaxon(input.value)
+                        .then(taxa => {
+                            suggestionContainer.innerHTML = '';
+                            taxa.forEach(taxon => {
+                                const suggestion = document.createElement('div');
+                                suggestion.className = 'taxonSuggestion';
+                                suggestion.innerHTML = `
+                                    <img src="${taxon.default_photo?.square_url || 'placeholder.jpg'}" alt="${taxon.name}">
+                                    <span>${taxon.name}</span>
+                                `;
+                                suggestion.addEventListener('click', () => {
+                                    input.value = taxon.name;
+                                    input.dataset.taxonId = taxon.id;
+                                    suggestionContainer.innerHTML = '';
+                                });
+                                suggestionContainer.appendChild(suggestion);
+                            });
+                        })
+                        .catch(error => console.error('Error fetching taxa:', error));
+                }, 300);
+            });
+            break;
         default:
             input = document.createElement('input');
             input.type = 'text';
@@ -131,7 +172,7 @@ function updateFieldValueInput(field, container) {
     input.placeholder = 'Field Value';
     container.appendChild(input);
 
-    if (field.allowed_values) {
+    if (field.allowed_values && field.datatype !== 'taxon') {
         const allowedValues = field.allowed_values.split('|');
         if (allowedValues.length > 0) {
             const datalist = document.createElement('datalist');
@@ -145,6 +186,86 @@ function updateFieldValueInput(field, container) {
             input.setAttribute('list', datalist.id);
         }
     }
+}
+
+function editConfiguration(configId) {
+    const config = customButtons.find(c => c.id === configId);
+    if (!config) return;
+    document.getElementById('buttonName').value = config.name;
+    
+    if (config.shortcut) {
+        document.getElementById('ctrlKey').checked = config.shortcut.ctrlKey;
+        document.getElementById('shiftKey').checked = config.shortcut.shiftKey;
+        document.getElementById('altKey').checked = config.shortcut.altKey;
+        document.getElementById('shortcut').value = config.shortcut.key;
+    }
+
+    document.getElementById('actionsContainer').innerHTML = '';
+    config.actions.forEach(action => {
+        addActionToForm();
+        const actionDiv = document.querySelector('.action-item:last-child');
+        actionDiv.querySelector('.actionType').value = action.type;
+        if (action.type === 'observationField') {
+            actionDiv.querySelector('.fieldId').value = action.fieldId;
+            actionDiv.querySelector('.fieldName').value = action.fieldName || '';
+            lookupObservationField(action.fieldName || action.fieldId)
+                .then(fields => {
+                    const field = fields.find(f => f.id.toString() === action.fieldId.toString());
+                    if (field) {
+                        actionDiv.querySelector('.fieldDescription').textContent = field.description;
+                        updateFieldValueInput(field, actionDiv.querySelector('.fieldValueContainer'));
+                        const fieldValueInput = actionDiv.querySelector('.fieldValue');
+                        fieldValueInput.value = action.fieldValue;
+                        if (field.datatype === 'taxon' && action.taxonId) {
+                            fieldValueInput.dataset.taxonId = action.taxonId;
+                        }
+                    } else {
+                        throw new Error('Field not found');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching observation field details:', error);
+                    actionDiv.querySelector('.fieldDescription').textContent = 'Error: Unable to fetch field details';
+                    // Still populate the field value even if lookup fails
+                    const fieldValueInput = actionDiv.querySelector('.fieldValue');
+                    fieldValueInput.value = action.fieldValue;
+                    if (action.taxonId) {
+                        fieldValueInput.dataset.taxonId = action.taxonId;
+                    }
+                });
+        } else if (action.type === 'annotation') {
+            const annotationField = actionDiv.querySelector('.annotationField');
+            const annotationValue = actionDiv.querySelector('.annotationValue');
+            annotationField.value = action.annotationField;
+            updateAnnotationValues(annotationField, annotationValue);
+            annotationValue.value = action.annotationValue;
+        }
+        actionDiv.querySelector('.actionType').dispatchEvent(new Event('change'));
+    });
+
+    const saveButton = document.getElementById('saveButton');
+    saveButton.textContent = 'Update Configuration';
+    saveButton.dataset.editIndex = configId;
+
+    window.scrollTo(0, 0);
+}
+
+function lookupTaxon(query, per_page = 10) {
+    const baseUrl = 'https://api.inaturalist.org/v1/taxa/autocomplete';
+    const params = new URLSearchParams({
+        q: query,
+        per_page: per_page
+    });
+    const url = `${baseUrl}?${params.toString()}`;
+
+    return fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => data.results);
 }
 
 function addActionToForm() {
@@ -248,9 +369,8 @@ function debounce(func, wait) {
 }
 
 function loadConfigurations() {
-    chrome.storage.sync.get(['customButtons', 'observationFieldMap'], function(data) {
+    chrome.storage.sync.get('customButtons', function(data) {
         customButtons = data.customButtons || [];
-        observationFieldMap = data.observationFieldMap || {};
         customButtons = migrateConfigurations(customButtons);
         chrome.storage.sync.set({customButtons: customButtons}, function() {
             console.log('Configurations migrated and saved');
@@ -258,7 +378,6 @@ function loadConfigurations() {
         });
     });
 }
-
 function migrateConfigurations(configs) {
     return configs.map(config => {
         if (!config.actions) {
@@ -275,15 +394,10 @@ function migrateConfigurations(configs) {
             delete config.annotationField;
             delete config.annotationValue;
         }
+        if (!config.id) {
+            config.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+        }
         return config;
-    });
-}
-
-function toggleHideConfiguration(index) {
-    customButtons[index].hidden = !customButtons[index].hidden;
-    chrome.storage.sync.set({customButtons: customButtons}, function() {
-        console.log('Configuration visibility toggled');
-        loadConfigurations();
     });
 }
 
@@ -291,12 +405,15 @@ function displayConfigurations() {
     const container = document.getElementById('buttonConfigs');
     container.innerHTML = '';
 
-    let sortedButtons = sortNewestFirst ? [...customButtons].reverse() : [...customButtons];
+    let buttonsToDisplay = [...customButtons];
+    if (sortNewestFirst) {
+        buttonsToDisplay.reverse();
+    }
 
-    sortedButtons.filter(config => 
+    buttonsToDisplay.filter(config => 
         config.name.toLowerCase().includes(searchTerm) ||
         config.actions.some(action => formatAction(action).toLowerCase().includes(searchTerm))
-    ).forEach((config, index) => {
+    ).forEach((config) => {
         const configDiv = document.createElement('div');
         configDiv.className = 'config-item';
         if (config.configurationDisabled) {
@@ -336,11 +453,11 @@ function displayConfigurations() {
         const deleteButton = configDiv.querySelector('.delete-button');
         const duplicateButton = configDiv.querySelector('.duplicate-button');
 
-        hideButtonCheckbox.addEventListener('change', () => toggleHideButton(index));
-        disableConfigCheckbox.addEventListener('change', () => toggleDisableConfiguration(index));
-        editButton.addEventListener('click', () => editConfiguration(index));
-        deleteButton.addEventListener('click', () => deleteConfiguration(index));
-        duplicateButton.addEventListener('click', () => duplicateConfiguration(index));
+        hideButtonCheckbox.addEventListener('change', () => toggleHideButton(config.id));
+        disableConfigCheckbox.addEventListener('change', () => toggleDisableConfiguration(config.id));
+        editButton.addEventListener('click', () => editConfiguration(config.id));
+        deleteButton.addEventListener('click', () => deleteConfiguration(config.id));
+        duplicateButton.addEventListener('click', () => duplicateConfiguration(config.id));
 
         container.appendChild(configDiv);
     });
@@ -348,8 +465,11 @@ function displayConfigurations() {
 
 function formatAction(action) {
     if (action.type === 'observationField') {
-        const fieldName = observationFieldMap[action.fieldId] || `Field ${action.fieldId}`;
-        return `Add value "${action.fieldValue}" to ${fieldName}`;
+        let value = action.fieldValue;
+        if (action.taxonId) {
+            value = `${action.fieldValue} (ID: ${action.taxonId})`;
+        }
+        return `Add value "${value}" to ${action.fieldName || `Field ${action.fieldId}`}`;
     } else {
         const fieldName = getAnnotationFieldName(action.annotationField);
         const valueName = getAnnotationValueName(action.annotationField, action.annotationValue);
@@ -357,15 +477,21 @@ function formatAction(action) {
     }
 }
 
-function toggleHideButton(index) {
-    customButtons[index].buttonHidden = !customButtons[index].buttonHidden;
-    saveAndReloadConfigurations();
-  }
-  
-function toggleDisableConfiguration(index) {
-    customButtons[index].configurationDisabled = !customButtons[index].configurationDisabled;
-    saveAndReloadConfigurations();
-  }
+function toggleHideButton(configId) {
+    const config = customButtons.find(c => c.id === configId);
+    if (config) {
+        config.buttonHidden = !config.buttonHidden;
+        saveAndReloadConfigurations();
+    }
+}
+
+function toggleDisableConfiguration(configId) {
+    const config = customButtons.find(c => c.id === configId);
+    if (config) {
+        config.configurationDisabled = !config.configurationDisabled;
+        saveAndReloadConfigurations();
+    }
+}
   
 function saveAndReloadConfigurations() {
     chrome.storage.sync.set({customButtons: customButtons}, function() {
@@ -386,8 +512,9 @@ function formatShortcut(shortcut) {
     return parts.join(' + ');
 }
 
-function duplicateConfiguration(index) {
-    const config = customButtons[index];
+function duplicateConfiguration(configId) {
+    const config = customButtons.find(c => c.id === configId);
+    if (!config) return;
     document.getElementById('buttonName').value = `${config.name} (Copy)`;
     
     if (config.shortcut) {
@@ -434,6 +561,7 @@ function saveConfiguration() {
     // Validation checks...
 
     const newConfig = {
+        id: Date.now().toString(), // Unique identifier
         name: name,
         shortcut: {
             ctrlKey: ctrlKey,
@@ -461,6 +589,12 @@ function saveConfiguration() {
                 action.fieldId = fieldIdElement.value.trim();
                 action.fieldName = fieldNameElement.value.trim();
                 action.fieldValue = fieldValueElement.value.trim();
+                if (fieldValueElement.dataset.taxonId) {
+                    action.taxonId = fieldValueElement.dataset.taxonId;
+                    action.fieldValue = fieldValueElement.value; // This should be the taxon name
+                } else {
+                    action.fieldValue = fieldValueElement.value.trim();
+                }
                 if (!action.fieldId || !action.fieldName || !action.fieldValue) {
                     alert("Please enter Field Name, ID, and Value for all Observation Field actions.");
                     return;
@@ -487,9 +621,12 @@ function saveConfiguration() {
         return;
     }
 
-    const editIndex = parseInt(document.getElementById('saveButton').dataset.editIndex);
-    if (!isNaN(editIndex)) {
-        customButtons[editIndex] = newConfig;
+    const editIndex = document.getElementById('saveButton').dataset.editIndex;
+    if (editIndex) {
+        const index = customButtons.findIndex(config => config.id === editIndex);
+        if (index !== -1) {
+            customButtons[index] = newConfig;
+        }
     } else {
         customButtons.push(newConfig);
     }
@@ -562,53 +699,12 @@ function clearForm() {
     delete saveButton.dataset.editIndex;
 }
 
-function editConfiguration(index) {
-    const config = customButtons[index];
-    document.getElementById('buttonName').value = config.name;
-    
-    if (config.shortcut) {
-        document.getElementById('ctrlKey').checked = config.shortcut.ctrlKey;
-        document.getElementById('shiftKey').checked = config.shortcut.shiftKey;
-        document.getElementById('altKey').checked = config.shortcut.altKey;
-        document.getElementById('shortcut').value = config.shortcut.key;
-    }
+function updateConfigurations(configId) {
+    const config = customButtons.find(c => c.id === configId);
+    if (!config) return;
 
-    document.getElementById('actionsContainer').innerHTML = '';
-    config.actions.forEach(action => {
-        addActionToForm();
-        const actionDiv = document.querySelector('.action-item:last-child');
-        actionDiv.querySelector('.actionType').value = action.type;
-        if (action.type === 'observationField') {
-            actionDiv.querySelector('.fieldId').value = action.fieldId;
-            actionDiv.querySelector('.fieldName').value = action.fieldName || '';
-            lookupObservationField(action.fieldName || action.fieldId)
-                .then(field => {
-                    actionDiv.querySelector('.fieldDescription').textContent = field.description;
-                    updateFieldValueInput(field, actionDiv.querySelector('.fieldValueContainer'));
-                    actionDiv.querySelector('.fieldValue').value = action.fieldValue;
-                })
-                .catch(() => {
-                    actionDiv.querySelector('.fieldDescription').textContent = 'Field not found';
-                    actionDiv.querySelector('.fieldValue').value = action.fieldValue;
-                });
-        } else {
-            const annotationField = actionDiv.querySelector('.annotationField');
-            const annotationValue = actionDiv.querySelector('.annotationValue');
-            annotationField.value = action.annotationField;
-            updateAnnotationValues(annotationField, annotationValue);
-            annotationValue.value = action.annotationValue;
-        }
-        actionDiv.querySelector('.actionType').dispatchEvent(new Event('change'));
-    });
-
-    const saveButton = document.getElementById('saveButton');
-    saveButton.textContent = 'Update Configuration';
-    saveButton.dataset.editIndex = index;
-
-    window.scrollTo(0, 0);
-}
-function updateConfiguration(index) {
     const updatedConfig = {
+        id: config.id,
         name: document.getElementById('buttonName').value,
         shortcut: {
             ctrlKey: document.getElementById('ctrlKey').checked,
@@ -627,25 +723,36 @@ function updateConfiguration(index) {
         updatedConfig.annotationValue = document.getElementById('annotationValue').value;
     }
 
-    customButtons[index] = updatedConfig;  // Replace the existing config instead of adding a new one
-    chrome.storage.sync.set({customButtons: customButtons}, function() {
-        console.log('Configuration updated');
-        loadConfigurations();
-        clearForm();
-        // Reset the save button
-        const saveButton = document.getElementById('saveButton');
-        saveButton.textContent = 'Save Configuration';
-        saveButton.onclick = saveConfiguration;
-    });
+    const index = customButtons.findIndex(c => c.id === configId);
+    if (index !== -1) {
+        customButtons[index] = updatedConfig;
+        chrome.storage.sync.set({customButtons: customButtons}, function() {
+            console.log('Configuration updated');
+            loadConfigurations();
+            clearForm();
+            // Reset the save button
+            const saveButton = document.getElementById('saveButton');
+            saveButton.textContent = 'Save Configuration';
+            saveButton.onclick = saveConfiguration;
+        });
+    }
 }
 
-function deleteConfiguration(index) {
-    if (confirm('Are you sure you want to delete this configuration?')) {
-        customButtons.splice(index, 1);
+function toggleHideConfiguration(configId) {
+    const config = customButtons.find(c => c.id === configId);
+    if (config) {
+        config.buttonHidden = !config.buttonHidden;
         chrome.storage.sync.set({customButtons: customButtons}, function() {
-            console.log('Configuration deleted');
+            console.log('Configuration visibility toggled');
             loadConfigurations();
         });
+    }
+}
+
+function deleteConfiguration(configId) {
+    if (confirm('Are you sure you want to delete this configuration?')) {
+        customButtons = customButtons.filter(c => c.id !== configId);
+        saveAndReloadConfigurations();
     }
 }
 
