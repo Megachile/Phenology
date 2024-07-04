@@ -82,10 +82,13 @@ const iNatSingleKeyPresses = [
 
 function toggleSort() {
     sortNewestFirst = !sortNewestFirst;
-    const button = document.getElementById('toggleSort');
-    button.textContent = sortNewestFirst ? 'Sort Oldest First ' : 'Sort Newest First ';
-    button.classList.toggle('newest-first', sortNewestFirst);
+    updateSortButtonText();
     displayConfigurations();
+}
+
+function updateSortButtonText() {
+    const button = document.getElementById('toggleSort');
+    button.textContent = sortNewestFirst ? 'Sorted Newest First' : 'Sorted Oldest First';
 }
 
 function filterConfigurations() {
@@ -533,5 +536,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('addActionButton').addEventListener('click', addActionToForm);
     document.getElementById('toggleSort').addEventListener('click', toggleSort);
     document.getElementById('searchInput').addEventListener('input', filterConfigurations);
+    updateSortButtonText();
 });
 

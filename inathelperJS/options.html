@@ -114,15 +114,6 @@ button:hover {
     margin-bottom: 15px;
 }
 
-#toggleSort::after {
-    content: "\25B2"; /* Up arrow */
-    display: inline-block;
-    margin-left: 5px;
-}
-
-#toggleSort.newest-first::after {
-    content: "\25BC"; /* Down arrow */
-}
 #searchInput {
     margin-bottom: 15px;
     width: calc(100% - 10px);
@@ -183,7 +174,7 @@ button:hover {
     <h1>iNaturalist Metadata Tool Configuration</h1>
     
     <h2>Add New Custom Button</h2>
-    <input type="text" id="buttonName" placeholder="Button Name (tip: consider including the name of the Field here)">
+    <input type="text" id="buttonName" placeholder="Button Name">
     <div id="shortcutContainer">
         <div class="modifier-checkboxes">
             <label><input type="checkbox" id="ctrlKey"> Ctrl</label>
@@ -205,7 +196,7 @@ button:hover {
     <h2>Existing Configurations</h2>
     <div id="configControls">
         <input type="text" id="searchInput" placeholder="Search configurations...">
-        <button id="toggleSort">Sort Oldest/Newset</button>
+        <button id="toggleSort">Sort Oldest/Newest</button>
     </div>
     <div id="buttonConfigs"></div>
 
