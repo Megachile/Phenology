@@ -90,12 +90,13 @@ const forbiddenShortcuts = [
 ];
 
 function isShortcutForbidden(shortcut) {
-    return forbiddenShortcuts.some(forbidden => 
-        forbidden.ctrlKey === shortcut.ctrlKey &&
-        forbidden.altKey === shortcut.altKey &&
-        forbidden.shiftKey === shortcut.shiftKey &&
-        forbidden.key.toLowerCase() === shortcut.key.toLowerCase()
-    );
+    return forbiddenShortcuts.some(forbidden => {
+        return Object.keys(forbidden).every(key => 
+            key === 'key' ? 
+                forbidden[key].toLowerCase() === shortcut[key].toLowerCase() :
+                forbidden[key] === shortcut[key]
+        );
+    });
 }
 
 function toggleSort() {
