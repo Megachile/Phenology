@@ -81,6 +81,23 @@ const iNatSingleKeyPresses = [
     'e', 'l', 's', 'p'
 ];
 
+const forbiddenShortcuts = [
+    { ctrlKey: true, key: 'W' },  // Close tab
+    { ctrlKey: true, key: 'T' },  // New tab
+    { altKey: true, key: 'F4' },  // Close window
+    { ctrlKey: true, shiftKey: true, key: 'W' },  // Close window
+    { ctrlKey: true, shiftKey: true, key: 'T' }, // Reopen closed tab
+];
+
+function isShortcutForbidden(shortcut) {
+    return forbiddenShortcuts.some(forbidden => 
+        forbidden.ctrlKey === shortcut.ctrlKey &&
+        forbidden.altKey === shortcut.altKey &&
+        forbidden.shiftKey === shortcut.shiftKey &&
+        forbidden.key.toLowerCase() === shortcut.key.toLowerCase()
+    );
+}
+
 function toggleSort() {
     sortNewestFirst = !sortNewestFirst;
     updateSortButtonText();
@@ -615,6 +632,11 @@ function saveConfiguration() {
 
         newConfig.actions.push(action);
     });
+
+    if (isShortcutForbidden(newConfig.shortcut)) {
+        alert("This shortcut is not allowed as it conflicts with browser functionality.");
+        return;
+    }
 
     if (newConfig.actions.length === 0) {
         alert("Please add at least one action to the configuration.");
