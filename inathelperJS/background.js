@@ -51,7 +51,7 @@ async function generateCodeChallenge(codeVerifier) {
 }
 
 // API Functions
-function addObservationField(observationId, observationFieldId, value, token) {
+function testAddObservationField(observationId, observationFieldId, value, token) {
     console.log('Adding observation field...');
     const requestUrl = `${API_URL}/observation_field_values`;
     const headers = {
@@ -158,7 +158,7 @@ function testAPIKey(token) {
     const testFieldId = 13979;
     const testValue = generateTestString();
 
-    addObservationField(testObservationId, testFieldId, testValue, token)
+    testAddObservationField(testObservationId, testFieldId, testValue, token)
         .then(response => {
             console.log('Add observation field response:', JSON.stringify(response, null, 2));
             if (response.status && response.status === 'error') {
@@ -194,12 +194,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.log("Content script is loaded and ready in tab:", sender.tab.id);
         storedTabId = sender.tab.id;
         console.log(`Stored tab ID: ${storedTabId}`);
-    } else if (message.action === 'updateObservationId') {
-        if (message.observationId !== currentObservationId) {
-            currentObservationId = message.observationId;
-            console.log('Updated to new observation ID:', currentObservationId);
-        }
-        sendResponse({status: 'ID processed'});
     } else if (message.action === 'makeApiCall') {
         chrome.storage.local.get(['accessToken'], function(result) {
             const token = result.accessToken;
@@ -208,7 +202,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 sendResponse({status: "error", message: "No access token found"});
                 return;
             }
-            addObservationField(currentObservationId, message.fieldId, message.value, token)
+            testAddObservationField(currentObservationId, message.fieldId, message.value, token)
                 .then(response => {
                     console.log(`Observation field added successfully. Response: ${JSON.stringify(response)}`);
                     sendResponse({status: "success", data: response});

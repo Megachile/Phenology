@@ -142,16 +142,6 @@ function extractObservationId() {
             currentObservationId = id;
             console.log('New Observation ID:', id);
             createOrUpdateIdDisplay(id);  
-            chrome.runtime.sendMessage(
-                { action: "updateObservationId", observationId: id },
-                function(response) {
-                    if (chrome.runtime.lastError) {
-                        console.error(`Error sending ID to background: ${chrome.runtime.lastError.message}`);
-                    } else {
-                        console.log(`ID sent to background, response:`, response);
-                    }
-                }
-            );
         } else if (!id) {
             console.log('Could not find observation ID in modal');
             logModalStructure();
@@ -159,16 +149,7 @@ function extractObservationId() {
     } else {
         console.log('Modal not found');
         clearObservationId();
-        chrome.runtime.sendMessage(
-            { action: "updateObservationId", observationId: null },
-            function(response) {
-                if (chrome.runtime.lastError) {
-                    console.error(`Error sending cleared ID to background: ${chrome.runtime.lastError.message}`);
-                } else {
-                    console.log(`Cleared ID sent to background, response:`, response);
-                }
-            }
-        );
+
     }
 }
 
@@ -218,11 +199,13 @@ const observer = new MutationObserver((mutations) => {
 
 observer.observe(document.body, { childList: true, subtree: true });
 
-function ensureCorrectObservationId(callback) {
-    extractObservationId();
-    setTimeout(() => {
-        callback(currentObservationId);
-    }, 50);
+function ensureCorrectObservationId() {
+    return new Promise((resolve) => {
+        extractObservationId();
+        setTimeout(() => {
+            resolve(currentObservationId);
+        }, 50);
+    });
 }
 
 window.addEventListener('load', extractObservationId);
@@ -322,8 +305,15 @@ buttonContainer.appendChild(inputWrapper);
 buttonDiv.appendChild(buttonContainer);
 document.body.appendChild(buttonDiv);
 
-
 function addObservationField(fieldId, value, button = null) {
+    return ensureCorrectObservationId().then(id => {
+        if (!id) {
+            console.log('No current observation ID available. Please select an observation first.');
+            if (button) animateButtonResult(button, false);
+            return { success: false, error: 'No current observation ID' };
+        }
+
+    
     return new Promise((resolve, reject) => {
         if (!currentObservationId) {
             console.log('No current observation ID available. Please select an observation first.');
@@ -332,29 +322,60 @@ function addObservationField(fieldId, value, button = null) {
             return;
         }
 
-        chrome.runtime.sendMessage(
-            {action: "makeApiCall", fieldId: fieldId, value: value, observationId: currentObservationId},
-            function(response) {
-                if (chrome.runtime.lastError) {
-                    console.error(`Error in adding observation field: ${chrome.runtime.lastError.message}`);
-                    if (button) animateButtonResult(button, false);
-                    resolve({ success: false, error: chrome.runtime.lastError.message });
-                } else {
-                    console.log(`Observation field added: ${JSON.stringify(response)}`);
+        chrome.storage.local.get(['accessToken'], function(result) {
+            const token = result.accessToken;
+            if (!token) {
+                console.error('No access token found');
+                if (button) animateButtonResult(button, false);
+                resolve({ success: false, error: 'No access token found' });
+                return;
+            }
+
+            const requestUrl = `https://api.inaturalist.org/v1/observation_field_values`;
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+            const data = {
+                observation_field_value: {
+                    observation_id: currentObservationId,
+                    observation_field_id: fieldId,
+                    value: value
+                }
+            };
+            const options = {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(data)
+            };
+
+            fetch(requestUrl, options)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(`Network response was not ok. Status: ${response.status}, Body: ${text}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Added observation field:', data);
+                    if (button) animateButtonResult(button, true);
                     refreshObservation()
-                        .then(() => {
-                            if (button) animateButtonResult(button, true);
-                            resolve({ success: true, data: response });
-                        })
+                        .then(() => resolve({ success: true, data: data }))
                         .catch(error => {
                             console.error('Error refreshing after adding field:', error);
-                            if (button) animateButtonResult(button, true); // Still consider it a success if only refresh failed
-                            resolve({ success: true, data: response, refreshError: error });
+                            resolve({ success: true, data: data, refreshError: error });
                         });
-                }
-            }
-        );
+                })
+                .catch((error) => {
+                    console.error('Error in adding observation field:', error);
+                    if (button) animateButtonResult(button, false);
+                    resolve({success: false, error: error.message});
+                });
+        });
     });
+});
 }
 
 function animateButtonResult(button, success) {
@@ -521,6 +542,13 @@ function clearObservationId() {
 
 
 function addAnnotation(currentObservationId, attributeId, valueId) {
+    return ensureCorrectObservationId().then(id => {
+        if (!id) {
+            console.log('No current observation ID available. Please select an observation first.');
+            return Promise.reject('No current observation ID');
+        }
+
+    
     const url = 'https://api.inaturalist.org/v1/annotations';
     const data = {
         annotation: {
@@ -562,6 +590,7 @@ function addAnnotation(currentObservationId, attributeId, valueId) {
             }
         });
     });
+});
 }
 
 
