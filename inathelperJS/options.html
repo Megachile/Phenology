@@ -3,111 +3,180 @@
 <head>
     <title>iNaturalist Metadata Tool Configuration</title>
     <style>
-        body { 
-            width: 100%; 
-            max-width: 800px; 
-            margin: 0 auto; 
-            padding: 20px; 
-            font-family: Arial, sans-serif; 
-        }
-        input, select { 
-            width: 100%; 
-            margin-bottom: 10px; 
-            padding: 5px; 
-        }
-        button { 
-            padding: 10px; 
-            background-color: #4CAF50; 
-            color: white; 
-            border: none; 
-            cursor: pointer; 
-            margin-right: 10px; 
-        }
-        button:hover { 
-            background-color: #45a049; 
-        }
-        .button-container { 
-            display: flex; 
-            justify-content: flex-start; 
-            margin-bottom: 10px; 
-        }
-        #saveButton, #cancelButton { 
-            width: 48%; 
-        }
-        .hidden { 
-            display: none; 
-        }
-        #ofUrlContainer {
-            margin-bottom: 20px;
-        }
-        .config-item {
-            background-color: #f0f0f0;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-        }
-        .disabled-config {
-            opacity: 0.5;
-        }
-        .button-actions {
-            display: flex;
-            align-items: center;
-            margin-top: 10px;
-        }
-        .hide-checkbox-label,
-        .disable-checkbox-label {
-            display: flex;
-            align-items: center;
-            margin-right: 20px;
-            cursor: pointer;
-        }
-        .hide-checkbox-label input,
-        .disable-checkbox-label input {
-            margin-right: 8px;
-        }
-        .edit-button, .duplicate-button, .delete-button {
-            padding: 5px 10px;
-            margin-right: 10px;
-            cursor: pointer;
-        }
-        #shortcutContainer {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .modifier-checkboxes {
-            display: flex;
-            margin-right: 10px;
-        }
-        .modifier-checkboxes label {
-            margin-right: 10px;
-        }
-        #shortcut {
-            width: 50px;
-        }
-        #actionsContainer {
-            margin-top: 20px;
-        }
-        .action-item {
+   body { 
+    width: 100%; 
+    max-width: 800px; 
+    margin: 0 auto; 
+    padding: 20px; 
+    font-family: Arial, sans-serif; 
+}
+
+input, select { 
+    width: 100%; 
+    margin-bottom: 10px; 
+    padding: 5px; 
+}
+
+button { 
+    padding: 10px; 
+    background-color: #4CAF50; 
+    color: white; 
+    border: none; 
+    cursor: pointer; 
+    margin-right: 10px; 
+}
+
+button:hover { 
+    background-color: #45a049; 
+}
+
+.button-container { 
+    display: flex; 
+    justify-content: flex-start; 
+    margin-bottom: 10px; 
+}
+
+#saveButton, #cancelButton { 
+    width: 48%; 
+}
+
+.hidden { 
+    display: none; 
+}
+
+#ofUrlContainer {
+    margin-bottom: 20px;
+}
+
+.config-item {
+    background-color: #f5f5f5;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    cursor: pointer;
+}
+
+.config-name {
+    flex: 1;
+    font-weight: bold;
+}
+
+.config-shortcut {
+    flex: 0 0 150px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+
+.toggle-details {
+    flex: 0 0 20px;
+    text-align: right;
+}
+
+.config-details {
+    padding: 10px;
+    border-top: 1px solid #ddd;
+}
+
+.button-actions {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.button-actions label {
+    display: flex;
+    align-items: center;
+    margin-right: 15px;
+}
+
+.button-actions input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+.button-actions button {
+    margin-right: 5px;
+    margin-top: 5px;
+}
+
+.disabled-config {
+    opacity: 0.5;
+}
+
+#toggleSort {
+    margin-bottom: 15px;
+}
+
+#toggleSort::after {
+    content: "\25B2"; /* Up arrow */
+    display: inline-block;
+    margin-left: 5px;
+}
+
+#toggleSort.newest-first::after {
+    content: "\25BC"; /* Down arrow */
+}
+#searchInput {
+    margin-bottom: 15px;
+    width: calc(100% - 10px);
+}
+
+.action-item {
     border: 1px solid #ccc;
     background-color: #f9f9f9;
     padding: 15px;
     margin-bottom: 15px;
     border-radius: 5px;
 }
+
 .action-item h4 {
     margin-top: 0;
     border-bottom: 1px solid #ddd;
     padding-bottom: 5px;
 }
-        .action-item select,
-        .action-item input {
-            display: block;
-            margin-bottom: 10px;
-        }
-        #addActionButton {
-        margin-bottom: 20px;
-    }
+
+.action-item select,
+.action-item input {
+    display: block;
+    margin-bottom: 10px;
+}
+
+#addActionButton {
+    margin-bottom: 20px;
+}
+
+#shortcutContainer {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.modifier-checkboxes {
+    display: flex;
+    align-items: center;
+    margin-right: 10px;
+}
+
+.modifier-checkboxes label {
+    display: flex;
+    align-items: center;
+    margin-right: 10px;
+}
+
+.modifier-checkboxes input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+#shortcut {
+    width: 50px;
+}
     </style>
 </head>
 <body>
@@ -134,8 +203,13 @@
     </div>
 
     <h2>Existing Configurations</h2>
+    <div id="configControls">
+        <input type="text" id="searchInput" placeholder="Search configurations...">
+        <button id="toggleSort">Sort Oldest/Newset</button>
+    </div>
     <div id="buttonConfigs"></div>
- 
+
+    <div id="buttonConfigs"></div>
     <script src="options.js"></script>
 </body>
 </html>

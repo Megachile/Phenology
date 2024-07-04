@@ -1,5 +1,7 @@
 let customButtons = [];
 let currentConfig = { actions: [] };
+let sortNewestFirst = true;
+let searchTerm = '';
 
 const controlledTerms = {
     "Alive or Dead": {
@@ -78,6 +80,19 @@ const iNatSingleKeyPresses = [
     'e', 'l', 's', 'p'
 ];
 
+function toggleSort() {
+    sortNewestFirst = !sortNewestFirst;
+    const button = document.getElementById('toggleSort');
+    button.textContent = sortNewestFirst ? 'Sort Oldest First ' : 'Sort Newest First ';
+    button.classList.toggle('newest-first', sortNewestFirst);
+    displayConfigurations();
+}
+
+function filterConfigurations() {
+    searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    displayConfigurations();
+}
+
 function addActionToForm() {
     const actionDiv = document.createElement('div');
     actionDiv.className = 'action-item';
@@ -89,6 +104,7 @@ function addActionToForm() {
         <div class="ofInputs">
             <input type="number" class="fieldId" placeholder="Observation Field ID">
             <input type="text" class="fieldValue" placeholder="Field Value">
+            <p class="ofLookupLink">Look up Observation Fields: <a href="https://www.inaturalist.org/observation_fields" target="_blank">iNaturalist Observation Fields</a></p>
         </div>
         <div class="annotationInputs" style="display:none;">
             <select class="annotationField"></select>
@@ -158,54 +174,45 @@ function toggleHideConfiguration(index) {
 function displayConfigurations() {
     const container = document.getElementById('buttonConfigs');
     container.innerHTML = '';
-    customButtons.forEach((config, index) => {
+
+    let sortedButtons = sortNewestFirst ? [...customButtons].reverse() : [...customButtons];
+
+    sortedButtons.filter(config => 
+        config.name.toLowerCase().includes(searchTerm) ||
+        config.actions.some(action => formatAction(action).toLowerCase().includes(searchTerm))
+    ).forEach((config, index) => {
         const configDiv = document.createElement('div');
         configDiv.className = 'config-item';
         if (config.configurationDisabled) {
             configDiv.classList.add('disabled-config');
         }
-        let configContent = `
-            <h3>${config.name}</h3>
-            <p>Shortcut: ${formatShortcut(config.shortcut)}</p>
-            <h4>Actions:</h4>
-        `;
 
-        config.actions.forEach((action, actionIndex) => {
-            configContent += `
-                <div class="action-item">
-                    <h4>Action ${actionIndex + 1}: ${action.type === 'observationField' ? 'Observation Field' : 'Annotation'}</h4>
-            `;
-            if (action.type === 'observationField') {
-                configContent += `
-                    <p>Field ID: ${action.fieldId}</p>
-                    <p>Field Value: ${action.fieldValue}</p>
-                `;
-            } else {
-                configContent += `
-                    <p>Annotation: ${getAnnotationFieldName(action.annotationField)}</p>
-                    <p>Value: ${getAnnotationValueName(action.annotationField, action.annotationValue)}</p>
-                `;
-            }
-            configContent += `</div>`;
-        });
-        
-        configContent += `
-            <div class="button-actions">
-                <label class="hide-checkbox-label">
-                    <input type="checkbox" class="hide-button-checkbox" ${config.buttonHidden ? 'checked' : ''}>
-                    <span>Hide Button</span>
-                </label>
-                <label class="disable-checkbox-label">
-                    <input type="checkbox" class="disable-config-checkbox" ${config.configurationDisabled ? 'checked' : ''}>
-                    <span>Disable Configuration</span>
-                </label>
-                <button class="edit-button">Edit</button>
-                <button class="duplicate-button">Duplicate</button>
-                <button class="delete-button">Delete</button>
+        configDiv.innerHTML = `
+            <div class="config-header">
+                <span class="config-name">${config.name}</span>
+                <span class="config-shortcut">${formatShortcut(config.shortcut)}</span>
+                <span class="toggle-details">&#9660;</span>
+            </div>
+            <div class="config-details" style="display: none;">
+                ${config.actions.map(action => `<p>${formatAction(action)}</p>`).join('')}
+                <div class="button-actions">
+                    <label><input type="checkbox" class="hide-button-checkbox" ${config.buttonHidden ? 'checked' : ''}> Hide Button</label>
+                    <label><input type="checkbox" class="disable-config-checkbox" ${config.configurationDisabled ? 'checked' : ''}> Disable Configuration</label>
+                    <button class="edit-button">Edit</button>
+                    <button class="duplicate-button">Duplicate</button>
+                    <button class="delete-button">Delete</button>
+                </div>
             </div>
         `;
-        
-        configDiv.innerHTML = configContent;
+
+        const header = configDiv.querySelector('.config-header');
+        const detailsDiv = configDiv.querySelector('.config-details');
+        const toggleSpan = configDiv.querySelector('.toggle-details');
+
+        header.addEventListener('click', () => {
+            detailsDiv.style.display = detailsDiv.style.display === 'none' ? 'block' : 'none';
+            toggleSpan.innerHTML = detailsDiv.style.display === 'none' ? '&#9660;' : '&#9650;';
+        });
 
         const hideButtonCheckbox = configDiv.querySelector('.hide-button-checkbox');
         const disableConfigCheckbox = configDiv.querySelector('.disable-config-checkbox');
@@ -213,14 +220,24 @@ function displayConfigurations() {
         const deleteButton = configDiv.querySelector('.delete-button');
         const duplicateButton = configDiv.querySelector('.duplicate-button');
 
-        duplicateButton.addEventListener('click', () => duplicateConfiguration(index));
         hideButtonCheckbox.addEventListener('change', () => toggleHideButton(index));
         disableConfigCheckbox.addEventListener('change', () => toggleDisableConfiguration(index));
         editButton.addEventListener('click', () => editConfiguration(index));
         deleteButton.addEventListener('click', () => deleteConfiguration(index));
+        duplicateButton.addEventListener('click', () => duplicateConfiguration(index));
 
         container.appendChild(configDiv);
     });
+}
+
+function formatAction(action) {
+    if (action.type === 'observationField') {
+        return `Add value "${action.fieldValue}" to Observation Field ${action.fieldId}`;
+    } else {
+        const fieldName = getAnnotationFieldName(action.annotationField);
+        const valueName = getAnnotationValueName(action.annotationField, action.annotationValue);
+        return `Set "${fieldName}" to "${valueName}"`;
+    }
 }
 
 function toggleHideButton(index) {
@@ -228,12 +245,12 @@ function toggleHideButton(index) {
     saveAndReloadConfigurations();
   }
   
-  function toggleDisableConfiguration(index) {
+function toggleDisableConfiguration(index) {
     customButtons[index].configurationDisabled = !customButtons[index].configurationDisabled;
     saveAndReloadConfigurations();
   }
   
-  function saveAndReloadConfigurations() {
+function saveAndReloadConfigurations() {
     chrome.storage.sync.set({customButtons: customButtons}, function() {
       console.log('Configuration updated');
       loadConfigurations();
@@ -514,5 +531,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('saveButton').addEventListener('click', saveConfiguration);
     document.getElementById('cancelButton').addEventListener('click', clearForm);
     document.getElementById('addActionButton').addEventListener('click', addActionToForm);
+    document.getElementById('toggleSort').addEventListener('click', toggleSort);
+    document.getElementById('searchInput').addEventListener('input', filterConfigurations);
 });
 
