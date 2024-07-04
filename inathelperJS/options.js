@@ -2,6 +2,7 @@ let customButtons = [];
 let currentConfig = { actions: [] };
 let sortNewestFirst = true;
 let searchTerm = '';
+let observationFieldMap = {};
 
 const controlledTerms = {
     "Alive or Dead": {
@@ -96,6 +97,56 @@ function filterConfigurations() {
     displayConfigurations();
 }
 
+function updateFieldValueInput(field, container) {
+    container.innerHTML = '';
+    let input;
+
+    switch (field.datatype) {
+        case 'text':
+        case 'date':
+        case 'datetime':
+        case 'time':
+            input = document.createElement('input');
+            input.type = field.datatype;
+            break;
+        case 'numeric':
+            input = document.createElement('input');
+            input.type = 'number';
+            break;
+        case 'boolean':
+            input = document.createElement('select');
+            ['', 'Yes', 'No'].forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = option;
+                opt.textContent = option;
+                input.appendChild(opt);
+            });
+            break;
+        default:
+            input = document.createElement('input');
+            input.type = 'text';
+    }
+
+    input.className = 'fieldValue';
+    input.placeholder = 'Field Value';
+    container.appendChild(input);
+
+    if (field.allowed_values) {
+        const allowedValues = field.allowed_values.split('|');
+        if (allowedValues.length > 0) {
+            const datalist = document.createElement('datalist');
+            datalist.id = `allowedValues-${field.id || Date.now()}`;
+            allowedValues.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value.trim();
+                datalist.appendChild(option);
+            });
+            container.appendChild(datalist);
+            input.setAttribute('list', datalist.id);
+        }
+    }
+}
+
 function addActionToForm() {
     const actionDiv = document.createElement('div');
     actionDiv.className = 'action-item';
@@ -105,9 +156,12 @@ function addActionToForm() {
             <option value="annotation">Annotation</option>
         </select>
         <div class="ofInputs">
-            <input type="number" class="fieldId" placeholder="Observation Field ID">
-            <input type="text" class="fieldValue" placeholder="Field Value">
-            <p class="ofLookupLink">Look up Observation Fields: <a href="https://www.inaturalist.org/observation_fields" target="_blank">iNaturalist Observation Fields</a></p>
+            <input type="text" class="fieldName" placeholder="Observation Field Name">
+            <input type="number" class="fieldId" placeholder="Field ID" readonly>
+            <div class="fieldValueContainer">
+                <input type="text" class="fieldValue" placeholder="Field Value">
+            </div>
+            <p class="fieldDescription"></p>
         </div>
         <div class="annotationInputs" style="display:none;">
             <select class="annotationField"></select>
@@ -133,11 +187,70 @@ function addActionToForm() {
     annotationField.addEventListener('change', () => updateAnnotationValues(annotationField, annotationValue));
 
     removeButton.addEventListener('click', () => actionDiv.remove());
+
+    const fieldNameInput = actionDiv.querySelector('.fieldName');
+    const fieldIdInput = actionDiv.querySelector('.fieldId');
+    const fieldValueContainer = actionDiv.querySelector('.fieldValueContainer');
+    const fieldDescription = actionDiv.querySelector('.fieldDescription');
+
+    let autocompleteTimeout;
+    fieldNameInput.addEventListener('input', () => {
+        clearTimeout(autocompleteTimeout);
+        autocompleteTimeout = setTimeout(() => {
+            if (fieldNameInput.value.length < 2) return;
+
+            lookupObservationField(fieldNameInput.value)
+                .then(fields => {
+                    // Create and populate datalist
+                    let datalist = document.getElementById('observationFieldsList') || document.createElement('datalist');
+                    datalist.id = 'observationFieldsList';
+                    datalist.innerHTML = '';
+                    fields.forEach(field => {
+                        const option = document.createElement('option');
+                        option.value = field.name;
+                        option.dataset.id = field.id;
+                        option.dataset.description = field.description;
+                        option.dataset.datatype = field.datatype;
+                        option.dataset.allowed_values = field.allowed_values;
+                        datalist.appendChild(option);
+                    });
+                    document.body.appendChild(datalist);
+                    fieldNameInput.setAttribute('list', 'observationFieldsList');
+                })
+                .catch(error => console.error('Error fetching observation fields:', error));
+        }, 300);
+    });
+
+    fieldNameInput.addEventListener('change', () => {
+        const selectedOption = document.querySelector(`#observationFieldsList option[value="${fieldNameInput.value}"]`);
+        if (selectedOption) {
+            fieldIdInput.value = selectedOption.dataset.id;
+            fieldDescription.textContent = selectedOption.dataset.description;
+            updateFieldValueInput({
+                id: selectedOption.dataset.id,
+                datatype: selectedOption.dataset.datatype,
+                allowed_values: selectedOption.dataset.allowed_values
+            }, fieldValueContainer);
+        }
+    });
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
 function loadConfigurations() {
-    chrome.storage.sync.get('customButtons', function(data) {
+    chrome.storage.sync.get(['customButtons', 'observationFieldMap'], function(data) {
         customButtons = data.customButtons || [];
+        observationFieldMap = data.observationFieldMap || {};
         customButtons = migrateConfigurations(customButtons);
         chrome.storage.sync.set({customButtons: customButtons}, function() {
             console.log('Configurations migrated and saved');
@@ -235,7 +348,8 @@ function displayConfigurations() {
 
 function formatAction(action) {
     if (action.type === 'observationField') {
-        return `Add value "${action.fieldValue}" to Observation Field ${action.fieldId}`;
+        const fieldName = observationFieldMap[action.fieldId] || `Field ${action.fieldId}`;
+        return `Add value "${action.fieldValue}" to ${fieldName}`;
     } else {
         const fieldName = getAnnotationFieldName(action.annotationField);
         const valueName = getAnnotationValueName(action.annotationField, action.annotationValue);
@@ -341,12 +455,14 @@ function saveConfiguration() {
 
         if (actionType === 'observationField') {
             const fieldIdElement = actionDiv.querySelector('.fieldId');
+            const fieldNameElement = actionDiv.querySelector('.fieldName');
             const fieldValueElement = actionDiv.querySelector('.fieldValue');
-            if (fieldIdElement && fieldValueElement) {
+            if (fieldIdElement && fieldNameElement && fieldValueElement) {
                 action.fieldId = fieldIdElement.value.trim();
+                action.fieldName = fieldNameElement.value.trim();
                 action.fieldValue = fieldValueElement.value.trim();
-                if (!action.fieldId || !action.fieldValue) {
-                    alert("Please enter both Field ID and Field Value for all Observation Field actions.");
+                if (!action.fieldId || !action.fieldName || !action.fieldValue) {
+                    alert("Please enter Field Name, ID, and Value for all Observation Field actions.");
                     return;
                 }
             }
@@ -378,10 +494,37 @@ function saveConfiguration() {
         customButtons.push(newConfig);
     }
 
-    chrome.storage.sync.set({customButtons: customButtons}, function() {
-        console.log('Configuration saved');
+    chrome.storage.sync.set({customButtons: customButtons, observationFieldMap: observationFieldMap}, function() {
+        console.log('Configuration and field map saved');
         loadConfigurations();
         clearForm();
+    });
+}
+
+function lookupObservationField(name, perPage = 10) {
+    return new Promise((resolve, reject) => {
+        const baseUrl = 'https://api.inaturalist.org/v1/observation_fields/autocomplete';
+        const params = new URLSearchParams({
+            q: name,
+            per_page: perPage
+        });
+        const url = `${baseUrl}?${params.toString()}`;
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.results && data.results.length > 0) {
+                    resolve(data.results);
+                } else {
+                    reject(new Error('No observation fields found'));
+                }
+            })
+            .catch(reject);
     });
 }
 
@@ -437,7 +580,17 @@ function editConfiguration(index) {
         actionDiv.querySelector('.actionType').value = action.type;
         if (action.type === 'observationField') {
             actionDiv.querySelector('.fieldId').value = action.fieldId;
-            actionDiv.querySelector('.fieldValue').value = action.fieldValue;
+            actionDiv.querySelector('.fieldName').value = action.fieldName || '';
+            lookupObservationField(action.fieldName || action.fieldId)
+                .then(field => {
+                    actionDiv.querySelector('.fieldDescription').textContent = field.description;
+                    updateFieldValueInput(field, actionDiv.querySelector('.fieldValueContainer'));
+                    actionDiv.querySelector('.fieldValue').value = action.fieldValue;
+                })
+                .catch(() => {
+                    actionDiv.querySelector('.fieldDescription').textContent = 'Field not found';
+                    actionDiv.querySelector('.fieldValue').value = action.fieldValue;
+                });
         } else {
             const annotationField = actionDiv.querySelector('.annotationField');
             const annotationValue = actionDiv.querySelector('.annotationValue');
@@ -452,9 +605,8 @@ function editConfiguration(index) {
     saveButton.textContent = 'Update Configuration';
     saveButton.dataset.editIndex = index;
 
-    window.scrollTo(0,0);
+    window.scrollTo(0, 0);
 }
-
 function updateConfiguration(index) {
     const updatedConfig = {
         name: document.getElementById('buttonName').value,
@@ -529,8 +681,22 @@ function updateAnnotationValues(fieldSelect, valueSelect) {
     }
 }
 
+function populateFieldDatalist() {
+    const datalist = document.getElementById('fieldDatalist') || document.createElement('datalist');
+    datalist.id = 'fieldDatalist';
+    datalist.innerHTML = '';
+    Object.entries(observationFieldMap).forEach(([id, name]) => {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = name;
+        datalist.appendChild(option);
+    });
+    document.body.appendChild(datalist);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     loadConfigurations();
+    populateFieldDatalist();
     document.getElementById('saveButton').addEventListener('click', saveConfiguration);
     document.getElementById('cancelButton').addEventListener('click', clearForm);
     document.getElementById('addActionButton').addEventListener('click', addActionToForm);
