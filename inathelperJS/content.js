@@ -367,11 +367,15 @@ function addObservationField(fieldId, value, button = null) {
                             console.error('Error refreshing after adding field:', error);
                             resolve({ success: true, data: data, refreshError: error });
                         });
-                })
+                })                
                 .catch((error) => {
-                    console.error('Error in adding observation field:', error);
-                    if (button) animateButtonResult(button, false);
-                    resolve({success: false, error: error.message});
+                    if (error.message.includes("Observation user does not accept fields from others")) {
+                        console.log('User does not accept fields from others:', error);
+                        return { status: 'warning', message: 'User does not accept fields from others' };
+                    } else {
+                        console.error('Error in adding observation field:', error);
+                        return { status: 'error', message: error.message };
+                    }
                 });
         });
     });
