@@ -387,15 +387,14 @@ function debounce(func, wait) {
 }
 
 function loadConfigurations() {
-    chrome.storage.sync.get('customButtons', function(data) {
+    chrome.storage.sync.get(['customButtons', 'observationFieldMap'], function(data) {
+        console.log('Loaded data:', data);
         customButtons = data.customButtons || [];
-        customButtons = migrateConfigurations(customButtons);
-        chrome.storage.sync.set({customButtons: customButtons}, function() {
-            console.log('Configurations migrated and saved');
-            displayConfigurations();
-        });
+        observationFieldMap = data.observationFieldMap || {};
+        displayConfigurations();
     });
 }
+
 function migrateConfigurations(configs) {
     return configs.map(config => {
         if (!config.actions) {
@@ -546,11 +545,35 @@ function duplicateConfiguration(configId) {
         actionDiv.querySelector('.actionType').value = action.type;
         if (action.type === 'observationField') {
             actionDiv.querySelector('.fieldId').value = action.fieldId;
-            actionDiv.querySelector('.fieldValue').value = action.fieldValue;
-        } else {
+            actionDiv.querySelector('.fieldName').value = action.fieldName || '';
+            lookupObservationField(action.fieldName || action.fieldId)
+                .then(fields => {
+                    const field = fields.find(f => f.id.toString() === action.fieldId.toString());
+                    if (field) {
+                        actionDiv.querySelector('.fieldDescription').textContent = field.description;
+                        updateFieldValueInput(field, actionDiv.querySelector('.fieldValueContainer'));
+                        const fieldValueInput = actionDiv.querySelector('.fieldValue');
+                        fieldValueInput.value = action.fieldValue;
+                        if (field.datatype === 'taxon' && action.taxonId) {
+                            fieldValueInput.dataset.taxonId = action.taxonId;
+                        }
+                    } else {
+                        throw new Error('Field not found');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching observation field details:', error);
+                    actionDiv.querySelector('.fieldDescription').textContent = 'Error: Unable to fetch field details';
+                    // Still populate the field value even if lookup fails
+                    const fieldValueInput = actionDiv.querySelector('.fieldValue');
+                    fieldValueInput.value = action.fieldValue;
+                    if (action.taxonId) {
+                        fieldValueInput.dataset.taxonId = action.taxonId;
+                    }
+                });
+        } else if (action.type === 'annotation') {
             const annotationField = actionDiv.querySelector('.annotationField');
             const annotationValue = actionDiv.querySelector('.annotationValue');
-            populateAnnotationFields(annotationField);
             annotationField.value = action.annotationField;
             updateAnnotationValues(annotationField, annotationValue);
             annotationValue.value = action.annotationValue;
@@ -562,10 +585,8 @@ function duplicateConfiguration(configId) {
     saveButton.textContent = 'Save New Configuration';
     delete saveButton.dataset.editIndex;
 
-    // Scroll to the top of the page
     window.scrollTo(0, 0);
 }
-
 function saveConfiguration() {
     const name = document.getElementById('buttonName').value.trim();
     const shortcutKey = document.getElementById('shortcut').value.trim().toUpperCase();
@@ -653,8 +674,12 @@ function saveConfiguration() {
         customButtons.push(newConfig);
     }
 
-    chrome.storage.sync.set({customButtons: customButtons, observationFieldMap: observationFieldMap, lastConfigUpdate: Date.now()}, function() {
-        console.log('Configuration and field map saved');
+    chrome.storage.sync.set({
+        customButtons: customButtons,
+        observationFieldMap: observationFieldMap,
+        lastConfigUpdate: Date.now(),
+    }, function() {
+        console.log('Configuration and settings saved');
         loadConfigurations();
         clearForm();
     });
@@ -832,4 +857,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('toggleSort').addEventListener('click', toggleSort);
     document.getElementById('searchInput').addEventListener('input', filterConfigurations);
     updateSortButtonText();
+    const shortcutsToggle = document.getElementById('hardcoded-shortcuts-toggle');
+    const shortcutsList = document.getElementById('hardcoded-shortcuts-list');
+
+    shortcutsToggle.addEventListener('click', function() {
+        if (shortcutsList.style.display === 'none') {
+            shortcutsList.style.display = 'block';
+            shortcutsToggle.textContent = 'General Shortcuts [-]';
+        } else {
+            shortcutsList.style.display = 'none';
+            shortcutsToggle.textContent = 'General Shortcuts [+]';
+        }
+    });
 });

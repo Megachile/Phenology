@@ -7,6 +7,116 @@ let isButtonsVisible = true;
 let customShortcuts = [];
 let lastKnownUpdate = 0;
 const API_URL = 'https://api.inaturalist.org/v1';
+let shortcutListVisible = false;
+
+function toggleShortcutList() {
+    if (shortcutListVisible) {
+        document.getElementById('shortcut-list-container').remove();
+        shortcutListVisible = false;
+    } else {
+        createShortcutList();
+        shortcutListVisible = true;
+    }
+}
+
+const observer = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+        if (mutation.type === 'childList') {
+            const modal = document.querySelector('.ObservationModal.FullScreenModal');
+            if (modal) {
+                startObservationCheck();
+            } else {
+                stopObservationCheck();
+                clearObservationId();
+                if (idDisplay) {
+                    idDisplay.style.display = 'none';
+                }
+            }
+
+            // Check for the ID page element
+            const idPageElement = document.querySelector('.ObservationModal');
+            if (idPageElement) {
+                console.log('ID page detected');
+            }
+
+            break;
+        }
+    }
+});
+
+
+
+
+function createShortcutList() {
+    console.log('Creating shortcut list');
+    const container = document.createElement('div');
+    container.id = 'shortcut-list-container';
+    container.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 20px;
+        transform: translateY(-50%);
+        background-color: white;
+        border: 1px solid #ccc;
+        padding: 20px;
+        z-index: 10001;
+        max-height: 90vh;
+        width: 300px;
+        overflow-y: auto;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        font-size: 16px;
+        line-height: 1.5;
+    `;
+
+    const title = document.createElement('h2');
+    title.textContent = 'Keyboard Shortcuts';
+    title.style.fontSize = '20px';
+    title.style.marginBottom = '15px';
+    container.appendChild(title);
+
+    const list = document.createElement('ul');
+    list.style.paddingLeft = '20px';
+    list.innerHTML = `
+        <li>Alt + B: Toggle button visibility</li>
+        <li>Alt + N: Cycle button position</li>
+        <li>Ctrl + Shift + R: Toggle refresh</li>
+        <li>Alt + H: Toggle this shortcut list</li>
+    `;
+
+    // Add custom shortcuts
+    chrome.storage.sync.get('customButtons', function(data) {
+        const customButtons = data.customButtons || [];
+        customButtons.forEach(button => {
+            if (button.shortcut && button.shortcut.key) {
+                const li = document.createElement('li');
+                li.textContent = `${formatShortcut(button.shortcut)}: ${button.name}`;
+                list.appendChild(li);
+            }
+        });
+        container.appendChild(list);
+        document.body.appendChild(container);
+        console.log('Shortcut list created and appended to body');
+    });
+}
+
+function formatShortcut(shortcut) {
+    let parts = [];
+    if (shortcut.ctrlKey) parts.push('Ctrl');
+    if (shortcut.shiftKey) parts.push('Shift');
+    if (shortcut.altKey) parts.push('Alt');
+    if (shortcut.key) parts.push(shortcut.key);
+    return parts.join(' + ');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM content loaded'); // Debug log
+    chrome.storage.sync.get('showShortcutListOnStartup', function(data) {
+        console.log('Startup setting:', data.showShortcutListOnStartup); // Debug log
+        if (data.showShortcutListOnStartup) {
+            toggleShortcutList();
+        }
+    });
+});
 
 function handleAllShortcuts(event) {
     // Always allow these shortcuts, even when typing
@@ -21,6 +131,11 @@ function handleAllShortcuts(event) {
     if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'r') {
         event.preventDefault();
         toggleRefresh();
+        return;
+    }
+    if (event.altKey && event.key.toLowerCase() === 'h') {
+        event.preventDefault();
+        toggleShortcutList();
         return;
     }
 
@@ -226,23 +341,7 @@ function stopObservationCheck() {
     }
 }
 
-const observer = new MutationObserver((mutations) => {
-    for (let mutation of mutations) {
-        if (mutation.type === 'childList') {
-            const modal = document.querySelector('.ObservationModal.FullScreenModal');
-            if (modal) {
-                startObservationCheck();
-            } else {
-                stopObservationCheck();
-                clearObservationId();
-                if (idDisplay) {
-                    idDisplay.style.display = 'none';
-                }
-            }
-            break;
-        }
-    }
-});
+
 
 observer.observe(document.body, { childList: true, subtree: true });
 
@@ -663,3 +762,11 @@ function createDynamicButtons() {
 
 
 createDynamicButtons();
+
+window.addEventListener('error', function(event) {
+    if (event.error && event.error.message && event.error.message.includes('Extension context invalidated')) {
+        console.log('Extension context invalidated. This is likely due to the extension being reloaded.');
+        event.preventDefault(); // Prevent the error from being thrown
+    }
+});
+
