@@ -869,4 +869,140 @@ document.addEventListener('DOMContentLoaded', function() {
             shortcutsToggle.textContent = 'General Shortcuts [+]';
         }
     });
+    document.getElementById('exportButton').addEventListener('click', exportConfigurations);
+    document.getElementById('importInput').addEventListener('change', importConfigurations);
+    
+    document.getElementById('importButton').addEventListener('click', () => {
+        document.getElementById('importInput').click();
+    });
+
 });
+
+
+function exportConfigurations() {
+    const configData = {
+        customButtons: customButtons,
+        observationFieldMap: observationFieldMap
+    };
+    const blob = new Blob([JSON.stringify(configData, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `iNaturalist_tool_config_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importConfigurations(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                mergeConfigurations(importedData);
+            } catch (error) {
+                alert('Error parsing the imported file. Please make sure it\'s a valid JSON file.');
+                console.error('Import error:', error);
+            }
+        };
+        reader.readAsText(file);
+    }
+}
+
+function mergeConfigurations(importedData) {
+    const newButtons = importedData.customButtons || [];
+    const conflicts = [];
+
+    newButtons.forEach(newButton => {
+        const existingButton = customButtons.find(b => b.name === newButton.name);
+        if (existingButton) {
+            conflicts.push({existing: existingButton, imported: newButton});
+        } else {
+            const shortcutConflict = customButtons.find(b => 
+                b.shortcut && newButton.shortcut &&
+                b.shortcut.ctrlKey === newButton.shortcut.ctrlKey &&
+                b.shortcut.shiftKey === newButton.shortcut.shiftKey &&
+                b.shortcut.altKey === newButton.shortcut.altKey &&
+                b.shortcut.key === newButton.shortcut.key
+            );
+            if (shortcutConflict) {
+                conflicts.push({existing: shortcutConflict, imported: newButton, type: 'shortcut'});
+            } else {
+                customButtons.push(newButton);
+            }
+        }
+    });
+
+    if (conflicts.length > 0) {
+        resolveConflicts(conflicts, () => {
+            saveAndReloadConfigurations();
+            alert('Import completed with conflict resolutions.');
+        });
+    } else {
+        saveAndReloadConfigurations();
+        alert('Import completed successfully.');
+    }
+
+    // Merge observation field map
+    observationFieldMap = {...observationFieldMap, ...(importedData.observationFieldMap || {})};
+}
+
+function resolveConflicts(conflicts, callback) {
+    if (conflicts.length === 0) {
+        callback();
+        return;
+    }
+
+    const conflict = conflicts.shift();
+    const message = conflict.type === 'shortcut' 
+        ? `Shortcut conflict for "${conflict.imported.name}". Choose an action:`
+        : `Configuration "${conflict.existing.name}" already exists. Choose an action:`;
+
+    const options = conflict.type === 'shortcut'
+        ? ['Keep existing', 'Use imported', 'Assign new']
+        : ['Keep existing', 'Replace with imported', 'Rename and add'];
+
+    const choice = prompt(`${message}\n${options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}\n\nEnter the number of your choice:`);
+
+    switch (choice) {
+        case '1':
+            // Keep existing (do nothing)
+            break;
+        case '2':
+            if (conflict.type === 'shortcut') {
+                conflict.existing.shortcut = null;
+                customButtons.push(conflict.imported);
+            } else {
+                const index = customButtons.findIndex(b => b.id === conflict.existing.id);
+                customButtons[index] = conflict.imported;
+            }
+            break;
+        case '3':
+            if (conflict.type === 'shortcut') {
+                const newShortcut = prompt('Enter new shortcut (e.g., "Ctrl+Shift+A"):');
+                if (newShortcut) {
+                    const parts = newShortcut.split('+');
+                    conflict.imported.shortcut = {
+                        ctrlKey: parts.includes('Ctrl'),
+                        shiftKey: parts.includes('Shift'),
+                        altKey: parts.includes('Alt'),
+                        key: parts[parts.length - 1]
+                    };
+                    customButtons.push(conflict.imported);
+                }
+            } else {
+                const newName = prompt('Enter new name for the imported configuration:');
+                if (newName) {
+                    conflict.imported.name = newName;
+                    customButtons.push(conflict.imported);
+                }
+            }
+            break;
+        default:
+            alert('Invalid choice. Keeping the existing configuration.');
+    }
+
+    resolveConflicts(conflicts, callback);
+}
+
