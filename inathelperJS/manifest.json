@@ -3,7 +3,7 @@
   "name": "iNaturalist Gall Observation Field Tool",
   "version": "3.0",
   "permissions": ["activeTab", "storage", "webRequest","tabs"],
-  "host_permissions": ["https://api.www.inaturalist.org/*", "https://caiabpkbpfdelfbbhehgoakfbnfgbofj.chromium.app.org/*"],
+  "host_permissions": ["https://api.inaturalist.org/*", "https://www.inaturalist.org/*"],
   "action": {
       "default_icon": {
       "16": "images/icon16.png",
@@ -17,7 +17,7 @@
   "content_scripts": [
     {
       "matches": ["https://www.inaturalist.org/observations/identify*"],
-      "js": [ "axios.min.js", "content.js"],
+      "js": ["content.js"],
       "run_at": "document_idle"
     }
 ],

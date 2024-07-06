@@ -44,9 +44,6 @@ const observer = new MutationObserver((mutations) => {
     }
 });
 
-
-
-
 function createShortcutList() {
     console.log('Creating shortcut list');
     const container = document.createElement('div');
@@ -404,11 +401,11 @@ function addObservationField(fieldId, value, button = null) {
                 return;
             }
 
-            chrome.storage.local.get(['accessToken'], function(result) {
-                const token = result.accessToken;
+            chrome.storage.local.get(['jwt'], function(result) {
+                const token = result.jwt;
                 if (!token) {
-                    console.error('No access token found');
-                    resolve({ success: false, error: 'No access token found' });
+                    console.error('No JWT found');
+                    sendResponse({ status: "error", message: "No JWT found" });
                     return;
                 }
 
@@ -479,6 +476,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 chrome.runtime.sendMessage({ from: 'content', subject: 'helloBackground', data: 'Hello, Background!' });
+
+chrome.runtime.sendMessage({action: "getJWT"}, function(response) {
+    if (response.jwt) {
+      // Use the JWT for API calls
+      const jwt = response.jwt;
+      // Make API calls using this JWT
+    } else {
+      console.error('Failed to get JWT:', response.error);
+      // Handle the error (e.g., prompt user to re-authenticate)
+    }
+  });
 
 const style = document.createElement('style');
 style.textContent = `
@@ -640,39 +648,41 @@ function addAnnotation(currentObservationId, attributeId, valueId) {
     };
 
     return new Promise((resolve, reject) => {
-        chrome.storage.local.get(['accessToken'], function(result) {
-            if (result.accessToken) {
-                fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${result.accessToken}`
-                    },
-                    body: JSON.stringify(data)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.errors) {
-                        // If there's an error (e.g., annotation already exists), resolve instead of reject
-                        console.log('Annotation not added (may already exist):', data.errors);
-                        resolve(data);
-                    } else {
-                        console.log('Annotation added successfully:', data);
-                        resolve(data);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error adding annotation:', error);
-                    reject(error);
-                });
-            } else {
-                reject('No access token found');
+        chrome.storage.local.get(['jwt'], function(result) {
+            const token = result.jwt;
+            if (!token) {
+                console.error('No JWT found');
+                reject('No JWT found');
+                return;
             }
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.errors) {
+                    // If there's an error (e.g., annotation already exists), resolve instead of reject
+                    console.log('Annotation not added (may already exist):', data.errors);
+                    resolve(data);
+                } else {
+                    console.log('Annotation added successfully:', data);
+                    resolve(data);
+                }
+            })
+            .catch(error => {
+                console.error('Error adding annotation:', error);
+                reject(error);
+            });
         });
     });
 });
 }
-
 
 
 function refreshObservation() {
