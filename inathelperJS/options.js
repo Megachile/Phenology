@@ -595,6 +595,40 @@ function saveConfiguration() {
     const altKey = document.getElementById('altKey').checked;
     
     // Validation checks...
+    if (!name) {
+        alert("Please enter a button name.");
+        return;
+    }
+
+    // Check if a modifier is selected but no key is specified
+    if ((ctrlKey || shiftKey || altKey) && !shortcutKey) {
+        alert("You've selected a modifier key (Ctrl, Shift, or Alt) but haven't specified a key. Please either add a key or uncheck the modifier(s).");
+        return;
+    }
+
+    // Check for conflicts with iNat shortcuts
+    if (!ctrlKey && !shiftKey && !altKey && iNatSingleKeyPresses.includes(shortcutKey.toLowerCase())) {
+        alert("This key is already used by iNaturalist shortcuts. Please choose a different key or add a modifier.");
+        return;
+    }
+
+    // Check if we're editing an existing config or creating a new one
+    const editIndex = parseInt(document.getElementById('saveButton').dataset.editIndex);
+    
+    // Check for conflicts with existing custom shortcuts
+    const conflictingShortcut = customButtons.find((button, index) => 
+        button.shortcut &&
+        button.shortcut.key === shortcutKey &&
+        button.shortcut.ctrlKey === ctrlKey &&
+        button.shortcut.shiftKey === shiftKey &&
+        button.shortcut.altKey === altKey &&
+        index !== editIndex  // Exclude the current configuration if we're editing
+    );
+
+    if (conflictingShortcut) {
+        alert(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
+        return;
+    }
 
     const newConfig = {
         id: Date.now().toString(), // Unique identifier
@@ -652,8 +686,6 @@ function saveConfiguration() {
         newConfig.actions.push(action);
     });
 
-    newConfig.lastUpdated = Date.now();
-
     if (isShortcutForbidden(newConfig.shortcut)) {
         alert("This shortcut is not allowed as it conflicts with browser functionality.");
         return;
@@ -664,7 +696,6 @@ function saveConfiguration() {
         return;
     }
 
-    const editIndex = document.getElementById('saveButton').dataset.editIndex;
     if (editIndex) {
         const index = customButtons.findIndex(config => config.id === editIndex);
         if (index !== -1) {
