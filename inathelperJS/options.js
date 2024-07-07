@@ -830,7 +830,13 @@ function toggleHideConfiguration(configId) {
 function deleteConfiguration(configId) {
     if (confirm('Are you sure you want to delete this configuration?')) {
         customButtons = customButtons.filter(c => c.id !== configId);
-        saveAndReloadConfigurations();
+        chrome.storage.sync.set({
+            customButtons: customButtons,
+            lastConfigUpdate: Date.now()
+        }, function() {
+            console.log('Configuration deleted and lastConfigUpdate set');
+            loadConfigurations();
+        });
     }
 }
 
@@ -977,6 +983,15 @@ function mergeConfigurations(importedData) {
 
     // Merge observation field map
     observationFieldMap = {...observationFieldMap, ...(importedData.observationFieldMap || {})};
+    chrome.storage.sync.set({
+        customButtons: customButtons,
+        observationFieldMap: observationFieldMap,
+        lastConfigUpdate: Date.now()
+    }, function() {
+        console.log('Configurations merged and lastConfigUpdate set');
+        loadConfigurations();
+        alert('Import completed successfully.');
+    });
 }
 
 function resolveConflicts(conflicts, callback) {
