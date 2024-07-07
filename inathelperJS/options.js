@@ -612,18 +612,18 @@ function saveConfiguration() {
         return;
     }
 
-    // Check if we're editing an existing config or creating a new one
-    const editIndex = parseInt(document.getElementById('saveButton').dataset.editIndex);
+    const editIndex = document.getElementById('saveButton').dataset.editIndex;
     
-    // Check for conflicts with existing custom shortcuts
-    const conflictingShortcut = customButtons.find((button, index) => 
-        button.shortcut &&
-        button.shortcut.key === shortcutKey &&
-        button.shortcut.ctrlKey === ctrlKey &&
-        button.shortcut.shiftKey === shiftKey &&
-        button.shortcut.altKey === altKey &&
-        index !== editIndex  // Exclude the current configuration if we're editing
-    );
+    const conflictingShortcut = customButtons.find((button, index) => {
+        if (editIndex && button.id === editIndex) {
+            return false; // Skip the current button being edited
+        }
+        return button.shortcut &&
+               button.shortcut.key === shortcutKey &&
+               button.shortcut.ctrlKey === ctrlKey &&
+               button.shortcut.shiftKey === shiftKey &&
+               button.shortcut.altKey === altKey;
+    });
 
     if (conflictingShortcut) {
         alert(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
