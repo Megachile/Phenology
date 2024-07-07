@@ -1,5 +1,5 @@
 console.log('Background script loaded');
-
+const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 const CLIENT_ID = 'e2RUzw_g08SfNA_XeckoECYgPu9g0FDefi4wQDbYXNE';
 const REDIRECT_URI = 'https://caiabpkbpfdelfbbhehgoakfbnfgbofj.chromium.app.org/';
 const AUTH_URL = 'https://www.inaturalist.org/oauth/authorize';
@@ -60,8 +60,8 @@ async function initiateAuthFlow() {
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
     const authUrl = `${AUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&code_challenge_method=S256&code_challenge=${codeChallenge}`;
-    chrome.storage.local.set({ codeVerifier }, () => {
-        chrome.tabs.create({ url: authUrl });
+    browserAPI.storage.local.set({ codeVerifier }, () => {
+        browserAPI.tabs.create({ url: authUrl });
     });
 }
 
@@ -93,7 +93,7 @@ async function getAccessTokenWithCodeVerifier(code, codeVerifier) {
 
 function storeTokens(accessToken, jwt) {
     const jwtExpiration = Date.now() + 24 * 60 * 60 * 1000; // JWT typically expires in 24 hours
-    chrome.storage.local.set({ accessToken, jwt, jwtExpiration }, () => {
+    browserAPI.storage.local.set({ accessToken, jwt, jwtExpiration }, () => {
         console.log('Access token and JWT stored successfully.');
     });
 }
@@ -119,7 +119,7 @@ async function refreshJWT(accessToken) {
 }
 
 async function makeAuthenticatedRequest(url, options = {}) {
-    const { accessToken, jwt, jwtExpiration } = await chrome.storage.local.get(['accessToken', 'jwt', 'jwtExpiration']);
+    const { accessToken, jwt, jwtExpiration } = await browserAPI.storage.local.get(['accessToken', 'jwt', 'jwtExpiration']);
 
     if (!jwt || Date.now() > jwtExpiration) {
         try {
@@ -187,12 +187,12 @@ async function testToken(accessToken, jwt) {
 }
 
 // Event Listeners
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "getJWT") {
-        chrome.storage.local.get(['jwt', 'jwtExpiration'], async (result) => {
+        browserAPI.storage.local.get(['jwt', 'jwtExpiration'], async (result) => {
             if (!result.jwt || Date.now() > result.jwtExpiration) {
                 try {
-                    const { accessToken } = await chrome.storage.local.get('accessToken');
+                    const { accessToken } = await browserAPI.storage.local.get('accessToken');
                     const newJwt = await refreshJWT(accessToken);
                     sendResponse({jwt: newJwt});
                 } catch (error) {
@@ -209,7 +209,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         storedTabId = sender.tab.id;
         console.log(`Stored tab ID: ${storedTabId}`);
     } else if (message.action === 'makeApiCall') {
-        chrome.storage.local.get(['jwt'], function (result) {
+        browserAPI.storage.local.get(['jwt'], function (result) {
             const jwt = result.jwt;
             if (!jwt) {
                 console.error('No JWT found');
@@ -233,7 +233,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;  // This is important for asynchronous response
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+browserAPI.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url && tab.url.startsWith(REDIRECT_URI)) {
       const url = new URL(tab.url);
       const code = url.searchParams.get('code');
@@ -242,7 +242,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         console.log('Extracted code:', code);
         
         const closeTab = () => {
-          chrome.tabs.remove(tabId).catch(error => {
+          browserAPI.tabs.remove(tabId).catch(error => {
             console.log('Error closing tab:', error);
             // If we can't close the tab, we'll just continue with the auth flow
             handleAuthCode(code);
@@ -259,14 +259,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   });
   
   function handleAuthCode(code) {
-    chrome.storage.local.get(['codeVerifier'], async function (result) {
+    browserAPI.storage.local.get(['codeVerifier'], async function (result) {
       const codeVerifier = result.codeVerifier;
       if (codeVerifier) {
         const accessToken = await getAccessTokenWithCodeVerifier(code, codeVerifier);
         if (accessToken) {
           try {
             const jwt = await getJWT(accessToken);
-            chrome.storage.local.set({ accessToken, jwt }, function() {
+            browserAPI.storage.local.set({ accessToken, jwt }, function() {
               console.log('Access token and JWT stored successfully.');
             });
           } catch (error) {
@@ -281,10 +281,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 
 // Initialization
-chrome.storage.local.get(['accessToken'], function (result) {
+browserAPI.storage.local.get(['accessToken'], function (result) {
     const token = result.accessToken;
     if (token) {
-        chrome.storage.local.get(['jwt'], function (result) {
+        browserAPI.storage.local.get(['jwt'], function (result) {
             const jwt = result.jwt;
             if (jwt) {
                 testToken(token, jwt);
@@ -299,6 +299,6 @@ chrome.storage.local.get(['accessToken'], function (result) {
     }
 });
 
-chrome.action.onClicked.addListener((tab) => {
-    chrome.runtime.openOptionsPage();
+browserAPI.action.onClicked.addListener((tab) => {
+    browserAPI.runtime.openOptionsPage();
 });

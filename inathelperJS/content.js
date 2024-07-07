@@ -1,5 +1,5 @@
 console.log('content.js has been loaded');
-
+const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 let buttonPosition = 'bottom-right'; // Default position
 let idDisplay;
 let refreshEnabled = true;
@@ -81,7 +81,7 @@ function createShortcutList() {
     `;
 
     // Add custom shortcuts
-    chrome.storage.sync.get('customButtons', function(data) {
+    browserAPI.storage.sync.get('customButtons', function(data) {
         const customButtons = data.customButtons || [];
         customButtons.forEach(button => {
             if (button.shortcut && button.shortcut.key) {
@@ -151,7 +151,7 @@ function handleAllShortcuts(event) {
 document.addEventListener('keydown', handleAllShortcuts);
 
 function checkForConfigUpdates() {
-    chrome.storage.sync.get(['lastConfigUpdate'], function(result) {
+    browserAPI.storage.sync.get(['lastConfigUpdate'], function(result) {
         if (result.lastConfigUpdate) {
             if (lastKnownUpdate === 0) {
                 // First time checking, just update lastKnownUpdate without showing notification
@@ -209,11 +209,11 @@ function cycleButtonPosition() {
     currentPositionIndex = (currentPositionIndex + 1) % positions.length;
     buttonPosition = positions[currentPositionIndex];
     updatePositions();
-    chrome.storage.sync.set({buttonPosition: buttonPosition});
+    browserAPI.storage.sync.set({buttonPosition: buttonPosition});
   }
 
 
-chrome.storage.sync.get('buttonPosition', function(data) {
+browserAPI.storage.sync.get('buttonPosition', function(data) {
     if (data.buttonPosition) {
         buttonPosition = data.buttonPosition;
         currentPositionIndex = positions.indexOf(buttonPosition);
@@ -375,7 +375,7 @@ function addObservationField(observationId, fieldId, value, button = null) {
                 return;
             }
 
-            chrome.storage.local.get(['jwt'], function(result) {
+            browserAPI.storage.local.get(['jwt'], function(result) {
                 const token = result.jwt;
                 if (!token) {
                     console.error('No JWT found');
@@ -436,7 +436,7 @@ function animateButtonResult(button, success) {
     }, 1200); 
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Message received in content:', message);
     if (message.action === 'showAlert') {
         alert(message.text);
@@ -449,9 +449,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 });
 
-chrome.runtime.sendMessage({ from: 'content', subject: 'helloBackground', data: 'Hello, Background!' });
+browserAPI.runtime.sendMessage({ from: 'content', subject: 'helloBackground', data: 'Hello, Background!' });
 
-chrome.runtime.sendMessage({action: "getJWT"}, function(response) {
+browserAPI.runtime.sendMessage({action: "getJWT"}, function(response) {
     if (response.jwt) {
       // Use the JWT for API calls
       const jwt = response.jwt;
@@ -609,7 +609,7 @@ function addAnnotation(observationId, attributeId, valueId) {
             return resolve({ success: false, error: 'No observation ID provided' });
         }
 
-        chrome.storage.local.get(['jwt'], function(result) {
+        browserAPI.storage.local.get(['jwt'], function(result) {
             const token = result.jwt;
             if (!token) {
                 console.error('No JWT found');
@@ -707,7 +707,7 @@ function toggleRefresh() {
 }
 
 function createDynamicButtons() {
-    chrome.storage.sync.get('customButtons', function(data) {
+    browserAPI.storage.sync.get('customButtons', function(data) {
         if (data.customButtons && data.customButtons.length > 0) {
             customShortcuts = [];
 

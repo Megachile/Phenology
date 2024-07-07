@@ -3,6 +3,7 @@ let currentConfig = { actions: [] };
 let sortNewestFirst = true;
 let searchTerm = '';
 let observationFieldMap = {};
+const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
 const controlledTerms = {
     "Alive or Dead": {
@@ -408,7 +409,7 @@ function debounce(func, wait) {
 }
 
 function loadConfigurations() {
-    chrome.storage.sync.get(['customButtons', 'observationFieldMap'], function(data) {
+    browserAPI.storage.sync.get(['customButtons', 'observationFieldMap'], function(data) {
         console.log('Loaded data:', data);
         customButtons = data.customButtons || [];
         observationFieldMap = data.observationFieldMap || {};
@@ -545,7 +546,7 @@ function updateConfigurationDisplay(config) {
 }
 
 function saveConfigurations() {
-    chrome.storage.sync.set({
+    browserAPI.storage.sync.set({
         customButtons: customButtons,
         lastConfigUpdate: Date.now()
     }, function() {
@@ -558,7 +559,7 @@ function saveAndReloadConfigurations(updateTimestamp = false) {
     if (updateTimestamp) {
         dataToSave.lastConfigUpdate = Date.now();
     }
-    chrome.storage.sync.set(dataToSave, function() {
+    browserAPI.storage.sync.set(dataToSave, function() {
         console.log('Configuration updated');
         loadConfigurations();
     });
@@ -755,7 +756,7 @@ function saveConfiguration() {
         customButtons.push(newConfig);
     }
 
-    chrome.storage.sync.set({
+    browserAPI.storage.sync.set({
         customButtons: customButtons,
         observationFieldMap: observationFieldMap,
         lastConfigUpdate: Date.now(),
@@ -854,7 +855,7 @@ function updateConfigurations(configId) {
     const index = customButtons.findIndex(c => c.id === configId);
     if (index !== -1) {
         customButtons[index] = updatedConfig;
-        chrome.storage.sync.set({customButtons: customButtons}, function() {
+        browserAPI.storage.sync.set({customButtons: customButtons}, function() {
             console.log('Configuration updated');
             loadConfigurations();
             clearForm();
@@ -870,7 +871,7 @@ function toggleHideConfiguration(configId) {
     const config = customButtons.find(c => c.id === configId);
     if (config) {
         config.buttonHidden = !config.buttonHidden;
-        chrome.storage.sync.set({customButtons: customButtons}, function() {
+        browserAPI.storage.sync.set({customButtons: customButtons}, function() {
             console.log('Configuration visibility toggled');
             loadConfigurations();
         });
@@ -880,7 +881,7 @@ function toggleHideConfiguration(configId) {
 function deleteConfiguration(configId) {
     if (confirm('Are you sure you want to delete this configuration?')) {
         customButtons = customButtons.filter(c => c.id !== configId);
-        chrome.storage.sync.set({
+        browserAPI.storage.sync.set({
             customButtons: customButtons,
             lastConfigUpdate: Date.now()
         }, function() {
@@ -1022,7 +1023,7 @@ function mergeConfigurations(importedData) {
     });
 
     const saveAndNotify = () => {
-        chrome.storage.sync.set({
+        browserAPI.storage.sync.set({
             customButtons: customButtons,
             observationFieldMap: {...observationFieldMap, ...(importedData.observationFieldMap || {})},
             lastConfigUpdate: Date.now()
