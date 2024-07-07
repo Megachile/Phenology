@@ -19,30 +19,51 @@ function toggleShortcutList() {
     }
 }
 
-const observer = new MutationObserver((mutations) => {
-    for (let mutation of mutations) {
-        if (mutation.type === 'childList') {
-            const modal = document.querySelector('.ObservationModal.FullScreenModal');
-            if (modal) {
-                startObservationCheck();
-            } else {
-                stopObservationCheck();
-                clearObservationId();
-                if (idDisplay) {
-                    idDisplay.style.display = 'none';
-                }
-            }
-
-            // Check for the ID page element
-            const idPageElement = document.querySelector('.ObservationModal');
-            if (idPageElement) {
-                console.log('ID page detected');
-            }
-
-            break;
-        }
+const debounce = (func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  };
+  
+  const debouncedStartObservationCheck = debounce(startObservationCheck, 100);
+  const debouncedStopAndClear = debounce(() => {
+    stopObservationCheck();
+    clearObservationId();
+    if (idDisplay) {
+      idDisplay.style.display = 'none';
     }
-});
+  }, 100);
+  
+  const observer = new MutationObserver((mutations) => {
+    let modalFound = false;
+    for (let mutation of mutations) {
+      if (mutation.type === 'childList') {
+        const modal = document.querySelector('.ObservationModal.FullScreenModal');
+        if (modal) {
+          modalFound = true;
+          break;
+        }
+      }
+    }
+  
+    if (modalFound) {
+      debouncedStartObservationCheck();
+    } else {
+      debouncedStopAndClear();
+    }
+  
+    // Check for the ID page element
+    const idPageElement = document.querySelector('.ObservationModal');
+    if (idPageElement) {
+      console.log('ID page detected');
+    }
+  });
 
 function createShortcutList() {
     console.log('Creating shortcut list');
@@ -74,7 +95,7 @@ function createShortcutList() {
     const list = document.createElement('ul');
     list.style.paddingLeft = '20px';
     list.innerHTML = `
-        <li>Alt + B: Toggle button visibility</li>
+        <li>Shift + B: Toggle button visibility</li>
         <li>Alt + N: Cycle button position</li>
         <li>Ctrl + Shift + R: Toggle refresh</li>
         <li>Alt + H: Toggle this shortcut list</li>
@@ -107,11 +128,11 @@ function formatShortcut(shortcut) {
 
 function handleAllShortcuts(event) {
     // Always allow these shortcuts, even when typing
-    if (event.altKey && event.key === 'b') {
+    if (event.shiftKey && event.key.toLowerCase() === 'b') {
         toggleButtonVisibility();
         return;
     }
-    if (event.altKey && event.key === 'n') {
+    if (event.altKey && event.key.toLowerCase() === 'n') {
         cycleButtonPosition();
         return;
     }

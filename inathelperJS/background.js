@@ -1,10 +1,10 @@
 console.log('Background script loaded');
-const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 const CLIENT_ID = 'e2RUzw_g08SfNA_XeckoECYgPu9g0FDefi4wQDbYXNE';
 const REDIRECT_URI = 'https://caiabpkbpfdelfbbhehgoakfbnfgbofj.chromium.app.org/';
 const AUTH_URL = 'https://www.inaturalist.org/oauth/authorize';
 const TOKEN_URL = 'https://www.inaturalist.org/oauth/token';
 const API_URL = 'https://api.inaturalist.org/v1';
+const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
 let observationId = null;
 let storedTabId;
@@ -299,6 +299,6 @@ browserAPI.storage.local.get(['accessToken'], function (result) {
     }
 });
 
-browserAPI.action.onClicked.addListener((tab) => {
+(browserAPI.action || browserAPI.browserAction).onClicked.addListener((tab) => {
     browserAPI.runtime.openOptionsPage();
 });

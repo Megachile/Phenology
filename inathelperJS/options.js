@@ -88,14 +88,22 @@ const forbiddenShortcuts = [
     { altKey: true, key: 'F4' },  // Close window
     { ctrlKey: true, shiftKey: true, key: 'W' },  // Close window
     { ctrlKey: true, shiftKey: true, key: 'T' }, // Reopen closed tab
+    { altKey: true, key: 'B' },  // Firefox bookmarks
+    { shiftKey: true, key: 'B' },  // Cycle button position
+    { altKey: true, key: 'N' },    // Toggle button visibility
+    { ctrlKey: true, shiftKey: true, key: 'R' },  // Toggle refresh
+    { altKey: true, key: 'H' }     // Toggle shortcut list
 ];
 
+
+
 function isShortcutForbidden(shortcut) {
+    if (!shortcut) return false; // If no shortcut, it can't be forbidden
     return forbiddenShortcuts.some(forbidden => {
         return Object.keys(forbidden).every(key => 
             key === 'key' ? 
-                forbidden[key].toLowerCase() === shortcut[key].toLowerCase() :
-                forbidden[key] === shortcut[key]
+                forbidden[key].toLowerCase() === (shortcut.key || '').toLowerCase() :
+                !!forbidden[key] === !!shortcut[key]
         );
     });
 }
@@ -651,45 +659,43 @@ function saveConfiguration() {
         return;
     }
 
-    // Check if a modifier is selected but no key is specified
-    if ((ctrlKey || shiftKey || altKey) && !shortcutKey) {
-        alert("You've selected a modifier key (Ctrl, Shift, or Alt) but haven't specified a key. Please either add a key or uncheck the modifier(s).");
-        return;
-    }
-
-    // Check for conflicts with iNat shortcuts
-    if (!ctrlKey && !shiftKey && !altKey && iNatSingleKeyPresses.includes(shortcutKey.toLowerCase())) {
-        alert("This key is already used by iNaturalist shortcuts. Please choose a different key or add a modifier.");
-        return;
-    }
-
     const editIndex = document.getElementById('saveButton').dataset.editIndex;
-    
-    const conflictingShortcut = customButtons.find((button, index) => {
-        if (editIndex && button.id === editIndex) {
-            return false; // Skip the current button being edited
-        }
-        return button.shortcut &&
-               button.shortcut.key === shortcutKey &&
-               button.shortcut.ctrlKey === ctrlKey &&
-               button.shortcut.shiftKey === shiftKey &&
-               button.shortcut.altKey === altKey;
-    });
 
-    if (conflictingShortcut) {
-        alert(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
-        return;
-    }
-
-    const newConfig = {
-        id: Date.now().toString(), // Unique identifier
-        name: name,
-        shortcut: {
+    let shortcutConfig = null;
+    if (shortcutKey || ctrlKey || shiftKey || altKey) {
+        shortcutConfig = {
             ctrlKey: ctrlKey,
             shiftKey: shiftKey,
             altKey: altKey,
             key: shortcutKey
-        },
+        };
+
+        if (isShortcutForbidden(shortcutConfig)) {
+            alert("This shortcut is not allowed as it conflicts with browser functionality or extension shortcuts.");
+            return;
+        }
+
+        const conflictingShortcut = customButtons.find((button, index) => {
+            if (editIndex && button.id === editIndex) {
+                return false; // Skip the current button being edited
+            }
+            return button.shortcut &&
+                   button.shortcut.key === shortcutKey &&
+                   button.shortcut.ctrlKey === ctrlKey &&
+                   button.shortcut.shiftKey === shiftKey &&
+                   button.shortcut.altKey === altKey;
+        });
+
+        if (conflictingShortcut) {
+            alert(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
+            return;
+        }
+    }
+
+    const newConfig = {
+        id: editIndex || Date.now().toString(),
+        name: name,
+        shortcut: shortcutConfig,
         actions: [],
         buttonHidden: false,
         configurationDisabled: false
@@ -737,8 +743,22 @@ function saveConfiguration() {
         newConfig.actions.push(action);
     });
 
+
+    // Check if a modifier is selected but no key is specified
+    if ((ctrlKey || shiftKey || altKey) && !shortcutKey) {
+        alert("You've selected a modifier key (Ctrl, Shift, or Alt) but haven't specified a key. Please either add a key or uncheck the modifier(s).");
+        return;
+    }
+
+    // Check for conflicts with iNat shortcuts
+    if (!ctrlKey && !shiftKey && !altKey && iNatSingleKeyPresses.includes(shortcutKey.toLowerCase())) {
+        alert("This key is already used by iNaturalist shortcuts. Please choose a different key or add a modifier.");
+        return;
+    }
+
+
     if (isShortcutForbidden(newConfig.shortcut)) {
-        alert("This shortcut is not allowed as it conflicts with browser functionality.");
+        alert("This shortcut is already in use by this extension or the browser.");
         return;
     }
 
