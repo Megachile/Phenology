@@ -233,46 +233,52 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;  // This is important for asynchronous response
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    if (changeInfo.status === 'complete') {
-        chrome.tabs.get(tabId, async (tab) => {
-            if (tab.url && tab.url.startsWith(REDIRECT_URI)) {
-                const url = new URL(tab.url);
-                const code = url.searchParams.get('code');
-
-                if (code) {
-                    console.log('Extracted code:', code);
-                    chrome.tabs.remove(tabId);
-                    chrome.storage.local.get(['codeVerifier'], async function (result) {
-                        const codeVerifier = result.codeVerifier;
-                        if (codeVerifier) {
-                            const accessToken = await getAccessTokenWithCodeVerifier(code, codeVerifier);
-                            if (accessToken) {
-                                try {
-                                    const jwt = await getJWT(accessToken);
-                                    chrome.storage.local.set({ accessToken, jwt }, function() {
-                                        if (chrome.runtime.lastError) {
-                                            console.log('Error storing the tokens:', chrome.runtime.lastError);
-                                        } else {
-                                            console.log('Access token and JWT stored successfully.');
-                                        }
-                                    });
-                                } catch (error) {
-                                    console.error('Error getting JWT:', error);
-                                }
-                            } else {
-                                console.log('Failed to retrieve access token. Initiating new auth flow.');
-                                initiateAuthFlow();
-                            }
-                        }
-                    });
-                } else {
-                    console.log('No code found in the URL.');
-                }
-            }
-        });
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url && tab.url.startsWith(REDIRECT_URI)) {
+      const url = new URL(tab.url);
+      const code = url.searchParams.get('code');
+  
+      if (code) {
+        console.log('Extracted code:', code);
+        
+        const closeTab = () => {
+          chrome.tabs.remove(tabId).catch(error => {
+            console.log('Error closing tab:', error);
+            // If we can't close the tab, we'll just continue with the auth flow
+            handleAuthCode(code);
+          });
+        };
+  
+        // Attempt to close the tab, but set a timeout in case it fails
+        closeTab();
+        setTimeout(() => {
+          handleAuthCode(code);
+        }, 1000);
+      }
     }
-});
+  });
+  
+  function handleAuthCode(code) {
+    chrome.storage.local.get(['codeVerifier'], async function (result) {
+      const codeVerifier = result.codeVerifier;
+      if (codeVerifier) {
+        const accessToken = await getAccessTokenWithCodeVerifier(code, codeVerifier);
+        if (accessToken) {
+          try {
+            const jwt = await getJWT(accessToken);
+            chrome.storage.local.set({ accessToken, jwt }, function() {
+              console.log('Access token and JWT stored successfully.');
+            });
+          } catch (error) {
+            console.error('Error getting JWT:', error);
+          }
+        } else {
+          console.log('Failed to retrieve access token. Initiating new auth flow.');
+          initiateAuthFlow();
+        }
+      }
+    });
+  }
 
 // Initialization
 chrome.storage.local.get(['accessToken'], function (result) {

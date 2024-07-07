@@ -361,7 +361,7 @@ buttonContainer.id = 'custom-extension-container';
 buttonDiv.appendChild(buttonContainer);
 document.body.appendChild(buttonDiv);
 
-function addObservationField(fieldId, value, button = null) {
+function addObservationField(observationId, fieldId, value, button = null) {
     return ensureCorrectObservationId().then(id => {
         if (!id) {
             console.log('No current observation ID available. Please select an observation first.');
@@ -369,7 +369,7 @@ function addObservationField(fieldId, value, button = null) {
         }
 
         return new Promise((resolve, reject) => {
-            if (!currentObservationId) {
+            if (!observationId) {
                 console.log('No current observation ID available. Please select an observation first.');
                 resolve({ success: false, error: 'No current observation ID' });
                 return;
@@ -390,7 +390,7 @@ function addObservationField(fieldId, value, button = null) {
                 };
                 const data = {
                     observation_field_value: {
-                        observation_id: currentObservationId,
+                        observation_id: observationId,
                         observation_field_id: fieldId,
                         value: value
                     }
@@ -602,33 +602,29 @@ function clearObservationId() {
     console.log('Observation ID cleared');
 }
 
-
-function addAnnotation(currentObservationId, attributeId, valueId) {
-    return ensureCorrectObservationId().then(id => {
-        if (!id) {
-            console.log('No current observation ID available. Please select an observation first.');
-            return Promise.reject('No current observation ID');
-        }
-
-    
-    const url = 'https://api.inaturalist.org/v1/annotations';
-    const data = {
-        annotation: {
-            resource_type: "Observation",
-            resource_id: currentObservationId,
-            controlled_attribute_id: attributeId,
-            controlled_value_id: valueId
-        }
-    };
-
+function addAnnotation(observationId, attributeId, valueId) {
     return new Promise((resolve, reject) => {
+        if (!observationId) {
+            console.log('No observation ID provided. Please select an observation first.');
+            return resolve({ success: false, error: 'No observation ID provided' });
+        }
+
         chrome.storage.local.get(['jwt'], function(result) {
             const token = result.jwt;
             if (!token) {
                 console.error('No JWT found');
-                reject('No JWT found');
-                return;
+                return resolve({ success: false, error: 'No JWT found' });
             }
+
+            const url = 'https://api.inaturalist.org/v1/annotations';
+            const data = {
+                annotation: {
+                    resource_type: "Observation",
+                    resource_id: observationId,
+                    controlled_attribute_id: attributeId,
+                    controlled_value_id: valueId
+                }
+            };
 
             fetch(url, {
                 method: 'POST',
@@ -641,23 +637,48 @@ function addAnnotation(currentObservationId, attributeId, valueId) {
             .then(response => response.json())
             .then(data => {
                 if (data.errors) {
-                    // If there's an error (e.g., annotation already exists), resolve instead of reject
                     console.log('Annotation not added (may already exist):', data.errors);
-                    resolve(data);
+                    return resolve({ success: false, message: 'Annotation may already exist', data: data });
                 } else {
                     console.log('Annotation added successfully:', data);
-                    resolve(data);
+                    return resolve({ success: true, data: data });
                 }
             })
             .catch(error => {
                 console.error('Error adding annotation:', error);
-                reject(error);
+                return resolve({ success: false, error: error.toString() });
             });
         });
     });
-});
 }
 
+function performActions(actions) {
+    const currentId = currentObservationId;
+    if (!currentId) {
+        console.error('No observation selected. Please open an observation before performing actions.');
+        alert('Please open an observation before using this button.');
+        return Promise.resolve();
+    }
+
+    return actions.reduce((promise, action) => {
+        return promise.then(() => {
+            if (action.type === 'observationField') {
+                return addObservationField(currentId, action.fieldId, action.fieldValue);
+            } else if (action.type === 'annotation') {
+                return addAnnotation(currentId, action.annotationField, action.annotationValue);
+            }
+        }).then(() => {
+            return new Promise(resolve => setTimeout(resolve, 500));
+        });
+    }, Promise.resolve())
+    .then(() => {
+        console.log('All actions completed, refreshing observation');
+        return refreshObservation();
+    })
+    .catch(error => {
+        console.error('Error in performActions:', error);
+    });
+}
 
 function refreshObservation() {
     return new Promise((resolve, reject) => {
@@ -686,22 +707,6 @@ function refreshObservation() {
 function toggleRefresh() {
     refreshEnabled = !refreshEnabled;
     updateRefreshIndicator();
-}
-
-
-function performActions(actions) {
-    return actions.reduce((promise, action) => {
-        return promise.then(() => {
-            if (action.type === 'observationField') {
-                return addObservationField(action.fieldId, action.fieldValue);
-            } else if (action.type === 'annotation') {
-                return addAnnotation(currentObservationId, action.annotationField, action.annotationValue);
-            }
-        });
-    }, Promise.resolve()).then(() => {
-        console.log('All actions completed');
-        return refreshObservation();
-    });
 }
 
 function createDynamicButtons() {

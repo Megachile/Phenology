@@ -971,27 +971,23 @@ function mergeConfigurations(importedData) {
         }
     });
 
-    if (conflicts.length > 0) {
-        resolveConflicts(conflicts, () => {
-            saveAndReloadConfigurations();
-            alert('Import completed with conflict resolutions.');
+    const saveAndNotify = () => {
+        chrome.storage.sync.set({
+            customButtons: customButtons,
+            observationFieldMap: {...observationFieldMap, ...(importedData.observationFieldMap || {})},
+            lastConfigUpdate: Date.now()
+        }, function() {
+            console.log('Configurations merged and lastConfigUpdate set');
+            loadConfigurations();
+            alert('Import completed successfully.');
         });
-    } else {
-        saveAndReloadConfigurations();
-        alert('Import completed successfully.');
-    }
+    };
 
-    // Merge observation field map
-    observationFieldMap = {...observationFieldMap, ...(importedData.observationFieldMap || {})};
-    chrome.storage.sync.set({
-        customButtons: customButtons,
-        observationFieldMap: observationFieldMap,
-        lastConfigUpdate: Date.now()
-    }, function() {
-        console.log('Configurations merged and lastConfigUpdate set');
-        loadConfigurations();
-        alert('Import completed successfully.');
-    });
+    if (conflicts.length > 0) {
+        resolveConflicts(conflicts, saveAndNotify);
+    } else {
+        saveAndNotify();
+    }
 }
 
 function resolveConflicts(conflicts, callback) {
