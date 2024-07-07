@@ -667,8 +667,6 @@ function performActions(actions) {
             } else if (action.type === 'annotation') {
                 return addAnnotation(currentId, action.annotationField, action.annotationValue);
             }
-        }).then(() => {
-            return new Promise(resolve => setTimeout(resolve, 500));
         });
     }, Promise.resolve())
     .then(() => {
@@ -679,7 +677,6 @@ function performActions(actions) {
         console.error('Error in performActions:', error);
     });
 }
-
 function refreshObservation() {
     return new Promise((resolve, reject) => {
         if (!refreshEnabled) {
