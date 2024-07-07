@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "iNaturalist Gall Observation Field Tool",
+  "name": "iNaturalist Metadata Tool",
   "version": "3.0",
   "permissions": ["activeTab", "storage", "webRequest","tabs"],
   "host_permissions": ["https://api.inaturalist.org/*", "https://www.inaturalist.org/*"],
