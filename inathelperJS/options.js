@@ -304,6 +304,19 @@ function lookupTaxon(query, per_page = 10) {
         })));
 }
 
+function lookupProject(query, perPage = 10) {
+    const baseUrl = 'https://api.inaturalist.org/v1/projects';
+    const params = new URLSearchParams({
+        q: query,
+        per_page: perPage
+    });
+    const url = `${baseUrl}?${params.toString()}`;
+
+    return fetch(url)
+        .then(response => response.json())
+        .then(data => data.results);
+}
+
 function addActionToForm() {
     const actionDiv = document.createElement('div');
     actionDiv.className = 'action-item';
@@ -311,6 +324,7 @@ function addActionToForm() {
         <select class="actionType">
             <option value="observationField">Observation Field</option>
             <option value="annotation">Annotation</option>
+            <option value="addToProject">Add to Project</option>
         </select>
         <div class="ofInputs">
             <input type="text" class="fieldName" placeholder="Observation Field Name">
@@ -323,6 +337,10 @@ function addActionToForm() {
         <div class="annotationInputs" style="display:none;">
             <select class="annotationField"></select>
             <select class="annotationValue"></select>
+        </div>
+        <div class="projectInputs" style="display:none;">
+            <input type="text" class="projectName" placeholder="Project Name">
+            <input type="number" class="projectId" placeholder="Project ID" readonly>
         </div>
         <button class="removeActionButton">Remove Action</button>
     `;
@@ -401,7 +419,49 @@ function addActionToForm() {
     }
     // Remove focus from the input
     fieldNameInput.blur();
+
+
+
+    
     });
+    const projectInputs = actionDiv.querySelector('.projectInputs');
+    actionType.addEventListener('change', () => {
+        ofInputs.style.display = actionType.value === 'observationField' ? 'block' : 'none';
+        annotationInputs.style.display = actionType.value === 'annotation' ? 'block' : 'none';
+        projectInputs.style.display = actionType.value === 'addToProject' ? 'block' : 'none';
+    });
+
+    // Add project lookup functionality
+    const projectNameInput = actionDiv.querySelector('.projectName');
+    const projectIdInput = actionDiv.querySelector('.projectId');
+
+    projectNameInput.addEventListener('input', debounce(() => {
+        if (projectNameInput.value.length < 2) return;
+        lookupProject(projectNameInput.value)
+            .then(projects => {
+                // Create and populate datalist
+                let datalist = document.getElementById('projectsList') || document.createElement('datalist');
+                datalist.id = 'projectsList';
+                datalist.innerHTML = '';
+                projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.title;
+                    option.dataset.id = project.id;
+                    datalist.appendChild(option);
+                });
+                document.body.appendChild(datalist);
+                projectNameInput.setAttribute('list', 'projectsList');
+            })
+            .catch(error => console.error('Error fetching projects:', error));
+    }, 300));
+
+    projectNameInput.addEventListener('change', () => {
+        const selectedOption = document.querySelector(`#projectsList option[value="${projectNameInput.value}"]`);
+        if (selectedOption) {
+            projectIdInput.value = selectedOption.dataset.id;
+        }
+    });
+    
 }
 
 function debounce(func, wait) {
@@ -520,10 +580,12 @@ function formatAction(action) {
     if (action.type === 'observationField') {
         let displayValue = action.displayValue || action.fieldValue;
         return `Add value "${displayValue}" to ${action.fieldName || `Field ${action.fieldId}`}`;
-    } else {
+    } else if (action.type === 'annotation') {
         const fieldName = getAnnotationFieldName(action.annotationField);
         const valueName = getAnnotationValueName(action.annotationField, action.annotationValue);
         return `Set "${fieldName}" to "${valueName}"`;
+    } else if (action.type === 'addToProject') {
+        return `Add to project: ${action.projectName || action.projectId}`;
     }
 }
 
@@ -727,7 +789,7 @@ function saveConfiguration() {
                     return;
                 }
             }
-        } else {
+        } else if (actionType === 'annotation') {
             const annotationFieldElement = actionDiv.querySelector('.annotationField');
             const annotationValueElement = actionDiv.querySelector('.annotationValue');
             if (annotationFieldElement && annotationValueElement) {
@@ -738,8 +800,18 @@ function saveConfiguration() {
                     return;
                 }
             }
+        } else if (actionType === 'addToProject') {
+            const projectIdElement = actionDiv.querySelector('.projectId');
+            const projectNameElement = actionDiv.querySelector('.projectName');
+            if (projectIdElement && projectNameElement) {
+                action.projectId = projectIdElement.value.trim();
+                action.projectName = projectNameElement.value.trim();
+                if (!action.projectId || !action.projectName) {
+                    alert("Please enter both Project Name and ID for all Add to Project actions.");
+                    return;
+                }
+            }
         }
-
         newConfig.actions.push(action);
     });
 
@@ -784,6 +856,49 @@ function saveConfiguration() {
         console.log('Configuration and settings saved');
         loadConfigurations();
         clearForm();
+    });
+}
+
+function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunction) {
+    const suggestionContainer = document.createElement('div');
+    suggestionContainer.className = 'autocomplete-suggestions';
+    inputElement.parentNode.appendChild(suggestionContainer);
+
+    let debounceTimeout;
+    inputElement.addEventListener('input', () => {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            if (inputElement.value.length < 2) {
+                suggestionContainer.innerHTML = '';
+                return;
+            }
+            lookupFunction(inputElement.value)
+                .then(results => {
+                    suggestionContainer.innerHTML = '';
+                    results.forEach(result => {
+                        const suggestion = document.createElement('div');
+                        suggestion.className = 'autocomplete-suggestion';
+                        suggestion.innerHTML = result.html || result.name;
+                        suggestion.addEventListener('click', (event) => {
+                            if (event.target.tagName !== 'A') {
+                                event.preventDefault();
+                                inputElement.value = result.name;
+                                onSelectFunction(result, inputElement);
+                                suggestionContainer.innerHTML = '';
+                            }
+                        });
+                        suggestionContainer.appendChild(suggestion);
+                    });
+                })
+                .catch(error => console.error('Error fetching suggestions:', error));
+        }, 300);
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (event) => {
+        if (!inputElement.contains(event.target) && !suggestionContainer.contains(event.target)) {
+            suggestionContainer.innerHTML = '';
+        }
     });
 }
 

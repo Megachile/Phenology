@@ -673,6 +673,54 @@ function addAnnotation(observationId, attributeId, valueId) {
     });
 }
 
+function addObservationToProject(observationId, projectId) {
+    return new Promise((resolve, reject) => {
+        if (!observationId) {
+            console.log('No observation ID provided. Please select an observation first.');
+            return resolve({ success: false, error: 'No observation ID provided' });
+        }
+
+        browserAPI.storage.local.get(['jwt'], function(result) {
+            const token = result.jwt;
+            if (!token) {
+                console.error('No JWT found');
+                return resolve({ success: false, error: 'No JWT found' });
+            }
+
+            const url = 'https://api.inaturalist.org/v1/project_observations';
+            const data = {
+                project_observation: {
+                    observation_id: observationId,
+                    project_id: projectId
+                }
+            };
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.errors) {
+                    console.log('Observation not added to project:', data.errors);
+                    return resolve({ success: false, message: 'Observation not added to project', data: data });
+                } else {
+                    console.log('Observation added to project successfully:', data);
+                    return resolve({ success: true, data: data });
+                }
+            })
+            .catch(error => {
+                console.error('Error adding observation to project:', error);
+                return resolve({ success: false, error: error.toString() });
+            });
+        });
+    });
+}
+
 function performActions(actions) {
     const currentId = currentObservationId;
     if (!currentId) {
@@ -687,6 +735,8 @@ function performActions(actions) {
                 return addObservationField(currentId, action.fieldId, action.fieldValue);
             } else if (action.type === 'annotation') {
                 return addAnnotation(currentId, action.annotationField, action.annotationValue);
+            } else if (action.type === 'addToProject') {
+                return addObservationToProject(currentId, action.projectId);
             }
         });
     }, Promise.resolve())
@@ -698,6 +748,7 @@ function performActions(actions) {
         console.error('Error in performActions:', error);
     });
 }
+
 function refreshObservation() {
     return new Promise((resolve, reject) => {
         if (!refreshEnabled) {

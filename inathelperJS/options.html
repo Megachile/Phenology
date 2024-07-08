@@ -234,6 +234,44 @@ button:hover {
     color: #0000EE;
     text-decoration: underline;
 }
+   .autocomplete-suggestions {
+        position: absolute;
+        border: 1px solid #ddd;
+        background: white;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        width: 100%;
+    }
+
+    .autocomplete-suggestion {
+        padding: 5px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+    }
+
+    .autocomplete-suggestion:hover {
+        background-color: #f0f0f0;
+    }
+
+    .autocomplete-suggestion img {
+        width: 40px;
+        height: 40px;
+        margin-right: 10px;
+        object-fit: cover;
+    }
+
+    .autocomplete-suggestion .taxon-name,
+    .autocomplete-suggestion .project-name {
+        flex-grow: 1;
+    }
+
+    .autocomplete-suggestion .taxon-link,
+    .autocomplete-suggestion .project-link {
+        color: #0000EE;
+        text-decoration: underline;
+    }
     </style>
 </head>
 <body>
