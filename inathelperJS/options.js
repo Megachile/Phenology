@@ -277,6 +277,13 @@ function editConfiguration(configId) {
             annotationField.value = action.annotationField;
             updateAnnotationValues(annotationField, annotationValue);
             annotationValue.value = action.annotationValue;
+        } else if (action.type === 'addToProject') {
+            const projectIdInput = actionDiv.querySelector('.projectId');
+            const projectNameInput = actionDiv.querySelector('.projectName');
+            if (projectIdInput && projectNameInput) {
+                projectIdInput.value = action.projectId;
+                projectNameInput.value = action.projectName;
+            }
         }
         actionDiv.querySelector('.actionType').dispatchEvent(new Event('change'));
     });
@@ -712,6 +719,13 @@ function duplicateConfiguration(configId) {
             annotationField.value = action.annotationField;
             updateAnnotationValues(annotationField, annotationValue);
             annotationValue.value = action.annotationValue;
+        } else if (action.type === 'addToProject') {
+            const projectIdInput = actionDiv.querySelector('.projectId');
+            const projectNameInput = actionDiv.querySelector('.projectName');
+            if (projectIdInput && projectNameInput) {
+                projectIdInput.value = action.projectId;
+                projectNameInput.value = action.projectName;
+            }
         }
         actionDiv.querySelector('.actionType').dispatchEvent(new Event('change'));
     });
