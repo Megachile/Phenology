@@ -431,15 +431,22 @@ function addActionToForm() {
         projectInputs.style.display = actionType.value === 'addToProject' ? 'block' : 'none';
     });
 
-    // Add project lookup functionality
     const projectNameInput = actionDiv.querySelector('.projectName');
-    const projectIdInput = actionDiv.querySelector('.projectId');
+const projectIdInput = actionDiv.querySelector('.projectId');
 
-    projectNameInput.addEventListener('input', debounce(() => {
+let projectJustSelected = false;
+let projectAutocompleteTimeout;
+
+projectNameInput.addEventListener('input', () => {
+    if (projectJustSelected) {
+        projectJustSelected = false;
+        return;
+    }
+    clearTimeout(projectAutocompleteTimeout);
+    projectAutocompleteTimeout = setTimeout(() => {
         if (projectNameInput.value.length < 2) return;
         lookupProject(projectNameInput.value)
             .then(projects => {
-                // Create and populate datalist
                 let datalist = document.getElementById('projectsList') || document.createElement('datalist');
                 datalist.id = 'projectsList';
                 datalist.innerHTML = '';
@@ -453,14 +460,21 @@ function addActionToForm() {
                 projectNameInput.setAttribute('list', 'projectsList');
             })
             .catch(error => console.error('Error fetching projects:', error));
-    }, 300));
+    }, 300);
+});
 
-    projectNameInput.addEventListener('change', () => {
-        const selectedOption = document.querySelector(`#projectsList option[value="${projectNameInput.value}"]`);
-        if (selectedOption) {
-            projectIdInput.value = selectedOption.dataset.id;
-        }
-    });
+projectNameInput.addEventListener('change', () => {
+    projectJustSelected = true;
+    const selectedOption = document.querySelector(`#projectsList option[value="${projectNameInput.value}"]`);
+    if (selectedOption) {
+        projectIdInput.value = selectedOption.dataset.id;
+    }
+    const datalist = document.getElementById('projectsList');
+    if (datalist) {
+        datalist.innerHTML = '';
+    }
+    projectNameInput.blur();
+});
     
 }
 
@@ -1233,4 +1247,3 @@ function resolveConflicts(conflicts, callback) {
 
     resolveConflicts(conflicts, callback);
 }
-
