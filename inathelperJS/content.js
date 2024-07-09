@@ -8,6 +8,94 @@ let customShortcuts = [];
 let lastKnownUpdate = 0;
 const API_URL = 'https://api.inaturalist.org/v1';
 let shortcutListVisible = false;
+let currentJWT = null;
+
+function getJWTFromPage() {
+    const metaTag = document.querySelector('meta[name="inaturalist-api-token"]');
+    return metaTag ? metaTag.getAttribute('content') : null;
+}
+
+async function getJWT() {
+    if (currentJWT) return currentJWT;
+    
+    currentJWT = getJWTFromPage();
+    if (currentJWT) {
+        chrome.storage.local.set({jwt: currentJWT});
+        return currentJWT;
+    }
+    
+    // If not on page, try to get from storage
+    const stored = await chrome.storage.local.get('jwt');
+    if (stored.jwt) {
+        currentJWT = stored.jwt;
+        return currentJWT;
+    }
+    
+    console.error('No JWT available');
+    return null;
+}
+
+async function makeAPIRequest(endpoint, options = {}) {
+    const jwt = await getJWT();
+    if (!jwt) {
+        console.error('No JWT available');
+        return null;
+    }
+
+    const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${jwt}`
+    };
+
+    try {
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            ...options,
+            headers
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                // Token might be expired, try to get a new one from the page
+                currentJWT = null;
+                return makeAPIRequest(endpoint, options);
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return response.json();
+    } catch (error) {
+        console.error('API request failed:', error);
+        throw error;
+    }
+}
+
+// Function to test the JWT
+async function testJWT() {
+    try {
+        const response = await makeAPIRequest('/users/me');
+        console.log('JWT test response:', response);
+        return response && response.results && response.results[0] && response.results[0].id;
+    } catch (error) {
+        console.error('Error in JWT test:', error);
+        return false;
+    }
+}
+
+// Initialize and test JWT when the script loads
+(async function() {
+    const jwt = await getJWT();
+    if (jwt) {
+        const isValid = await testJWT();
+        if (isValid) {
+            console.log('JWT is valid');
+        } else {
+            console.log('JWT is invalid, will try to get a new one on next API call');
+            currentJWT = null;
+        }
+    } else {
+        console.log('No JWT found');
+    }
+})();
 
 function toggleShortcutList() {
     if (shortcutListVisible) {
@@ -382,73 +470,145 @@ buttonContainer.id = 'custom-extension-container';
 buttonDiv.appendChild(buttonContainer);
 document.body.appendChild(buttonDiv);
 
-function addObservationField(observationId, fieldId, value, button = null) {
-    return ensureCorrectObservationId().then(id => {
+async function addObservationField(observationId, fieldId, value, button = null) {
+    return ensureCorrectObservationId().then(async id => {
         if (!id) {
             console.log('No current observation ID available. Please select an observation first.');
             return { success: false, error: 'No current observation ID' };
         }
 
-        return new Promise((resolve, reject) => {
-            if (!observationId) {
-                console.log('No current observation ID available. Please select an observation first.');
-                resolve({ success: false, error: 'No current observation ID' });
-                return;
+        const jwt = await getJWT();
+        if (!jwt) {
+            console.error('No JWT found');
+            return { success: false, error: 'No JWT found' };
+        }
+
+        const requestUrl = `https://api.inaturalist.org/v1/observation_field_values`;
+        const headers = {
+            'Authorization': `Bearer ${jwt}`,
+            'Content-Type': 'application/json'
+        };
+        const data = {
+            observation_field_value: {
+                observation_id: observationId,
+                observation_field_id: fieldId,
+                value: value
             }
+        };
+        const options = {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(data)
+        };
 
-            browserAPI.storage.local.get(['jwt'], function(result) {
-                const token = result.jwt;
-                if (!token) {
-                    console.error('No JWT found');
-                    sendResponse({ status: "error", message: "No JWT found" });
-                    return;
-                }
-
-                const requestUrl = `https://api.inaturalist.org/v1/observation_field_values`;
-                const headers = {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                };
-                const data = {
-                    observation_field_value: {
-                        observation_id: observationId,
-                        observation_field_id: fieldId,
-                        value: value
-                    }
-                };
-                const options = {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify(data)
-                };
-
-                fetch(requestUrl, options)
-                    .then(response => {
-                        if (!response.ok) {
-                            return response.text().then(text => {
-                                throw new Error(`Network response was not ok. Status: ${response.status}, Body: ${text}`);
-                            });
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('Added observation field:', data);
-                        resolve({ success: true, data: data });
-                    })
-                    .catch(error => {
-                        if (error.message.includes("Observation user does not accept fields from others")) {
-                            console.log('User does not accept fields from others:', error);
-                            resolve({ success: false, error: 'User does not accept fields from others' });
-                        } else {
-                            console.error('Error in adding observation field:', error);
-                            resolve({ success: false, error: error.message });
-                        }
-                    });
-            });
-        });
+        try {
+            const response = await fetch(requestUrl, options);
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`Network response was not ok. Status: ${response.status}, Body: ${text}`);
+            }
+            const responseData = await response.json();
+            console.log('Added observation field:', responseData);
+            return { success: true, data: responseData };
+        } catch (error) {
+            if (error.message.includes("Observation user does not accept fields from others")) {
+                console.log('User does not accept fields from others:', error);
+                return { success: false, error: 'User does not accept fields from others' };
+            } else {
+                console.error('Error in adding observation field:', error);
+                return { success: false, error: error.message };
+            }
+        }
     });
 }
 
+async function addAnnotation(observationId, attributeId, valueId) {
+    if (!observationId) {
+        console.log('No observation ID provided. Please select an observation first.');
+        return { success: false, error: 'No observation ID provided' };
+    }
+
+    const jwt = await getJWT();
+    if (!jwt) {
+        console.error('No JWT found');
+        return { success: false, error: 'No JWT found' };
+    }
+
+    const url = 'https://api.inaturalist.org/v1/annotations';
+    const data = {
+        annotation: {
+            resource_type: "Observation",
+            resource_id: observationId,
+            controlled_attribute_id: attributeId,
+            controlled_value_id: valueId
+        }
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwt}`
+            },
+            body: JSON.stringify(data)
+        });
+        const responseData = await response.json();
+        if (responseData.errors) {
+            console.log('Annotation not added (may already exist):', responseData.errors);
+            return { success: false, message: 'Annotation may already exist', data: responseData };
+        } else {
+            console.log('Annotation added successfully:', responseData);
+            return { success: true, data: responseData };
+        }
+    } catch (error) {
+        console.error('Error adding annotation:', error);
+        return { success: false, error: error.toString() };
+    }
+}
+
+async function addObservationToProject(observationId, projectId) {
+    if (!observationId) {
+        console.log('No observation ID provided. Please select an observation first.');
+        return { success: false, error: 'No observation ID provided' };
+    }
+
+    const jwt = await getJWT();
+    if (!jwt) {
+        console.error('No JWT found');
+        return { success: false, error: 'No JWT found' };
+    }
+
+    const url = 'https://api.inaturalist.org/v1/project_observations';
+    const data = {
+        project_observation: {
+            observation_id: observationId,
+            project_id: projectId
+        }
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwt}`
+            },
+            body: JSON.stringify(data)
+        });
+        const responseData = await response.json();
+        if (responseData.errors) {
+            console.log('Observation not added to project:', responseData.errors);
+            return { success: false, message: 'Observation not added to project', data: responseData };
+        } else {
+            console.log('Observation added to project successfully:', responseData);
+            return { success: true, data: responseData };
+        }
+    } catch (error) {
+        console.error('Error adding observation to project:', error);
+        return { success: false, error: error.toString() };
+    }
+}
 
 function animateButtonResult(button, success) {
     button.classList.add(success ? 'button-success' : 'button-failure');
@@ -456,32 +616,6 @@ function animateButtonResult(button, success) {
         button.classList.remove('button-success', 'button-failure');
     }, 1200); 
 }
-
-browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('Message received in content:', message);
-    if (message.action === 'showAlert') {
-        alert(message.text);
-    } else if (message.from === 'background') {
-        if (message.subject === 'initMessage') {
-            console.log('Init message from background:', message.data);
-        } else if (message.subject === 'helloContentResponse') {
-            console.log('Response from background:', message.data);
-        }
-    }
-});
-
-browserAPI.runtime.sendMessage({ from: 'content', subject: 'helloBackground', data: 'Hello, Background!' });
-
-browserAPI.runtime.sendMessage({action: "getJWT"}, function(response) {
-    if (response.jwt) {
-      // Use the JWT for API calls
-      const jwt = response.jwt;
-      // Make API calls using this JWT
-    } else {
-      console.error('Failed to get JWT:', response.error);
-      // Handle the error (e.g., prompt user to re-authenticate)
-    }
-  });
 
 const style = document.createElement('style');
 style.textContent = `
@@ -621,104 +755,6 @@ function clearObservationId() {
         idDisplay.textContent = 'Current Observation ID: None';
     }
     console.log('Observation ID cleared');
-}
-
-function addAnnotation(observationId, attributeId, valueId) {
-    return new Promise((resolve, reject) => {
-        if (!observationId) {
-            console.log('No observation ID provided. Please select an observation first.');
-            return resolve({ success: false, error: 'No observation ID provided' });
-        }
-
-        browserAPI.storage.local.get(['jwt'], function(result) {
-            const token = result.jwt;
-            if (!token) {
-                console.error('No JWT found');
-                return resolve({ success: false, error: 'No JWT found' });
-            }
-
-            const url = 'https://api.inaturalist.org/v1/annotations';
-            const data = {
-                annotation: {
-                    resource_type: "Observation",
-                    resource_id: observationId,
-                    controlled_attribute_id: attributeId,
-                    controlled_value_id: valueId
-                }
-            };
-
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.errors) {
-                    console.log('Annotation not added (may already exist):', data.errors);
-                    return resolve({ success: false, message: 'Annotation may already exist', data: data });
-                } else {
-                    console.log('Annotation added successfully:', data);
-                    return resolve({ success: true, data: data });
-                }
-            })
-            .catch(error => {
-                console.error('Error adding annotation:', error);
-                return resolve({ success: false, error: error.toString() });
-            });
-        });
-    });
-}
-
-function addObservationToProject(observationId, projectId) {
-    return new Promise((resolve, reject) => {
-        if (!observationId) {
-            console.log('No observation ID provided. Please select an observation first.');
-            return resolve({ success: false, error: 'No observation ID provided' });
-        }
-
-        browserAPI.storage.local.get(['jwt'], function(result) {
-            const token = result.jwt;
-            if (!token) {
-                console.error('No JWT found');
-                return resolve({ success: false, error: 'No JWT found' });
-            }
-
-            const url = 'https://api.inaturalist.org/v1/project_observations';
-            const data = {
-                project_observation: {
-                    observation_id: observationId,
-                    project_id: projectId
-                }
-            };
-
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.errors) {
-                    console.log('Observation not added to project:', data.errors);
-                    return resolve({ success: false, message: 'Observation not added to project', data: data });
-                } else {
-                    console.log('Observation added to project successfully:', data);
-                    return resolve({ success: true, data: data });
-                }
-            })
-            .catch(error => {
-                console.error('Error adding observation to project:', error);
-                return resolve({ success: false, error: error.toString() });
-            });
-        });
-    });
 }
 
 function performActions(actions) {
