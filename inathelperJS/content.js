@@ -757,103 +757,54 @@ function clearObservationId() {
     console.log('Observation ID cleared');
 }
 
-async function performActions(actions) {
-    const currentId = currentObservationId;
-    if (!currentId) {
-      console.error('No observation selected. Please open an observation before performing actions.');
-      alert('Please open an observation before using this button.');
-      return;
+function performActions(actions) {
+    if (!currentObservationId) {
+        alert('Please open an observation before using this button.');
+        return Promise.resolve();
     }
-  
-    try {
-      for (const action of actions) {
-        if (action.type === 'observationField') {
-          await addObservationField(currentId, action.fieldId, action.fieldValue);
-        } else if (action.type === 'annotation') {
-          await addAnnotation(currentId, action.annotationField, action.annotationValue);
-        }
-      }
-  
-      console.log('All actions completed, refreshing observation by toggling favorite');
-      await toggleFavoriteButton();
-      await toggleFavoriteButton();
-    } catch (error) {
-      console.error('Error in performActions:', error);
-    }
-  }
-  
-  async function toggleFavoriteButton() {
-    const favoriteButtonSelector = '.ObservationModal.FullScreenModal .action-tools .linky';
-    const addFavText = 'Add to Favorites';
-    const removeFavText = 'You faved this!';
-    
-    const favoriteButton = await waitForElement(favoriteButtonSelector, 5000);
-    
-    if (!favoriteButton) {
-      throw new Error('Favorite button not found');
-    }
-  
-    const buttonText = favoriteButton.innerText.trim();
-    
-    if (buttonText === addFavText || buttonText === removeFavText) {
-      favoriteButton.click();
-      console.log('Favorite button toggled');
-      await wait(1000); // Wait for the action to complete
-    } else {
-      throw new Error(`Unexpected favorite button text: "${buttonText}"`);
-    }
-  }
-  
-  function waitForElement(selector, timeout = 5000) {
-    return new Promise((resolve) => {
-      if (document.querySelector(selector)) {
-        return resolve(document.querySelector(selector));
-      }
-  
-      const observer = new MutationObserver(() => {
-        if (document.querySelector(selector)) {
-          resolve(document.querySelector(selector));
-          observer.disconnect();
-        }
-      });
-  
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-  
-      setTimeout(() => {
-        observer.disconnect();
-        resolve(null);
-      }, timeout);
-    });
-  }
-  
-  function wait(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 
-function refreshObservation() {
+    return actions.reduce((promise, action) => {
+        return promise.then(() => {
+            switch (action.type) {
+                case 'observationField':
+                    return addObservationField(currentObservationId, action.fieldId, action.fieldValue);
+                case 'annotation':
+                    return addAnnotation(currentObservationId, action.annotationField, action.annotationValue);
+                case 'addToProject':
+                    return addObservationToProject(currentObservationId, action.projectId);
+            }
+        });
+    }, Promise.resolve())
+    .then(() => refreshObservation())
+    .catch(error => console.error('Error in performActions:', error));
+}
+  
+  function refreshObservation() {
     return new Promise((resolve, reject) => {
-        if (!refreshEnabled) {
-            console.log('Refresh is disabled');
+        if (!refreshEnabled || !currentObservationId) {
             resolve();
             return;
         }
-        const prevButton = document.querySelector('.ObservationModal button.nav-button[alt="Previous Observation"]');
-        const nextButton = document.querySelector('.ObservationModal button.nav-button[alt="Next Observation"]');
 
-        if (!prevButton || !nextButton) {
-            console.error('Navigation buttons not found');
-            reject(new Error('Navigation buttons not found'));
+        const grid = document.querySelector("#Identify > div > div.mainrow.false.row > div.main-col > div.ObservationsGrid.flowed.false.row");
+        if (!grid) {
+            reject(new Error('Grid not found'));
             return;
         }
 
-        prevButton.click();
-        setTimeout(() => {
-            nextButton.click();
-            setTimeout(resolve, 1);
-        }, 1);
+        const observationLink = grid.querySelector(`a[href="/observations/${currentObservationId}"]`);
+        if (observationLink) {
+            observationLink.click();
+            const observer = new MutationObserver((mutations, obs) => {
+                if (document.querySelector('.ObservationModal')) {
+                    obs.disconnect();
+                    resolve();
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        } else {
+            reject(new Error('Observation not found in grid'));
+        }
     });
 }
 
