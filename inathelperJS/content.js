@@ -523,20 +523,20 @@ style.textContent = `
       gap: 5px;
       max-width: 600px;
   }
-  button-ph, #custom-extension-input {
+  .button-ph {
     font-size: 14px;
     padding: 5px 10px;
     margin: 3px;
     flex-grow: 1;
     min-width: 100px;
-    background-color: rgba(0, 0, 0, 0.5); /* 50% transparency */
+    background-color: rgba(0, 0, 0, 0.5);
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
   }
-  button:hover {
+  .button-ph:hover {
       background-color: rgba(0, 0, 0, 0.7); /* Darker background on hover */
   }
   #custom-extension-input {
