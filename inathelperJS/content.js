@@ -523,7 +523,7 @@ style.textContent = `
       gap: 5px;
       max-width: 600px;
   }
-  button, #custom-extension-input {
+  button-ph, #custom-extension-input {
     font-size: 14px;
     padding: 5px 10px;
     margin: 3px;
@@ -786,6 +786,7 @@ function createDynamicButtons() {
             data.customButtons.forEach(config => {
                 if (!config.configurationDisabled) {
                     let button = document.createElement('button');
+                    button.classList.add('button-ph');
                     button.innerText = config.name;
                     button.onclick = function() {
                         animateButton(this);
