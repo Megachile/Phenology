@@ -1,4 +1,4 @@
-console.log('content.js has been loaded');
+console.log("Content script loaded. URL:", window.location.href);
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 let buttonPosition = 'bottom-right'; // Default position
 let idDisplay;
@@ -9,6 +9,9 @@ let lastKnownUpdate = 0;
 const API_URL = 'https://api.inaturalist.org/v1';
 let shortcutListVisible = false;
 let currentJWT = null;
+let currentObservationId = null;
+let checkInterval = null;
+let observationTabsContainer = null;
 
 function getJWTFromPage() {
     const metaTag = document.querySelector('meta[name="inaturalist-api-token"]');
@@ -122,7 +125,9 @@ const debounce = (func, wait) => {
   const debouncedStartObservationCheck = debounce(startObservationCheck, 100);
   const debouncedStopAndClear = debounce(() => {
     stopObservationCheck();
+    if (!window.location.pathname.match(/^\/observations\/\d+/)) {
     clearObservationId();
+    }
     if (idDisplay) {
       idDisplay.style.display = 'none';
     }
@@ -374,10 +379,16 @@ function updatePositions() {
     }
 }
 
-let currentObservationId = null;
-let checkInterval = null;
-
 function extractObservationId() {
+    console.log("Extracting observation ID");
+    if (window.location.pathname.match(/^\/observations\/\d+/)) {
+        const id = window.location.pathname.split('/').pop();
+        console.log("Extracted ID from URL:", id);
+        currentObservationId = id;
+        createOrUpdateIdDisplay(id);
+        return;
+    }
+    
     const modal = document.querySelector('.ObservationModal.FullScreenModal');
     if (modal) {
         const selectors = [
@@ -406,10 +417,109 @@ function extractObservationId() {
         }
     } else {
         console.log('Modal not found');
+        if (!window.location.pathname.match(/^\/observations\/\d+/)) {
         clearObservationId();
-
+        }
     }
 }
+
+function extractObservationIdFromUrl() {
+    const url = window.location.href;
+    console.log('Current URL:', url);
+    const urlPattern = /https:\/\/www\.inaturalist\.org\/observations\/(\d+)/;
+    const match = url.match(urlPattern);
+
+    if (match && match[1]) {
+        console.log('Extracted observation ID from URL:', match[1]);
+        return match[1];
+    }
+
+    if (url.includes('/observations/identify')) {
+        console.log('On identify page, no observation ID in URL');
+        return null;
+    }
+
+    console.log('Unable to extract observation ID from URL:', url);
+    return null;
+}
+
+function updateObservationId() {
+    console.log('updateObservationId called');
+    const urlObservationId = extractObservationIdFromUrl();
+    if (urlObservationId) {
+        currentObservationId = urlObservationId;
+        console.log('Current Observation ID (from URL):', currentObservationId);
+        createOrUpdateIdDisplay(currentObservationId);
+    } else {
+        console.log('No ID from URL, falling back to extractObservationId');
+        extractObservationId(); // Your existing function for the identify page
+    }
+}
+
+function setupObservationTabsObserver() {
+    console.log('Setting up observation tabs observer');
+    observationTabsContainer = document.querySelector('.ObservationsPane');
+    if (!observationTabsContainer) {
+        console.log('Observation tabs container not found, retrying in 1 second...');
+        setTimeout(setupObservationTabsObserver, 1000);
+        return;
+    }
+
+    console.log('Observation tabs container found');
+    const observer = new MutationObserver((mutations) => {
+        for (let mutation of mutations) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'data-id') {
+                const newId = observationTabsContainer.getAttribute('data-id');
+                console.log('New data-id detected:', newId);
+                if (newId && newId !== currentObservationId) {
+                    currentObservationId = newId;
+                    console.log('Current Observation ID (from tab change):', currentObservationId);
+                    createOrUpdateIdDisplay(currentObservationId);
+                }
+                break;
+            }
+        }
+    });
+
+    observer.observe(observationTabsContainer, { attributes: true, attributeFilter: ['data-id'] });
+    console.log('Observer set up successfully');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOMContentLoaded event fired");
+    if (window.location.href.includes('/observations/identify')) {
+        console.log("On identify page");
+        extractObservationId();
+    } else if (window.location.pathname.match(/^\/observations\/\d+/)) {
+        console.log("On individual observation page");
+        const observationId = window.location.pathname.split('/').pop();
+        console.log("Observation ID from URL:", observationId);
+        currentObservationId = observationId;
+        createOrUpdateIdDisplay(observationId);
+    }
+    checkForConfigUpdates();
+});
+
+// Handle URL changes
+window.addEventListener('popstate', () => {
+    console.log('popstate event fired');
+    updateObservationId();
+});
+
+// Overriding pushState and replaceState
+const originalPushState = history.pushState;
+history.pushState = function() {
+    console.log('pushState called');
+    originalPushState.apply(this, arguments);
+    updateObservationId();
+};
+
+const originalReplaceState = history.replaceState;
+history.replaceState = function() {
+    console.log('replaceState called');
+    originalReplaceState.apply(this, arguments);
+    updateObservationId();
+};
 
 function logModalStructure() {
     const modal = document.querySelector('.ObservationModal.FullScreenModal');
@@ -775,7 +885,14 @@ function performActions(actions) {
             }
         });
     }, Promise.resolve())
-    .then(() => refreshObservation())
+    .then(() => {
+        if (window.location.pathname.match(/^\/observations\/\d+/)) {
+            console.log('Actions completed. Updating the page...');
+            return updateObservationPage(currentObservationId);
+        } else {
+            return refreshObservation();  // Existing function for the identify page
+        }
+    })
     .catch(error => console.error('Error in performActions:', error));
 }
   
@@ -784,6 +901,10 @@ function performActions(actions) {
         if (!refreshEnabled || !currentObservationId) {
             resolve();
             return;
+        }
+
+        if (window.location.pathname.match(/^\/observations\/\d+/)) {
+            window.location.reload();
         }
 
         const grid = document.querySelector("#Identify > div > div.mainrow.false.row > div.main-col > div.ObservationsGrid.flowed.false.row");
@@ -807,6 +928,73 @@ function performActions(actions) {
         }
     });
 }
+
+async function updateObservationPage(observationId) {
+    try {
+        console.log('Fetching updated observation data...');
+        const response = await fetch(`https://api.inaturalist.org/v1/observations/${observationId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        const observation = data.results[0];
+
+        if (!observation) {
+            console.error('No observation data found in the API response');
+            return;
+        }
+
+        console.log('Received observation data:', JSON.stringify(observation, null, 2));
+
+        // Add a small delay to ensure the page has finished any internal updates
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        console.log('Updating observation fields...');
+        updateObservationFields(observation);
+
+        console.log('Observation fields updated successfully');
+    } catch (error) {
+        console.error('Error updating observation page:', error);
+    }
+}
+function updateObservationFields(observation) {
+    const fieldsContainer = document.querySelector('#observation-fields-panel--body > div');
+    if (fieldsContainer) {
+        // Remove existing fields, but keep the input form
+        const inputForm = fieldsContainer.querySelector('.form-group');
+        fieldsContainer.innerHTML = '';
+        if (inputForm) {
+            fieldsContainer.appendChild(inputForm);
+        }
+
+        // Add updated fields
+        if (observation.ofvs && Array.isArray(observation.ofvs)) {
+            observation.ofvs.forEach(field => {
+                console.log('Processing field:', field);
+                const fieldElement = document.createElement('div');
+                fieldElement.className = 'ObservationFieldValue';
+                fieldElement.innerHTML = `
+                    <div class="field">${field.name || field.field_name || 'Unknown Field'}:</div>
+                    <div class="value">
+                        <div class="value">
+                            <div class="UserText">
+                                <span class="content">
+                                    <p>${field.value || 'No value'}</p>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                fieldsContainer.insertBefore(fieldElement, inputForm);
+            });
+        } else {
+            console.error('No observation fields found or invalid structure:', observation.ofvs);
+        }
+    } else {
+        console.error('Observation fields container not found');
+    }
+}
+
 
 function toggleRefresh() {
     refreshEnabled = !refreshEnabled;
