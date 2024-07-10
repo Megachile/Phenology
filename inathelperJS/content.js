@@ -210,15 +210,6 @@ function createShortcutList() {
     });
 }
 
-function formatShortcut(shortcut) {
-    let parts = [];
-    if (shortcut.ctrlKey) parts.push('Ctrl');
-    if (shortcut.shiftKey) parts.push('Shift');
-    if (shortcut.altKey) parts.push('Alt');
-    if (shortcut.key) parts.push(shortcut.key);
-    return parts.join(' + ');
-}
-
 function handleAllShortcuts(event) {
     // Always allow these shortcuts, even when typing
     if (event.shiftKey && event.key.toLowerCase() === 'b') {
@@ -779,6 +770,7 @@ style.textContent = `
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    position: relative;
   }
   .button-ph:hover {
       background-color: rgba(0, 0, 0, 0.7); /* Darker background on hover */
@@ -787,18 +779,24 @@ style.textContent = `
       width: 120px;
   }
   .tooltip {
-      position: absolute;
-      background-color: #333;
-      color: #fff;
-      padding: 5px;
-      border-radius: 3px;
-      font-size: 12px;
-      top: -25px;
-      left: 0;
-      white-space: nowrap;
-      display: none;
-      z-index: 10002;
-  }
+    visibility: hidden;
+    background-color: black;
+    color: white;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px;
+    position: absolute;
+    z-index: 10002;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -60px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+    .button-ph:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+}
   #custom-extension-input:focus + .tooltip {
       display: block;
   }
@@ -1011,6 +1009,15 @@ function createDynamicButtons() {
                     let button = document.createElement('button');
                     button.classList.add('button-ph');
                     button.innerText = config.name;
+                    
+                    // Create tooltip if shortcut exists
+                    if (config.shortcut && config.shortcut.key) {
+                        let tooltip = document.createElement('span');
+                        tooltip.classList.add('tooltip');
+                        tooltip.textContent = formatShortcut(config.shortcut);
+                        button.appendChild(tooltip);
+                    }
+
                     button.onclick = function() {
                         animateButton(this);
                         performActions(config.actions)
@@ -1040,6 +1047,16 @@ function createDynamicButtons() {
             });
         }
     });
+}
+
+function formatShortcut(shortcut) {
+    if (!shortcut || !shortcut.key) return '';
+    let parts = [];
+    if (shortcut.ctrlKey) parts.push('Ctrl');
+    if (shortcut.shiftKey) parts.push('Shift');
+    if (shortcut.altKey) parts.push('Alt');
+    parts.push(shortcut.key);
+    return parts.join(' + ');
 }
 
 
