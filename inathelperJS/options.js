@@ -360,7 +360,6 @@ function addActionToForm() {
         </div>
         <div class="taxonIdInputs" style="display:none;">
             <input type="text" class="taxonName" placeholder="Taxon Name">
-            <input type="number" class="taxonId" placeholder="Taxon ID" readonly>
         </div>
         <button class="removeActionButton">Remove Action</button>
     `;
@@ -750,14 +749,15 @@ function saveConfiguration() {
                     isValid = false;
                 }
                 break;
-            case 'addTaxonId':
-                action.taxonId = actionDiv.querySelector('.taxonId').value.trim();
-                action.taxonName = actionDiv.querySelector('.taxonName').value.trim();
-                if (!action.taxonId || !action.taxonName) {
-                    alert("Please enter both Taxon Name and ID for all Add Taxon ID actions.");
-                    isValid = false;
-                }
-                break;
+                case 'addTaxonId':
+                    const taxonNameInput = actionDiv.querySelector('.taxonName');
+                    action.taxonId = taxonNameInput.dataset.taxonId;
+                    action.taxonName = taxonNameInput.value.trim();
+                    if (!action.taxonId || !action.taxonName) {
+                        alert("Please select a valid taxon for all Add Taxon ID actions.");
+                        isValid = false;
+                    }
+                    break;
         }
 
         if (isValid) {
@@ -1201,7 +1201,7 @@ function setupTaxonAutocomplete(inputElement, idElement) {
                                 inputElement.value = taxon.preferred_common_name ? 
                                     `${taxon.preferred_common_name} (${taxon.name})` : 
                                     taxon.name;
-                                idElement.value = taxon.id;
+                                    inputElement.dataset.taxonId = taxon.id;
                                 suggestionContainer.innerHTML = '';
                             }
                         });
