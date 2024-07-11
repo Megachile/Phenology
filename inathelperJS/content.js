@@ -711,6 +711,93 @@ async function addObservationToProject(observationId, projectId) {
     }
 }
 
+async function addComment(observationId, commentBody) {
+    if (!observationId) {
+        console.log('No observation ID provided. Please select an observation first.');
+        return { success: false, error: 'No observation ID provided' };
+    }
+
+    const jwt = await getJWT();
+    if (!jwt) {
+        console.error('No JWT found');
+        return { success: false, error: 'No JWT found' };
+    }
+
+    const url = 'https://api.inaturalist.org/v1/comments';
+    const data = {
+        comment: {
+            parent_type: 'Observation',
+            parent_id: observationId,
+            body: commentBody
+        }
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwt}`
+            },
+            body: JSON.stringify(data)
+        });
+        const responseData = await response.json();
+        if (responseData.errors) {
+            console.log('Comment not added:', responseData.errors);
+            return { success: false, message: 'Comment not added', data: responseData };
+        } else {
+            console.log('Comment added successfully:', responseData);
+            return { success: true, data: responseData };
+        }
+    } catch (error) {
+        console.error('Error adding comment:', error);
+        return { success: false, error: error.toString() };
+    }
+}
+
+async function addTaxonId(observationId, taxonId) {
+    if (!observationId) {
+        console.log('No observation ID provided. Please select an observation first.');
+        return { success: false, error: 'No observation ID provided' };
+    }
+
+    const jwt = await getJWT();
+    if (!jwt) {
+        console.error('No JWT found');
+        return { success: false, error: 'No JWT found' };
+    }
+
+    const url = 'https://api.inaturalist.org/v1/identifications';
+    const data = {
+        identification: {
+            observation_id: observationId,
+            taxon_id: taxonId
+        }
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwt}`
+            },
+            body: JSON.stringify(data)
+        });
+        const responseData = await response.json();
+        if (responseData.errors) {
+            console.log('Taxon ID not added:', responseData.errors);
+            return { success: false, message: 'Taxon ID not added', data: responseData };
+        } else {
+            console.log('Taxon ID added successfully:', responseData);
+            return { success: true, data: responseData };
+        }
+    } catch (error) {
+        console.error('Error adding Taxon ID:', error);
+        return { success: false, error: error.toString() };
+    }
+}
+
 function animateButtonResult(button, success) {
     button.classList.add(success ? 'button-success' : 'button-failure');
     setTimeout(() => {
@@ -880,6 +967,10 @@ function performActions(actions) {
                     return addAnnotation(currentObservationId, action.annotationField, action.annotationValue);
                 case 'addToProject':
                     return addObservationToProject(currentObservationId, action.projectId);
+                case 'addComment':
+                    return addComment(currentObservationId, action.commentBody);
+                case 'addTaxonId':
+                    return addTaxonId(currentObservationId, action.taxonId);
             }
         });
     }, Promise.resolve())

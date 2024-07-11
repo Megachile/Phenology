@@ -149,58 +149,58 @@ function updateFieldValueInput(field, container) {
                 input.appendChild(opt);
             });
             break;
-        case 'taxon':
-            input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'fieldValue taxonInput';
-            input.placeholder = 'Enter species name';
-            
-            const suggestionContainer = document.createElement('div');
-            suggestionContainer.className = 'taxonSuggestions';
-            container.appendChild(input);
-            container.appendChild(suggestionContainer);
-
-            let debounceTimeout;
-            input.addEventListener('input', () => {
-                clearTimeout(debounceTimeout);
-                debounceTimeout = setTimeout(() => {
-                    if (input.value.length < 2) {
-                        suggestionContainer.innerHTML = '';
-                        return;
-                    }
-                    lookupTaxon(input.value)
-                        .then(taxa => {
+            case 'taxon':
+                input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'fieldValue taxonInput';
+                input.placeholder = 'Enter species name';
+                
+                const suggestionContainer = document.createElement('div');
+                suggestionContainer.className = 'taxonSuggestions';
+                container.appendChild(input);
+                container.appendChild(suggestionContainer);
+    
+                let debounceTimeout;
+                input.addEventListener('input', () => {
+                    clearTimeout(debounceTimeout);
+                    debounceTimeout = setTimeout(() => {
+                        if (input.value.length < 2) {
                             suggestionContainer.innerHTML = '';
-                            taxa.forEach(taxon => {
-                                const suggestion = document.createElement('div');
-                                suggestion.className = 'taxonSuggestion';
-                                suggestion.innerHTML = `
-                                    <img src="${taxon.default_photo?.square_url || 'placeholder.jpg'}" alt="${taxon.name}">
-                                    <span class="taxon-name">
-                                        ${taxon.preferred_common_name ? `${taxon.preferred_common_name} (` : ''}
-                                        <a href="https://www.inaturalist.org/taxa/${taxon.id}" target="_blank" class="taxon-link">
-                                            ${taxon.name}
-                                        </a>
-                                        ${taxon.preferred_common_name ? ')' : ''}
-                                    </span>
-                                `;
-                                suggestion.addEventListener('click', (event) => {
-                                    if (event.target.tagName !== 'A') {
-                                        event.preventDefault();
-                                        input.value = taxon.preferred_common_name ? 
-                                            `${taxon.preferred_common_name} (${taxon.name})` : 
-                                            taxon.name;
-                                        input.dataset.taxonId = taxon.id;
-                                        suggestionContainer.innerHTML = '';
-                                    }
+                            return;
+                        }
+                        lookupTaxon(input.value)
+                            .then(taxa => {
+                                suggestionContainer.innerHTML = '';
+                                taxa.forEach(taxon => {
+                                    const suggestion = document.createElement('div');
+                                    suggestion.className = 'taxonSuggestion';
+                                    suggestion.innerHTML = `
+                                        <img src="${taxon.default_photo?.square_url || 'placeholder.jpg'}" alt="${taxon.name}">
+                                        <span class="taxon-name">
+                                            ${taxon.preferred_common_name ? `${taxon.preferred_common_name} (` : ''}
+                                            <a href="https://www.inaturalist.org/taxa/${taxon.id}" target="_blank" class="taxon-link">
+                                                ${taxon.name}
+                                            </a>
+                                            ${taxon.preferred_common_name ? ')' : ''}
+                                        </span>
+                                    `;
+                                    suggestion.addEventListener('click', (event) => {
+                                        if (event.target.tagName !== 'A') {
+                                            event.preventDefault();
+                                            input.value = taxon.preferred_common_name ? 
+                                                `${taxon.preferred_common_name} (${taxon.name})` : 
+                                                taxon.name;
+                                            input.dataset.taxonId = taxon.id;
+                                            suggestionContainer.innerHTML = '';
+                                        }
+                                    });
+                                    suggestionContainer.appendChild(suggestion);
                                 });
-                                suggestionContainer.appendChild(suggestion);
-                            });
-                        })
-                        .catch(error => console.error('Error fetching taxa:', error));
-                }, 300);
-            });
-            break;
+                            })
+                            .catch(error => console.error('Error fetching taxa:', error));
+                    }, 300);
+                });
+                break;
         default:
             input = document.createElement('input');
             input.type = 'text';
@@ -264,7 +264,6 @@ function editConfiguration(configId) {
                 .catch(error => {
                     console.error('Error fetching observation field details:', error);
                     actionDiv.querySelector('.fieldDescription').textContent = 'Error: Unable to fetch field details';
-                    // Still populate the field value even if lookup fails
                     const fieldValueInput = actionDiv.querySelector('.fieldValue');
                     fieldValueInput.value = action.fieldValue;
                     if (action.taxonId) {
@@ -284,6 +283,11 @@ function editConfiguration(configId) {
                 projectIdInput.value = action.projectId;
                 projectNameInput.value = action.projectName;
             }
+        } else if (action.type === 'addComment') {
+            actionDiv.querySelector('.commentBody').value = action.commentBody;
+        } else if (action.type === 'addTaxonId') {
+            actionDiv.querySelector('.taxonId').value = action.taxonId;
+            actionDiv.querySelector('.taxonName').value = action.taxonName;
         }
         actionDiv.querySelector('.actionType').dispatchEvent(new Event('change'));
     });
@@ -331,6 +335,8 @@ function addActionToForm() {
         <select class="actionType">
             <option value="observationField">Observation Field</option>
             <option value="annotation">Annotation</option>
+            <option value="addTaxonId">Add Taxon ID</option>
+            <option value="addComment">Add Comment</option>            
             <option value="addToProject">Add to Project</option>
         </select>
         <div class="ofInputs">
@@ -349,6 +355,13 @@ function addActionToForm() {
             <input type="text" class="projectName" placeholder="Project Name">
             <input type="number" class="projectId" placeholder="Project ID" readonly>
         </div>
+        <div class="commentInput" style="display:none;">
+            <textarea class="commentBody" placeholder="Enter comment"></textarea>
+        </div>
+        <div class="taxonIdInputs" style="display:none;">
+            <input type="text" class="taxonName" placeholder="Taxon Name">
+            <input type="number" class="taxonId" placeholder="Taxon ID" readonly>
+        </div>
         <button class="removeActionButton">Remove Action</button>
     `;
     document.getElementById('actionsContainer').appendChild(actionDiv);
@@ -356,133 +369,48 @@ function addActionToForm() {
     const actionType = actionDiv.querySelector('.actionType');
     const ofInputs = actionDiv.querySelector('.ofInputs');
     const annotationInputs = actionDiv.querySelector('.annotationInputs');
-    const annotationField = actionDiv.querySelector('.annotationField');
-    const annotationValue = actionDiv.querySelector('.annotationValue');
-    const removeButton = actionDiv.querySelector('.removeActionButton');
-
-    actionType.addEventListener('change', () => {
-        ofInputs.style.display = actionType.value === 'observationField' ? 'block' : 'none';
-        annotationInputs.style.display = actionType.value === 'annotation' ? 'block' : 'none';
-    });
-
-    populateAnnotationFields(annotationField);
-    annotationField.addEventListener('change', () => updateAnnotationValues(annotationField, annotationValue));
-
-    removeButton.addEventListener('click', () => actionDiv.remove());
-
-    const fieldNameInput = actionDiv.querySelector('.fieldName');
-    const fieldIdInput = actionDiv.querySelector('.fieldId');
-    const fieldValueContainer = actionDiv.querySelector('.fieldValueContainer');
-    const fieldDescription = actionDiv.querySelector('.fieldDescription');
-
-    let justSelected = false;
-    let autocompleteTimeout;
-    fieldNameInput.addEventListener('input', () => {
-    if (justSelected) {
-        justSelected = false;
-        return;
-    }
-    clearTimeout(autocompleteTimeout);
-    autocompleteTimeout = setTimeout(() => {
-        if (fieldNameInput.value.length < 2) return;
-
-            lookupObservationField(fieldNameInput.value)
-                .then(fields => {
-                    // Create and populate datalist
-                    let datalist = document.getElementById('observationFieldsList') || document.createElement('datalist');
-                    datalist.id = 'observationFieldsList';
-                    datalist.innerHTML = '';
-                    fields.forEach(field => {
-                        const option = document.createElement('option');
-                        option.value = field.name;
-                        option.dataset.id = field.id;
-                        option.dataset.description = field.description;
-                        option.dataset.datatype = field.datatype;
-                        option.dataset.allowed_values = field.allowed_values;
-                        datalist.appendChild(option);
-                    });
-                    document.body.appendChild(datalist);
-                    fieldNameInput.setAttribute('list', 'observationFieldsList');
-                })
-                .catch(error => console.error('Error fetching observation fields:', error));
-        }, 300);
-    });
-
-    fieldNameInput.addEventListener('change', () => {
-        justSelected = true;
-        const selectedOption = document.querySelector(`#observationFieldsList option[value="${fieldNameInput.value}"]`);
-        if (selectedOption) {
-            fieldIdInput.value = selectedOption.dataset.id;
-            fieldDescription.textContent = selectedOption.dataset.description;
-            updateFieldValueInput({
-                id: selectedOption.dataset.id,
-                datatype: selectedOption.dataset.datatype,
-                allowed_values: selectedOption.dataset.allowed_values
-            }, fieldValueContainer);
-        }
-        const datalist = document.getElementById('observationFieldsList');
-    if (datalist) {
-        datalist.innerHTML = '';
-    }
-    // Remove focus from the input
-    fieldNameInput.blur();
-
-
-
-    
-    });
     const projectInputs = actionDiv.querySelector('.projectInputs');
+    const commentInput = actionDiv.querySelector('.commentInput');
+    const taxonIdInputs = actionDiv.querySelector('.taxonIdInputs');
+
     actionType.addEventListener('change', () => {
         ofInputs.style.display = actionType.value === 'observationField' ? 'block' : 'none';
         annotationInputs.style.display = actionType.value === 'annotation' ? 'block' : 'none';
         projectInputs.style.display = actionType.value === 'addToProject' ? 'block' : 'none';
+        commentInput.style.display = actionType.value === 'addComment' ? 'block' : 'none';
+        taxonIdInputs.style.display = actionType.value === 'addTaxonId' ? 'block' : 'none';
     });
 
+    // Setup for Observation Field
+    const fieldNameInput = actionDiv.querySelector('.fieldName');
+    const fieldIdInput = actionDiv.querySelector('.fieldId');
+    const fieldValueContainer = actionDiv.querySelector('.fieldValueContainer');
+    setupAutocompleteDropdown(fieldNameInput, lookupObservationField, (result) => {
+        fieldIdInput.value = result.id;
+        updateFieldValueInput(result, fieldValueContainer);
+    });
+
+    // Setup for Project
     const projectNameInput = actionDiv.querySelector('.projectName');
-const projectIdInput = actionDiv.querySelector('.projectId');
+    const projectIdInput = actionDiv.querySelector('.projectId');
+    setupAutocompleteDropdown(projectNameInput, lookupProject, (result) => {
+        projectIdInput.value = result.id;
+    });
 
-let projectJustSelected = false;
-let projectAutocompleteTimeout;
+    // Setup for Taxon ID
+    const taxonNameInput = actionDiv.querySelector('.taxonName');
+    const taxonIdInput = actionDiv.querySelector('.taxonId');
+    setupTaxonAutocomplete(taxonNameInput, taxonIdInput);
 
-projectNameInput.addEventListener('input', () => {
-    if (projectJustSelected) {
-        projectJustSelected = false;
-        return;
-    }
-    clearTimeout(projectAutocompleteTimeout);
-    projectAutocompleteTimeout = setTimeout(() => {
-        if (projectNameInput.value.length < 2) return;
-        lookupProject(projectNameInput.value)
-            .then(projects => {
-                let datalist = document.getElementById('projectsList') || document.createElement('datalist');
-                datalist.id = 'projectsList';
-                datalist.innerHTML = '';
-                projects.forEach(project => {
-                    const option = document.createElement('option');
-                    option.value = project.title;
-                    option.dataset.id = project.id;
-                    datalist.appendChild(option);
-                });
-                document.body.appendChild(datalist);
-                projectNameInput.setAttribute('list', 'projectsList');
-            })
-            .catch(error => console.error('Error fetching projects:', error));
-    }, 300);
-});
+    // Setup for Annotation
+    const annotationField = actionDiv.querySelector('.annotationField');
+    const annotationValue = actionDiv.querySelector('.annotationValue');
+    populateAnnotationFields(annotationField);
+    annotationField.addEventListener('change', () => updateAnnotationValues(annotationField, annotationValue));
 
-projectNameInput.addEventListener('change', () => {
-    projectJustSelected = true;
-    const selectedOption = document.querySelector(`#projectsList option[value="${projectNameInput.value}"]`);
-    if (selectedOption) {
-        projectIdInput.value = selectedOption.dataset.id;
-    }
-    const datalist = document.getElementById('projectsList');
-    if (datalist) {
-        datalist.innerHTML = '';
-    }
-    projectNameInput.blur();
-});
-    
+    // Fix for remove button
+    const removeButton = actionDiv.querySelector('.removeActionButton');
+    removeButton.addEventListener('click', () => actionDiv.remove());
 }
 
 function debounce(func, wait) {
@@ -598,15 +526,22 @@ function displayConfigurations() {
 }
 
 function formatAction(action) {
-    if (action.type === 'observationField') {
-        let displayValue = action.displayValue || action.fieldValue;
-        return `Add value "${displayValue}" to ${action.fieldName || `Field ${action.fieldId}`}`;
-    } else if (action.type === 'annotation') {
-        const fieldName = getAnnotationFieldName(action.annotationField);
-        const valueName = getAnnotationValueName(action.annotationField, action.annotationValue);
-        return `Set "${fieldName}" to "${valueName}"`;
-    } else if (action.type === 'addToProject') {
-        return `Add to project: ${action.projectName || action.projectId}`;
+    switch (action.type) {
+        case 'observationField':
+            let displayValue = action.displayValue || action.fieldValue;
+            return `Add value "${displayValue}" to ${action.fieldName || `Field ${action.fieldId}`}`;
+        case 'annotation':
+            const fieldName = getAnnotationFieldName(action.annotationField);
+            const valueName = getAnnotationValueName(action.annotationField, action.annotationValue);
+            return `Set "${fieldName}" to "${valueName}"`;
+        case 'addToProject':
+            return `Add to project: ${action.projectName || action.projectId}`;
+        case 'addComment':
+            return `Add comment: "${action.commentBody.substring(0, 30)}${action.commentBody.length > 30 ? '...' : ''}"`;
+        case 'addTaxonId':
+            return `Add taxon ID: ${action.taxonName} (ID: ${action.taxonId})`;
+        default:
+            return 'Unknown action';
     }
 }
 
@@ -671,7 +606,7 @@ function formatShortcut(shortcut) {
 function duplicateConfiguration(configId) {
     const config = customButtons.find(c => c.id === configId);
     if (!config) return;
-    document.getElementById('buttonName').value = `${config.name} (Copy)`;
+    document.getElementById('buttonName').value = config.name;
     
     if (config.shortcut) {
         document.getElementById('ctrlKey').checked = config.shortcut.ctrlKey;
@@ -685,48 +620,37 @@ function duplicateConfiguration(configId) {
         addActionToForm();
         const actionDiv = document.querySelector('.action-item:last-child');
         actionDiv.querySelector('.actionType').value = action.type;
-        if (action.type === 'observationField') {
-            actionDiv.querySelector('.fieldId').value = action.fieldId;
-            actionDiv.querySelector('.fieldName').value = action.fieldName || '';
-            lookupObservationField(action.fieldName || action.fieldId)
-                .then(fields => {
-                    const field = fields.find(f => f.id.toString() === action.fieldId.toString());
-                    if (field) {
-                        actionDiv.querySelector('.fieldDescription').textContent = field.description;
-                        updateFieldValueInput(field, actionDiv.querySelector('.fieldValueContainer'));
-                        const fieldValueInput = actionDiv.querySelector('.fieldValue');
-                        fieldValueInput.value = action.fieldValue;
-                        if (field.datatype === 'taxon' && action.taxonId) {
-                            fieldValueInput.dataset.taxonId = action.taxonId;
-                        }
-                    } else {
-                        throw new Error('Field not found');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching observation field details:', error);
-                    actionDiv.querySelector('.fieldDescription').textContent = 'Error: Unable to fetch field details';
-                    // Still populate the field value even if lookup fails
-                    const fieldValueInput = actionDiv.querySelector('.fieldValue');
-                    fieldValueInput.value = action.fieldValue;
-                    if (action.taxonId) {
-                        fieldValueInput.dataset.taxonId = action.taxonId;
-                    }
-                });
-        } else if (action.type === 'annotation') {
-            const annotationField = actionDiv.querySelector('.annotationField');
-            const annotationValue = actionDiv.querySelector('.annotationValue');
-            annotationField.value = action.annotationField;
-            updateAnnotationValues(annotationField, annotationValue);
-            annotationValue.value = action.annotationValue;
-        } else if (action.type === 'addToProject') {
-            const projectIdInput = actionDiv.querySelector('.projectId');
-            const projectNameInput = actionDiv.querySelector('.projectName');
-            if (projectIdInput && projectNameInput) {
-                projectIdInput.value = action.projectId;
-                projectNameInput.value = action.projectName;
-            }
+        
+        switch (action.type) {
+            case 'observationField':
+                actionDiv.querySelector('.fieldId').value = action.fieldId;
+                actionDiv.querySelector('.fieldName').value = action.fieldName || '';
+                const fieldValueInput = actionDiv.querySelector('.fieldValue');
+                fieldValueInput.value = action.displayValue || action.fieldValue;
+                if (action.taxonId) {
+                    fieldValueInput.dataset.taxonId = action.taxonId;
+                }
+                break;
+            case 'annotation':
+                const annotationField = actionDiv.querySelector('.annotationField');
+                const annotationValue = actionDiv.querySelector('.annotationValue');
+                annotationField.value = action.annotationField;
+                updateAnnotationValues(annotationField, annotationValue);
+                annotationValue.value = action.annotationValue;
+                break;
+            case 'addToProject':
+                actionDiv.querySelector('.projectId').value = action.projectId;
+                actionDiv.querySelector('.projectName').value = action.projectName;
+                break;
+            case 'addComment':
+                actionDiv.querySelector('.commentBody').value = action.commentBody;
+                break;
+            case 'addTaxonId':
+                actionDiv.querySelector('.taxonId').value = action.taxonId;
+                actionDiv.querySelector('.taxonName').value = action.taxonName;
+                break;
         }
+        
         actionDiv.querySelector('.actionType').dispatchEvent(new Event('change'));
     });
 
@@ -734,8 +658,11 @@ function duplicateConfiguration(configId) {
     saveButton.textContent = 'Save New Configuration';
     delete saveButton.dataset.editIndex;
 
+    document.getElementById('buttonName').value = `${config.name} (Copy)`;
+
     window.scrollTo(0, 0);
 }
+
 function saveConfiguration() {
     const name = document.getElementById('buttonName').value.trim();
     const shortcutKey = document.getElementById('shortcut').value.trim().toUpperCase();
@@ -743,7 +670,6 @@ function saveConfiguration() {
     const shiftKey = document.getElementById('shiftKey').checked;
     const altKey = document.getElementById('altKey').checked;
     
-    // Validation checks...
     if (!name) {
         alert("Please enter a button name.");
         return;
@@ -753,22 +679,14 @@ function saveConfiguration() {
 
     let shortcutConfig = null;
     if (shortcutKey || ctrlKey || shiftKey || altKey) {
-        shortcutConfig = {
-            ctrlKey: ctrlKey,
-            shiftKey: shiftKey,
-            altKey: altKey,
-            key: shortcutKey
-        };
-
+        shortcutConfig = { ctrlKey, shiftKey, altKey, key: shortcutKey };
         if (isShortcutForbidden(shortcutConfig)) {
             alert("This shortcut is not allowed as it conflicts with browser functionality or extension shortcuts.");
             return;
         }
 
-        const conflictingShortcut = customButtons.find((button, index) => {
-            if (editIndex && button.id === editIndex) {
-                return false; // Skip the current button being edited
-            }
+        const conflictingShortcut = customButtons.find((button) => {
+            if (editIndex && button.id === editIndex) return false;
             return button.shortcut &&
                    button.shortcut.key === shortcutKey &&
                    button.shortcut.ctrlKey === ctrlKey &&
@@ -791,76 +709,65 @@ function saveConfiguration() {
         configurationDisabled: false
     };
 
-    document.querySelectorAll('.action-item').forEach(actionDiv => {
-        const actionTypeElement = actionDiv.querySelector('.actionType');
-        if (!actionTypeElement) return; // Skip if element not found
+    let isValid = true;
 
-        const actionType = actionTypeElement.value;
+    document.querySelectorAll('.action-item').forEach(actionDiv => {
+        const actionType = actionDiv.querySelector('.actionType').value;
         const action = { type: actionType };
 
-        if (actionType === 'observationField') {
-            const fieldIdElement = actionDiv.querySelector('.fieldId');
-            const fieldNameElement = actionDiv.querySelector('.fieldName');
-            const fieldValueElement = actionDiv.querySelector('.fieldValue');
-            if (fieldIdElement && fieldNameElement && fieldValueElement) {
-                action.fieldId = fieldIdElement.value.trim();
-                action.fieldName = fieldNameElement.value.trim();
-                if (fieldValueElement.dataset.taxonId) {
-                    action.fieldValue = fieldValueElement.dataset.taxonId; // Use the taxon ID
-                    action.displayValue = fieldValueElement.value; // Store the display name
-                } else {
-                    action.fieldValue = fieldValueElement.value.trim();
-                    action.displayValue = action.fieldValue; // For non-taxon fields, display value is the same as field value
-                }
+        switch (actionType) {
+            case 'observationField':
+                action.fieldId = actionDiv.querySelector('.fieldId').value.trim();
+                action.fieldName = actionDiv.querySelector('.fieldName').value.trim();
+                const fieldValueElement = actionDiv.querySelector('.fieldValue');
+                action.fieldValue = fieldValueElement.dataset.taxonId || fieldValueElement.value.trim();
+                action.displayValue = fieldValueElement.value.trim();
                 if (!action.fieldId || !action.fieldName || !action.fieldValue) {
                     alert("Please enter Field Name, ID, and Value for all Observation Field actions.");
-                    return;
+                    isValid = false;
                 }
-            }
-        } else if (actionType === 'annotation') {
-            const annotationFieldElement = actionDiv.querySelector('.annotationField');
-            const annotationValueElement = actionDiv.querySelector('.annotationValue');
-            if (annotationFieldElement && annotationValueElement) {
-                action.annotationField = annotationFieldElement.value;
-                action.annotationValue = annotationValueElement.value;
+                break;
+            case 'annotation':
+                action.annotationField = actionDiv.querySelector('.annotationField').value;
+                action.annotationValue = actionDiv.querySelector('.annotationValue').value;
                 if (!action.annotationField || !action.annotationValue) {
                     alert("Please select both Annotation Field and Annotation Value for all Annotation actions.");
-                    return;
+                    isValid = false;
                 }
-            }
-        } else if (actionType === 'addToProject') {
-            const projectIdElement = actionDiv.querySelector('.projectId');
-            const projectNameElement = actionDiv.querySelector('.projectName');
-            if (projectIdElement && projectNameElement) {
-                action.projectId = projectIdElement.value.trim();
-                action.projectName = projectNameElement.value.trim();
+                break;
+            case 'addToProject':
+                action.projectId = actionDiv.querySelector('.projectId').value.trim();
+                action.projectName = actionDiv.querySelector('.projectName').value.trim();
                 if (!action.projectId || !action.projectName) {
                     alert("Please enter both Project Name and ID for all Add to Project actions.");
-                    return;
+                    isValid = false;
                 }
-            }
+                break;
+            case 'addComment':
+                action.commentBody = actionDiv.querySelector('.commentBody').value.trim();
+                if (!action.commentBody) {
+                    alert("Please enter a comment body for all Add Comment actions.");
+                    isValid = false;
+                }
+                break;
+            case 'addTaxonId':
+                action.taxonId = actionDiv.querySelector('.taxonId').value.trim();
+                action.taxonName = actionDiv.querySelector('.taxonName').value.trim();
+                if (!action.taxonId || !action.taxonName) {
+                    alert("Please enter both Taxon Name and ID for all Add Taxon ID actions.");
+                    isValid = false;
+                }
+                break;
         }
-        newConfig.actions.push(action);
+
+        if (isValid) {
+            newConfig.actions.push(action);
+        }
     });
 
+    console.log('Final configuration:', newConfig);
 
-    // Check if a modifier is selected but no key is specified
-    if ((ctrlKey || shiftKey || altKey) && !shortcutKey) {
-        alert("You've selected a modifier key (Ctrl, Shift, or Alt) but haven't specified a key. Please either add a key or uncheck the modifier(s).");
-        return;
-    }
-
-    // Check for conflicts with iNat shortcuts
-    if (!ctrlKey && !shiftKey && !altKey && iNatSingleKeyPresses.includes(shortcutKey.toLowerCase())) {
-        alert("This key is already used by iNaturalist shortcuts. Please choose a different key or add a modifier.");
-        return;
-    }
-
-
-    if (isShortcutForbidden(newConfig.shortcut)) {
-        alert("This shortcut is already in use by this extension or the browser.");
-        return;
-    }
+    if (!isValid) return;
 
     if (newConfig.actions.length === 0) {
         alert("Please add at least one action to the configuration.");
@@ -890,7 +797,7 @@ function saveConfiguration() {
 function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunction) {
     const suggestionContainer = document.createElement('div');
     suggestionContainer.className = 'autocomplete-suggestions';
-    inputElement.parentNode.appendChild(suggestionContainer);
+    inputElement.parentNode.insertBefore(suggestionContainer, inputElement.nextSibling);
 
     let debounceTimeout;
     inputElement.addEventListener('input', () => {
@@ -906,14 +813,11 @@ function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunctio
                     results.forEach(result => {
                         const suggestion = document.createElement('div');
                         suggestion.className = 'autocomplete-suggestion';
-                        suggestion.innerHTML = result.html || result.name;
-                        suggestion.addEventListener('click', (event) => {
-                            if (event.target.tagName !== 'A') {
-                                event.preventDefault();
-                                inputElement.value = result.name;
-                                onSelectFunction(result, inputElement);
-                                suggestionContainer.innerHTML = '';
-                            }
+                        suggestion.textContent = result.title || result.name;
+                        suggestion.addEventListener('click', () => {
+                            inputElement.value = result.title || result.name;
+                            onSelectFunction(result, inputElement);
+                            suggestionContainer.innerHTML = '';
                         });
                         suggestionContainer.appendChild(suggestion);
                     });
@@ -1260,4 +1164,58 @@ function resolveConflicts(conflicts, callback) {
     }
 
     resolveConflicts(conflicts, callback);
+}
+
+function setupTaxonAutocomplete(inputElement, idElement) {
+    const suggestionContainer = document.createElement('div');
+    suggestionContainer.className = 'taxonSuggestions';
+    inputElement.parentNode.insertBefore(suggestionContainer, inputElement.nextSibling);
+
+    let debounceTimeout;
+    inputElement.addEventListener('input', () => {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            if (inputElement.value.length < 2) {
+                suggestionContainer.innerHTML = '';
+                return;
+            }
+            lookupTaxon(inputElement.value)
+                .then(taxa => {
+                    suggestionContainer.innerHTML = '';
+                    taxa.forEach(taxon => {
+                        const suggestion = document.createElement('div');
+                        suggestion.className = 'taxonSuggestion';
+                        suggestion.innerHTML = `
+                            <img src="${taxon.default_photo?.square_url || 'placeholder.jpg'}" alt="${taxon.name}">
+                            <span class="taxon-name">
+                                ${taxon.preferred_common_name ? `${taxon.preferred_common_name} (` : ''}
+                                <a href="https://www.inaturalist.org/taxa/${taxon.id}" target="_blank" class="taxon-link">
+                                    ${taxon.name}
+                                </a>
+                                ${taxon.preferred_common_name ? ')' : ''}
+                            </span>
+                        `;
+                        suggestion.addEventListener('click', (event) => {
+                            if (event.target.tagName !== 'A') {
+                                event.preventDefault();
+                                inputElement.value = taxon.preferred_common_name ? 
+                                    `${taxon.preferred_common_name} (${taxon.name})` : 
+                                    taxon.name;
+                                idElement.value = taxon.id;
+                                suggestionContainer.innerHTML = '';
+                            }
+                        });
+                        suggestionContainer.appendChild(suggestion);
+                    });
+                })
+                .catch(error => console.error('Error fetching taxa:', error));
+        }, 300);
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (event) => {
+        if (!inputElement.contains(event.target) && !suggestionContainer.contains(event.target)) {
+            suggestionContainer.innerHTML = '';
+        }
+    });
 }
