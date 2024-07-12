@@ -1015,60 +1015,31 @@ function performActions(actions) {
 
 async function updateObservationPage(observationId) {
     try {
-        // Use the provided selector to find the tag input field
-        const tagInputSelector = "#ObservationShow > div.upper > div > div:nth-child(3) > div.opposite_activity.col-xs-5 > div:nth-child(4) > div > div > div > div > form > div > input";
-        const tagInput = document.querySelector(tagInputSelector);
-
-        if (!tagInput) {
-            console.log('Tag input not found');
+        const favContainer = document.querySelector('.Faves');
+        if (!favContainer) {
+            console.log('Fav button container not found');
             return false;
         }
 
-        // Find the form element
-        const form = tagInput.closest('form');
-        if (!form) {
-            console.log('Form not found');
-            return false;
-        }
+        const linkText = favContainer.querySelector('.linky').textContent;
+        const originalState = linkText === "You faved this!" ? 'faved' : 'unfaved';
+        console.log(`Original fav state: ${originalState}`);
 
-        // Add a temporary tag
-        const tempTag = `temp_refresh_${Date.now()}`;
-        tagInput.value = tempTag;
-        tagInput.dispatchEvent(new Event('input', { bubbles: true }));
-        tagInput.dispatchEvent(new Event('change', { bubbles: true }));
+        // Click the fav button
+        const favButton = favContainer.querySelector('.action');
+        favButton.click();
 
-        // Submit the form
-        form.dispatchEvent(new Event('submit', { bubbles: true }));
+        // Wait for the state to change
+        await waitForFavStateChange(originalState);
 
-        console.log(`Temporary tag added and form submitted: ${tempTag}`);
+        // Click again to revert to the original state
+        await new Promise(resolve => setTimeout(resolve, 500)); // Short delay
+        favButton.click();
 
-        // Wait for the tag to be processed and added
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait for the state to revert
+        await waitForFavStateChange(originalState === 'faved' ? 'unfaved' : 'faved');
 
-        // Define the maximum wait time and interval for checking the button
-        const maxWaitTime = 10000; // 10 seconds
-        const checkInterval = 500; // 0.5 seconds
-        let elapsedTime = 0;
-
-        let removeButton;
-        while (elapsedTime < maxWaitTime) {
-            removeButton = document.querySelector(`#ObservationShow > div.upper > div > div:nth-child(3) > div.opposite_activity.col-xs-5 > div:nth-child(4) > div > div > div > div > div a[href*="${tempTag}"] ~ span.glyphicon-remove-circle`);
-            if (removeButton) {
-                break;
-            }
-            await new Promise(resolve => setTimeout(resolve, checkInterval));
-            elapsedTime += checkInterval;
-        }
-
-        if (!removeButton) {
-            console.log('Remove button not found after waiting');
-            return false;
-        }
-
-        // Click the remove button to remove the temporary tag
-        removeButton.click();
-
-        console.log('Temporary tag removed by clicking the remove button');
+        console.log('Fav button clicked twice, returned to original state');
         console.log('Triggered site refresh mechanism');
         return true;
     } catch (error) {
@@ -1077,6 +1048,30 @@ async function updateObservationPage(observationId) {
     }
 }
 
+function waitForFavStateChange(originalState) {
+    return new Promise((resolve, reject) => {
+        const maxWaitTime = 10000; // 10 seconds
+        const checkInterval = 100; // 0.1 seconds
+        let elapsedTime = 0;
+
+        const checkState = () => {
+            const favContainer = document.querySelector('.Faves');
+            const linkText = favContainer.querySelector('.linky').textContent;
+            const currentState = linkText === "You faved this!" ? 'faved' : 'unfaved';
+
+            if (currentState !== originalState) {
+                resolve();
+            } else if (elapsedTime >= maxWaitTime) {
+                reject(new Error('Timeout waiting for fav state change'));
+            } else {
+                elapsedTime += checkInterval;
+                setTimeout(checkState, checkInterval);
+            }
+        };
+
+        checkState();
+    });
+}
 
 
 function toggleRefresh() {
