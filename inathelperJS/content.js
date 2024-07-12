@@ -151,11 +151,6 @@ const debounce = (func, wait) => {
       debouncedStopAndClear();
     }
   
-    // Check for the ID page element
-    const idPageElement = document.querySelector('.ObservationModal');
-    if (idPageElement) {
-      console.log('ID page detected');
-    }
   });
 
 function createShortcutList() {
@@ -371,7 +366,7 @@ function updatePositions() {
 }
 
 function extractObservationId() {
-    console.log("Extracting observation ID");
+    //console.log("Extracting observation ID");
     if (window.location.pathname.match(/^\/observations\/\d+/)) {
         const id = window.location.pathname.split('/').pop();
         console.log("Extracted ID from URL:", id);
