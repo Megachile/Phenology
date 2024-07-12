@@ -1020,69 +1020,68 @@ function performActions(actions) {
 
 async function updateObservationPage(observationId) {
     try {
-        console.log('Fetching updated observation data...');
-        const response = await fetch(`https://api.inaturalist.org/v1/observations/${observationId}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        const observation = data.results[0];
+        // Use the provided selector to find the tag input field
+        const tagInputSelector = "#ObservationShow > div.upper > div > div:nth-child(3) > div.opposite_activity.col-xs-5 > div:nth-child(4) > div > div > div > div > form > div > input";
+        const tagInput = document.querySelector(tagInputSelector);
 
-        if (!observation) {
-            console.error('No observation data found in the API response');
-            return;
+        if (!tagInput) {
+            console.log('Tag input not found');
+            return false;
         }
 
-        console.log('Received observation data:', JSON.stringify(observation, null, 2));
+        // Find the form element
+        const form = tagInput.closest('form');
+        if (!form) {
+            console.log('Form not found');
+            return false;
+        }
 
-        // Add a small delay to ensure the page has finished any internal updates
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Add a temporary tag
+        const tempTag = `temp_refresh_${Date.now()}`;
+        tagInput.value = tempTag;
+        tagInput.dispatchEvent(new Event('input', { bubbles: true }));
+        tagInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-        console.log('Updating observation fields...');
-        updateObservationFields(observation);
+        // Submit the form
+        form.dispatchEvent(new Event('submit', { bubbles: true }));
 
-        console.log('Observation fields updated successfully');
+        console.log(`Temporary tag added and form submitted: ${tempTag}`);
+
+        // Wait for the tag to be processed and added
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Define the maximum wait time and interval for checking the button
+        const maxWaitTime = 10000; // 10 seconds
+        const checkInterval = 500; // 0.5 seconds
+        let elapsedTime = 0;
+
+        let removeButton;
+        while (elapsedTime < maxWaitTime) {
+            removeButton = document.querySelector(`#ObservationShow > div.upper > div > div:nth-child(3) > div.opposite_activity.col-xs-5 > div:nth-child(4) > div > div > div > div > div a[href*="${tempTag}"] ~ span.glyphicon-remove-circle`);
+            if (removeButton) {
+                break;
+            }
+            await new Promise(resolve => setTimeout(resolve, checkInterval));
+            elapsedTime += checkInterval;
+        }
+
+        if (!removeButton) {
+            console.log('Remove button not found after waiting');
+            return false;
+        }
+
+        // Click the remove button to remove the temporary tag
+        removeButton.click();
+
+        console.log('Temporary tag removed by clicking the remove button');
+        console.log('Triggered site refresh mechanism');
+        return true;
     } catch (error) {
-        console.error('Error updating observation page:', error);
+        console.error('Error triggering site refresh:', error);
+        return false;
     }
 }
-function updateObservationFields(observation) {
-    const fieldsContainer = document.querySelector('#observation-fields-panel--body > div');
-    if (fieldsContainer) {
-        // Remove existing fields, but keep the input form
-        const inputForm = fieldsContainer.querySelector('.form-group');
-        fieldsContainer.innerHTML = '';
-        if (inputForm) {
-            fieldsContainer.appendChild(inputForm);
-        }
 
-        // Add updated fields
-        if (observation.ofvs && Array.isArray(observation.ofvs)) {
-            observation.ofvs.forEach(field => {
-                console.log('Processing field:', field);
-                const fieldElement = document.createElement('div');
-                fieldElement.className = 'ObservationFieldValue';
-                fieldElement.innerHTML = `
-                    <div class="field">${field.name || field.field_name || 'Unknown Field'}:</div>
-                    <div class="value">
-                        <div class="value">
-                            <div class="UserText">
-                                <span class="content">
-                                    <p>${field.value || 'No value'}</p>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                fieldsContainer.insertBefore(fieldElement, inputForm);
-            });
-        } else {
-            console.error('No observation fields found or invalid structure:', observation.ofvs);
-        }
-    } else {
-        console.error('Observation fields container not found');
-    }
-}
 
 
 function toggleRefresh() {
@@ -1159,4 +1158,3 @@ window.addEventListener('error', function(event) {
         event.preventDefault(); // Prevent the error from being thrown
     }
 });
-
