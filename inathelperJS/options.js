@@ -226,77 +226,208 @@ function updateFieldValueInput(field, container) {
     }
 }
 
-function editConfiguration(configId) {
-    const config = customButtons.find(c => c.id === configId);
-    if (!config) return;
-    document.getElementById('buttonName').value = config.name;
-    
-    if (config.shortcut) {
-        document.getElementById('ctrlKey').checked = config.shortcut.ctrlKey;
-        document.getElementById('shiftKey').checked = config.shortcut.shiftKey;
-        document.getElementById('altKey').checked = config.shortcut.altKey;
-        document.getElementById('shortcut').value = config.shortcut.key;
+function extractFormData() {
+    return {
+        name: document.getElementById('buttonName').value.trim(),
+        shortcut: {
+            key: document.getElementById('shortcut').value.trim().toUpperCase(),
+            ctrlKey: document.getElementById('ctrlKey').checked,
+            shiftKey: document.getElementById('shiftKey').checked,
+            altKey: document.getElementById('altKey').checked
+        },
+        actions: extractActionsFromForm()
+    };
+}
+
+function extractActionsFromForm() {
+    return Array.from(document.querySelectorAll('.action-item')).map(actionDiv => {
+        const actionType = actionDiv.querySelector('.actionType').value;
+        const action = { type: actionType };
+
+        switch (actionType) {
+            case 'observationField':
+                action.fieldId = actionDiv.querySelector('.fieldId').value.trim();
+                action.fieldName = actionDiv.querySelector('.fieldName').value.trim();
+                const fieldValueElement = actionDiv.querySelector('.fieldValue');
+                action.fieldValue = fieldValueElement.dataset.taxonId || fieldValueElement.value.trim();
+                action.displayValue = fieldValueElement.value.trim();
+                break;
+            case 'annotation':
+                action.annotationField = actionDiv.querySelector('.annotationField').value;
+                action.annotationValue = actionDiv.querySelector('.annotationValue').value;
+                break;
+            case 'addToProject':
+                action.projectId = actionDiv.querySelector('.projectId').value.trim();
+                action.projectName = actionDiv.querySelector('.projectName').value.trim();
+                break;
+            case 'addComment':
+                action.commentBody = actionDiv.querySelector('.commentBody').value.trim();
+                break;
+            case 'addTaxonId':
+                const taxonNameInput = actionDiv.querySelector('.taxonName');
+                action.taxonId = taxonNameInput.dataset.taxonId;
+                action.taxonName = taxonNameInput.value.trim();
+                break;
+        }
+
+        return action;
+    });
+}
+
+function validateConfiguration(config) {
+    if (!config.name) {
+        throw new Error("Please enter a button name.");
     }
 
-    document.getElementById('actionsContainer').innerHTML = '';
-    config.actions.forEach(action => {
-        addActionToForm();
-        const actionDiv = document.querySelector('.action-item:last-child');
-        actionDiv.querySelector('.actionType').value = action.type;
-        if (action.type === 'observationField') {
-            actionDiv.querySelector('.fieldId').value = action.fieldId;
-            actionDiv.querySelector('.fieldName').value = action.fieldName || '';
-            lookupObservationField(action.fieldName || action.fieldId)
-                .then(fields => {
-                    const field = fields.find(f => f.id.toString() === action.fieldId.toString());
-                    if (field) {
-                        actionDiv.querySelector('.fieldDescription').textContent = field.description;
-                        updateFieldValueInput(field, actionDiv.querySelector('.fieldValueContainer'));
-                        const fieldValueInput = actionDiv.querySelector('.fieldValue');
-                        fieldValueInput.value = action.fieldValue;
-                        if (field.datatype === 'taxon' && action.taxonId) {
-                            fieldValueInput.dataset.taxonId = action.taxonId;
-                        }
-                    } else {
-                        throw new Error('Field not found');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching observation field details:', error);
-                    actionDiv.querySelector('.fieldDescription').textContent = 'Error: Unable to fetch field details';
-                    const fieldValueInput = actionDiv.querySelector('.fieldValue');
-                    fieldValueInput.value = action.fieldValue;
-                    if (action.taxonId) {
-                        fieldValueInput.dataset.taxonId = action.taxonId;
-                    }
-                });
-        } else if (action.type === 'annotation') {
-            const annotationField = actionDiv.querySelector('.annotationField');
-            const annotationValue = actionDiv.querySelector('.annotationValue');
-            annotationField.value = action.annotationField;
-            updateAnnotationValues(annotationField, annotationValue);
-            annotationValue.value = action.annotationValue;
-        } else if (action.type === 'addToProject') {
-            const projectIdInput = actionDiv.querySelector('.projectId');
-            const projectNameInput = actionDiv.querySelector('.projectName');
-            if (projectIdInput && projectNameInput) {
-                projectIdInput.value = action.projectId;
-                projectNameInput.value = action.projectName;
-            }
-        } else if (action.type === 'addComment') {
-            actionDiv.querySelector('.commentBody').value = action.commentBody;
-        } else if (action.type === 'addTaxonId') {
-            actionDiv.querySelector('.taxonId').value = action.taxonId;
-            actionDiv.querySelector('.taxonName').value = action.taxonName;
+    if (config.shortcut && isShortcutForbidden(config.shortcut)) {
+        throw new Error("This shortcut is not allowed as it conflicts with browser functionality or extension shortcuts.");
+    }
+
+    if (config.shortcut && (config.shortcut.key || config.shortcut.ctrlKey || config.shortcut.shiftKey || config.shortcut.altKey)) {
+        const conflictingShortcut = customButtons.find((button) => {
+            if (config.id && button.id === config.id) return false; // Ignore self when editing
+            return button.shortcut &&
+                   button.shortcut.key === config.shortcut.key &&
+                   button.shortcut.ctrlKey === config.shortcut.ctrlKey &&
+                   button.shortcut.shiftKey === config.shortcut.shiftKey &&
+                   button.shortcut.altKey === config.shortcut.altKey;
+        });
+
+        if (conflictingShortcut) {
+            throw new Error(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
         }
-        actionDiv.querySelector('.actionType').dispatchEvent(new Event('change'));
+    }
+
+    if (config.actions.length === 0) {
+        throw new Error("Please add at least one action to the configuration.");
+    }
+
+    config.actions.forEach(action => {
+        switch (action.type) {
+            case 'observationField':
+                if (!action.fieldId || !action.fieldName || !action.fieldValue) {
+                    throw new Error("Please enter Field Name, ID, and Value for all Observation Field actions.");
+                }
+                break;
+            case 'annotation':
+                if (!action.annotationField || !action.annotationValue) {
+                    throw new Error("Please select both Annotation Field and Annotation Value for all Annotation actions.");
+                }
+                break;
+            case 'addToProject':
+                if (!action.projectId || !action.projectName) {
+                    throw new Error("Please enter both Project Name and ID for all Add to Project actions.");
+                }
+                break;
+            case 'addComment':
+                if (!action.commentBody) {
+                    throw new Error("Please enter a comment body for all Add Comment actions.");
+                }
+                break;
+            case 'addTaxonId':
+                if (!action.taxonId || !action.taxonName) {
+                    throw new Error("Please select a valid taxon for all Add Taxon ID actions.");
+                }
+                break;
+        }
     });
+}
 
-    const saveButton = document.getElementById('saveButton');
-    saveButton.textContent = 'Update Configuration';
-    saveButton.dataset.editIndex = configId;
+function updateOrAddConfiguration(config) {
+    const existingIndex = customButtons.findIndex(c => c.id === config.id);
+    if (existingIndex !== -1) {
+        customButtons[existingIndex] = config;
+    } else {
+        customButtons.push(config);
+    }
+}
 
-    window.scrollTo(0, 0);
+// Refactored save configuration function
+async function saveConfiguration() {
+    try {
+        const formData = extractFormData();
+        validateConfiguration(formData);
+
+        const editIndex = document.getElementById('saveButton').dataset.editIndex;
+        const newConfig = {
+            id: editIndex || Date.now().toString(),
+            ...formData,
+            buttonHidden: false,
+            configurationDisabled: false
+        };
+
+        updateOrAddConfiguration(newConfig);
+
+        await browserAPI.storage.sync.set({
+            customButtons: customButtons,
+            observationFieldMap: observationFieldMap,
+            lastConfigUpdate: Date.now(),
+        });
+
+        console.log('Configuration and settings saved');
+        loadConfigurations();
+        clearForm();
+    } catch (error) {
+        alert(error.message);
+    }
+}
+function editConfiguration(configId) {
+    try {
+        const config = customButtons.find(c => c.id === configId);
+        if (!config) {
+            console.error(`Configuration with id ${configId} not found`);
+            return;
+        }
+
+        document.getElementById('buttonName').value = config.name;
+        
+        if (config.shortcut) {
+            document.getElementById('ctrlKey').checked = config.shortcut.ctrlKey;
+            document.getElementById('shiftKey').checked = config.shortcut.shiftKey;
+            document.getElementById('altKey').checked = config.shortcut.altKey;
+            document.getElementById('shortcut').value = config.shortcut.key;
+        } else {
+            document.getElementById('ctrlKey').checked = false;
+            document.getElementById('shiftKey').checked = false;
+            document.getElementById('altKey').checked = false;
+            document.getElementById('shortcut').value = '';
+        }
+
+        document.getElementById('actionsContainer').innerHTML = '';
+        config.actions.forEach(action => {
+            addActionToForm(action);
+        });
+
+        const saveButton = document.getElementById('saveButton');
+        saveButton.textContent = 'Update Configuration';
+        saveButton.dataset.editIndex = configId;
+
+        window.scrollTo(0, 0);
+    } catch (error) {
+        console.error('Error in editConfiguration:', error);
+        alert('An error occurred while editing the configuration. Please try again.');
+    }
+}
+
+function duplicateConfiguration(configId) {
+    try {
+        const config = customButtons.find(c => c.id === configId);
+        if (!config) {
+            console.error(`Configuration with id ${configId} not found`);
+            return;
+        }
+
+        editConfiguration(configId); // Reuse edit logic
+
+        document.getElementById('buttonName').value = `${config.name} (Copy)`;
+
+        const saveButton = document.getElementById('saveButton');
+        saveButton.textContent = 'Save New Configuration';
+        delete saveButton.dataset.editIndex;
+    } catch (error) {
+        console.error('Error in duplicateConfiguration:', error);
+        alert('An error occurred while duplicating the configuration. Please try again.');
+    }
 }
 
 function lookupTaxon(query, per_page = 10) {
@@ -328,7 +459,7 @@ function lookupProject(query, perPage = 10) {
         .then(data => data.results);
 }
 
-function addActionToForm() {
+function addActionToForm(action = null) {
     const actionDiv = document.createElement('div');
     actionDiv.className = 'action-item';
     actionDiv.innerHTML = `
@@ -360,6 +491,7 @@ function addActionToForm() {
         </div>
         <div class="taxonIdInputs" style="display:none;">
             <input type="text" class="taxonName" placeholder="Taxon Name">
+            <input type="hidden" class="taxonId">
         </div>
         <button class="removeActionButton">Remove Action</button>
     `;
@@ -380,7 +512,6 @@ function addActionToForm() {
         taxonIdInputs.style.display = actionType.value === 'addTaxonId' ? 'block' : 'none';
     });
 
-    // Setup for Observation Field
     const fieldNameInput = actionDiv.querySelector('.fieldName');
     const fieldIdInput = actionDiv.querySelector('.fieldId');
     const fieldValueContainer = actionDiv.querySelector('.fieldValueContainer');
@@ -389,27 +520,56 @@ function addActionToForm() {
         updateFieldValueInput(result, fieldValueContainer);
     });
 
-    // Setup for Project
     const projectNameInput = actionDiv.querySelector('.projectName');
     const projectIdInput = actionDiv.querySelector('.projectId');
     setupAutocompleteDropdown(projectNameInput, lookupProject, (result) => {
         projectIdInput.value = result.id;
     });
 
-    // Setup for Taxon ID
     const taxonNameInput = actionDiv.querySelector('.taxonName');
     const taxonIdInput = actionDiv.querySelector('.taxonId');
     setupTaxonAutocomplete(taxonNameInput, taxonIdInput);
 
-    // Setup for Annotation
     const annotationField = actionDiv.querySelector('.annotationField');
     const annotationValue = actionDiv.querySelector('.annotationValue');
     populateAnnotationFields(annotationField);
     annotationField.addEventListener('change', () => updateAnnotationValues(annotationField, annotationValue));
 
-    // Fix for remove button
     const removeButton = actionDiv.querySelector('.removeActionButton');
     removeButton.addEventListener('click', () => actionDiv.remove());
+
+    if (action) {
+        actionType.value = action.type;
+        actionType.dispatchEvent(new Event('change'));
+        
+        switch (action.type) {
+            case 'observationField':
+                actionDiv.querySelector('.fieldId').value = action.fieldId;
+                actionDiv.querySelector('.fieldName').value = action.fieldName || '';
+                const fieldValueInput = actionDiv.querySelector('.fieldValue');
+                fieldValueInput.value = action.displayValue || action.fieldValue;
+                if (action.taxonId) {
+                    fieldValueInput.dataset.taxonId = action.taxonId;
+                }
+                break;
+            case 'annotation':
+                annotationField.value = action.annotationField;
+                updateAnnotationValues(annotationField, annotationValue);
+                annotationValue.value = action.annotationValue;
+                break;
+            case 'addToProject':
+                projectIdInput.value = action.projectId;
+                projectNameInput.value = action.projectName;
+                break;
+            case 'addComment':
+                actionDiv.querySelector('.commentBody').value = action.commentBody;
+                break;
+            case 'addTaxonId':
+                taxonNameInput.value = action.taxonName;
+                taxonIdInput.value = action.taxonId;
+                break;
+        }
+    }
 }
 
 function debounce(func, wait) {
@@ -600,198 +760,6 @@ function formatShortcut(shortcut) {
     if (shortcut.altKey) parts.push('Alt');
     if (shortcut.key) parts.push(shortcut.key);
     return parts.join(' + ');
-}
-
-function duplicateConfiguration(configId) {
-    const config = customButtons.find(c => c.id === configId);
-    if (!config) return;
-    document.getElementById('buttonName').value = config.name;
-    
-    if (config.shortcut) {
-        document.getElementById('ctrlKey').checked = config.shortcut.ctrlKey;
-        document.getElementById('shiftKey').checked = config.shortcut.shiftKey;
-        document.getElementById('altKey').checked = config.shortcut.altKey;
-        document.getElementById('shortcut').value = config.shortcut.key;
-    }
-
-    document.getElementById('actionsContainer').innerHTML = '';
-    config.actions.forEach(action => {
-        addActionToForm();
-        const actionDiv = document.querySelector('.action-item:last-child');
-        actionDiv.querySelector('.actionType').value = action.type;
-        
-        switch (action.type) {
-            case 'observationField':
-                actionDiv.querySelector('.fieldId').value = action.fieldId;
-                actionDiv.querySelector('.fieldName').value = action.fieldName || '';
-                const fieldValueInput = actionDiv.querySelector('.fieldValue');
-                fieldValueInput.value = action.displayValue || action.fieldValue;
-                if (action.taxonId) {
-                    fieldValueInput.dataset.taxonId = action.taxonId;
-                }
-                break;
-            case 'annotation':
-                const annotationField = actionDiv.querySelector('.annotationField');
-                const annotationValue = actionDiv.querySelector('.annotationValue');
-                annotationField.value = action.annotationField;
-                updateAnnotationValues(annotationField, annotationValue);
-                annotationValue.value = action.annotationValue;
-                break;
-            case 'addToProject':
-                actionDiv.querySelector('.projectId').value = action.projectId;
-                actionDiv.querySelector('.projectName').value = action.projectName;
-                break;
-            case 'addComment':
-                actionDiv.querySelector('.commentBody').value = action.commentBody;
-                break;
-            case 'addTaxonId':
-                actionDiv.querySelector('.taxonId').value = action.taxonId;
-                actionDiv.querySelector('.taxonName').value = action.taxonName;
-                break;
-        }
-        
-        actionDiv.querySelector('.actionType').dispatchEvent(new Event('change'));
-    });
-
-    const saveButton = document.getElementById('saveButton');
-    saveButton.textContent = 'Save New Configuration';
-    delete saveButton.dataset.editIndex;
-
-    document.getElementById('buttonName').value = `${config.name} (Copy)`;
-
-    window.scrollTo(0, 0);
-}
-
-function saveConfiguration() {
-    const name = document.getElementById('buttonName').value.trim();
-    const shortcutKey = document.getElementById('shortcut').value.trim().toUpperCase();
-    const ctrlKey = document.getElementById('ctrlKey').checked;
-    const shiftKey = document.getElementById('shiftKey').checked;
-    const altKey = document.getElementById('altKey').checked;
-    
-    if (!name) {
-        alert("Please enter a button name.");
-        return;
-    }
-
-    const editIndex = document.getElementById('saveButton').dataset.editIndex;
-
-    let shortcutConfig = null;
-    if (shortcutKey || ctrlKey || shiftKey || altKey) {
-        shortcutConfig = { ctrlKey, shiftKey, altKey, key: shortcutKey };
-        if (isShortcutForbidden(shortcutConfig)) {
-            alert("This shortcut is not allowed as it conflicts with browser functionality or extension shortcuts.");
-            return;
-        }
-
-        const conflictingShortcut = customButtons.find((button) => {
-            if (editIndex && button.id === editIndex) return false;
-            return button.shortcut &&
-                   button.shortcut.key === shortcutKey &&
-                   button.shortcut.ctrlKey === ctrlKey &&
-                   button.shortcut.shiftKey === shiftKey &&
-                   button.shortcut.altKey === altKey;
-        });
-
-        if (conflictingShortcut) {
-            alert(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
-            return;
-        }
-    }
-
-    const newConfig = {
-        id: editIndex || Date.now().toString(),
-        name: name,
-        shortcut: shortcutConfig,
-        actions: [],
-        buttonHidden: false,
-        configurationDisabled: false
-    };
-
-    let isValid = true;
-
-    document.querySelectorAll('.action-item').forEach(actionDiv => {
-        const actionType = actionDiv.querySelector('.actionType').value;
-        const action = { type: actionType };
-
-        switch (actionType) {
-            case 'observationField':
-                action.fieldId = actionDiv.querySelector('.fieldId').value.trim();
-                action.fieldName = actionDiv.querySelector('.fieldName').value.trim();
-                const fieldValueElement = actionDiv.querySelector('.fieldValue');
-                action.fieldValue = fieldValueElement.dataset.taxonId || fieldValueElement.value.trim();
-                action.displayValue = fieldValueElement.value.trim();
-                if (!action.fieldId || !action.fieldName || !action.fieldValue) {
-                    alert("Please enter Field Name, ID, and Value for all Observation Field actions.");
-                    isValid = false;
-                }
-                break;
-            case 'annotation':
-                action.annotationField = actionDiv.querySelector('.annotationField').value;
-                action.annotationValue = actionDiv.querySelector('.annotationValue').value;
-                if (!action.annotationField || !action.annotationValue) {
-                    alert("Please select both Annotation Field and Annotation Value for all Annotation actions.");
-                    isValid = false;
-                }
-                break;
-            case 'addToProject':
-                action.projectId = actionDiv.querySelector('.projectId').value.trim();
-                action.projectName = actionDiv.querySelector('.projectName').value.trim();
-                if (!action.projectId || !action.projectName) {
-                    alert("Please enter both Project Name and ID for all Add to Project actions.");
-                    isValid = false;
-                }
-                break;
-            case 'addComment':
-                action.commentBody = actionDiv.querySelector('.commentBody').value.trim();
-                if (!action.commentBody) {
-                    alert("Please enter a comment body for all Add Comment actions.");
-                    isValid = false;
-                }
-                break;
-                case 'addTaxonId':
-                    const taxonNameInput = actionDiv.querySelector('.taxonName');
-                    action.taxonId = taxonNameInput.dataset.taxonId;
-                    action.taxonName = taxonNameInput.value.trim();
-                    if (!action.taxonId || !action.taxonName) {
-                        alert("Please select a valid taxon for all Add Taxon ID actions.");
-                        isValid = false;
-                    }
-                    break;
-        }
-
-        if (isValid) {
-            newConfig.actions.push(action);
-        }
-    });
-
-    console.log('Final configuration:', newConfig);
-
-    if (!isValid) return;
-
-    if (newConfig.actions.length === 0) {
-        alert("Please add at least one action to the configuration.");
-        return;
-    }
-
-    if (editIndex) {
-        const index = customButtons.findIndex(config => config.id === editIndex);
-        if (index !== -1) {
-            customButtons[index] = newConfig;
-        }
-    } else {
-        customButtons.push(newConfig);
-    }
-
-    browserAPI.storage.sync.set({
-        customButtons: customButtons,
-        observationFieldMap: observationFieldMap,
-        lastConfigUpdate: Date.now(),
-    }, function() {
-        console.log('Configuration and settings saved');
-        loadConfigurations();
-        clearForm();
-    });
 }
 
 function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunction) {
@@ -1066,28 +1034,41 @@ function importConfigurations(event) {
 }
 
 function mergeConfigurations(importedData) {
+    console.log('Starting merge process');
+    console.log('Existing buttons:', customButtons);
+    console.log('Imported buttons:', importedData.customButtons);
+
     const newButtons = importedData.customButtons || [];
     const conflicts = [];
 
     newButtons.forEach(newButton => {
+        console.log('Processing button:', newButton.name);
+        
         const existingButton = customButtons.find(b => b.name === newButton.name);
         if (existingButton) {
+            console.log('Name conflict found:', existingButton.name);
             conflicts.push({existing: existingButton, imported: newButton});
         } else {
-            const shortcutConflict = customButtons.find(b => 
-                b.shortcut && newButton.shortcut &&
-                b.shortcut.ctrlKey === newButton.shortcut.ctrlKey &&
-                b.shortcut.shiftKey === newButton.shortcut.shiftKey &&
-                b.shortcut.altKey === newButton.shortcut.altKey &&
-                b.shortcut.key === newButton.shortcut.key
-            );
+            const shortcutConflict = newButton.shortcut && newButton.shortcut.key ? 
+                customButtons.find(b => 
+                    b.shortcut && 
+                    b.shortcut.key === newButton.shortcut.key &&
+                    b.shortcut.ctrlKey === newButton.shortcut.ctrlKey &&
+                    b.shortcut.shiftKey === newButton.shortcut.shiftKey &&
+                    b.shortcut.altKey === newButton.shortcut.altKey
+                ) : null;
+            
             if (shortcutConflict) {
+                console.log('Shortcut conflict found:', newButton.shortcut);
                 conflicts.push({existing: shortcutConflict, imported: newButton, type: 'shortcut'});
             } else {
+                console.log('No conflicts, adding button');
                 customButtons.push(newButton);
             }
         }
     });
+
+    console.log('Conflicts found:', conflicts);
 
     const saveAndNotify = () => {
         browserAPI.storage.sync.set({
@@ -1096,6 +1077,7 @@ function mergeConfigurations(importedData) {
             lastConfigUpdate: Date.now()
         }, function() {
             console.log('Configurations merged and lastConfigUpdate set');
+            console.log('Final customButtons:', customButtons);
             loadConfigurations();
             alert('Import completed successfully.');
         });

@@ -4,3 +4,4 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 browserAPI.action.onClicked.addListener((tab) => {
     browserAPI.runtime.openOptionsPage();
 });
+
