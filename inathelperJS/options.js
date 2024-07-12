@@ -95,7 +95,15 @@ const forbiddenShortcuts = [
     { altKey: true, key: 'H' }     // Toggle shortcut list
 ];
 
-
+const qualityMetrics = [
+    { value: 'needs_id', label: 'Can the Community Taxon still be confirmed or improved?' },
+    { value: 'date', label: 'Date is accurate' },
+    { value: 'location', label: 'Location is accurate' },
+    { value: 'wild', label: 'Organism is wild' },
+    { value: 'evidence', label: 'Evidence of organism' },
+    { value: 'recent', label: 'Recent evidence of organism' },
+    { value: 'subject', label: 'Evidence related to a single subject' }
+];
 
 function isShortcutForbidden(shortcut) {
     if (!shortcut) return false; // If no shortcut, it can't be forbidden
@@ -267,6 +275,10 @@ function extractActionsFromForm() {
                 const taxonNameInput = actionDiv.querySelector('.taxonName');
                 action.taxonId = taxonNameInput.dataset.taxonId;
                 action.taxonName = taxonNameInput.value.trim();
+                break;
+            case 'qualityMetric':
+                action.metric = actionDiv.querySelector('.qualityMetricType').value;
+                action.vote = actionDiv.querySelector('.qualityMetricVote').value;
                 break;
         }
 
@@ -469,6 +481,7 @@ function addActionToForm(action = null) {
             <option value="addTaxonId">Add Taxon ID</option>
             <option value="addComment">Add Comment</option>            
             <option value="addToProject">Add to Project</option>
+            <option value="qualityMetric">Data Quality Indicators</option>
         </select>
         <div class="ofInputs">
             <input type="text" class="fieldName" placeholder="Observation Field Name">
@@ -493,6 +506,16 @@ function addActionToForm(action = null) {
             <input type="text" class="taxonName" placeholder="Taxon Name">
             <input type="hidden" class="taxonId">
         </div>
+        <div class="qualityMetricInputs" style="display:none;">
+            <select class="qualityMetricType">
+                ${qualityMetrics.map(metric => `<option value="${metric.value}">${metric.label}</option>`).join('')}
+            </select>
+            <select class="qualityMetricVote">
+                <option value="agree">Agree</option>
+                <option value="disagree">Disagree</option>
+                <option value="remove">Remove Vote</option>
+            </select>
+        </div>
         <button class="removeActionButton">Remove Action</button>
     `;
     document.getElementById('actionsContainer').appendChild(actionDiv);
@@ -503,6 +526,7 @@ function addActionToForm(action = null) {
     const projectInputs = actionDiv.querySelector('.projectInputs');
     const commentInput = actionDiv.querySelector('.commentInput');
     const taxonIdInputs = actionDiv.querySelector('.taxonIdInputs');
+    const qualityMetricInputs = actionDiv.querySelector('.qualityMetricInputs');
 
     actionType.addEventListener('change', () => {
         ofInputs.style.display = actionType.value === 'observationField' ? 'block' : 'none';
@@ -510,6 +534,7 @@ function addActionToForm(action = null) {
         projectInputs.style.display = actionType.value === 'addToProject' ? 'block' : 'none';
         commentInput.style.display = actionType.value === 'addComment' ? 'block' : 'none';
         taxonIdInputs.style.display = actionType.value === 'addTaxonId' ? 'block' : 'none';
+        qualityMetricInputs.style.display = actionType.value === 'qualityMetric' ? 'block' : 'none';
     });
 
     const fieldNameInput = actionDiv.querySelector('.fieldName');
@@ -568,6 +593,10 @@ function addActionToForm(action = null) {
                 taxonNameInput.value = action.taxonName;
                 taxonIdInput.value = action.taxonId;
                 break;
+            case 'qualityMetric':
+                actionDiv.querySelector('.qualityMetricType').value = action.metric;
+                actionDiv.querySelector('.qualityMetricVote').value = action.vote;
+                break;    
         }
     }
 }
@@ -699,6 +728,9 @@ function formatAction(action) {
             return `Add comment: "${action.commentBody.substring(0, 30)}${action.commentBody.length > 30 ? '...' : ''}"`;
         case 'addTaxonId':
             return `Add taxon ID: ${action.taxonName} (ID: ${action.taxonId})`;
+        case 'qualityMetric':
+            const metricLabel = qualityMetrics.find(m => m.value === action.metric).label;
+            return `Quality Metric: "${metricLabel}" - ${action.vote}`;
         default:
             return 'Unknown action';
     }

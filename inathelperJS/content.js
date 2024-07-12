@@ -793,6 +793,54 @@ async function addTaxonId(observationId, taxonId) {
     }
 }
 
+async function handleQualityMetric(observationId, metric, vote) {
+    const jwt = await getJWT();
+    if (!jwt) {
+        console.error('No JWT found');
+        return { success: false, error: 'No JWT found' };
+    }
+
+    let url, method, body;
+
+    if (metric === 'needs_id') {
+        if (vote === 'remove') {
+            url = `https://api.inaturalist.org/v1/votes/unvote/observation/${observationId}?scope=needs_id`;
+            method = 'DELETE';
+            body = null;
+        } else {
+            url = `https://api.inaturalist.org/v1/votes/vote/observation/${observationId}`;
+            method = 'POST';
+            body = JSON.stringify({ vote: vote === 'agree' ? 'yes' : 'no', scope: 'needs_id' });
+        }
+    } else {
+        url = `https://api.inaturalist.org/v1/observations/${observationId}/quality/${metric}`;
+        method = vote === 'remove' ? 'DELETE' : 'POST';
+        body = vote === 'disagree' ? JSON.stringify({ agree: "false" }) : null;
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwt}`
+            },
+            body: body
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        console.log(`Quality metric ${metric} ${vote} successful:`, responseData);
+        return { success: true, data: responseData };
+    } catch (error) {
+        console.error(`Error in quality metric ${metric} ${vote}:`, error);
+        return { success: false, error: error.toString() };
+    }
+}
+
 function animateButtonResult(button, success) {
     button.classList.add(success ? 'button-success' : 'button-failure');
     setTimeout(() => {
@@ -939,6 +987,26 @@ function updateRefreshIndicator(indicator = document.getElementById('refresh-ind
     }
 }
 
+function notifyUserOfQualityMetricChange() {
+    const notification = document.createElement('div');
+    notification.textContent = 'Quality metric updated. You may need to refresh the page to see all changes.';
+    notification.style.cssText = `
+        position: fixed;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #4CAF50;
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        z-index: 10000;
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+        notification.remove();
+    }, 5000);
+}
+
 function clearObservationId() {
     currentObservationId = null;
     if (idDisplay) {
@@ -966,7 +1034,15 @@ function performActions(actions) {
                     return addComment(currentObservationId, action.commentBody);
                 case 'addTaxonId':
                     return addTaxonId(currentObservationId, action.taxonId);
-            }
+                case 'qualityMetric':
+                    return handleQualityMetric(currentObservationId, action.metric, action.vote)
+                        .then(result => {
+                            if (result.success && window.location.pathname.match(/^\/observations\/\d+/) && action.metric !== 'needs_id') {
+                                notifyUserOfQualityMetricChange();
+                            }
+                            return result;
+                        });
+                    }
         });
     }, Promise.resolve())
     .then(() => {
@@ -974,7 +1050,7 @@ function performActions(actions) {
             console.log('Actions completed. Updating the page...');
             return updateObservationPage(currentObservationId);
         } else {
-            return refreshObservation();  // Existing function for the identify page
+            return refreshObservation();
         }
     })
     .catch(error => console.error('Error in performActions:', error));
