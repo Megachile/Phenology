@@ -280,6 +280,12 @@ function extractActionsFromForm() {
                 action.metric = actionDiv.querySelector('.qualityMetricType').value;
                 action.vote = actionDiv.querySelector('.qualityMetricVote').value;
                 break;
+            case 'copyObservationField':
+                action.sourceFieldId = actionDiv.querySelector('.sourceFieldId').value.trim();
+                action.sourceFieldName = actionDiv.querySelector('.sourceFieldName').value.trim();
+                action.targetFieldId = actionDiv.querySelector('.targetFieldId').value.trim();
+                action.targetFieldName = actionDiv.querySelector('.targetFieldName').value.trim();
+                break;
         }
 
         return action;
@@ -482,6 +488,7 @@ function addActionToForm(action = null) {
             <option value="addComment">Add Comment</option>            
             <option value="addToProject">Add to Project</option>
             <option value="qualityMetric">Data Quality Indicators</option>
+            <option value="copyObservationField">Copy Observation Field</option>
         </select>
         <div class="ofInputs">
             <input type="text" class="fieldName" placeholder="Observation Field Name">
@@ -516,6 +523,12 @@ function addActionToForm(action = null) {
                 <option value="remove">Remove Vote</option>
             </select>
         </div>
+        <div class="copyObservationFieldInputs" style="display:none;">
+            <input type="text" class="sourceFieldName" placeholder="Source Field Name">
+            <input type="number" class="sourceFieldId" placeholder="Source Field ID" readonly>
+            <input type="text" class="targetFieldName" placeholder="Target Field Name">
+            <input type="number" class="targetFieldId" placeholder="Target Field ID" readonly>
+        </div>
         <button class="removeActionButton">Remove Action</button>
     `;
     document.getElementById('actionsContainer').appendChild(actionDiv);
@@ -527,6 +540,7 @@ function addActionToForm(action = null) {
     const commentInput = actionDiv.querySelector('.commentInput');
     const taxonIdInputs = actionDiv.querySelector('.taxonIdInputs');
     const qualityMetricInputs = actionDiv.querySelector('.qualityMetricInputs');
+    const copyObservationFieldInputs = actionDiv.querySelector('.copyObservationFieldInputs');
 
     actionType.addEventListener('change', () => {
         ofInputs.style.display = actionType.value === 'observationField' ? 'block' : 'none';
@@ -535,6 +549,7 @@ function addActionToForm(action = null) {
         commentInput.style.display = actionType.value === 'addComment' ? 'block' : 'none';
         taxonIdInputs.style.display = actionType.value === 'addTaxonId' ? 'block' : 'none';
         qualityMetricInputs.style.display = actionType.value === 'qualityMetric' ? 'block' : 'none';
+        copyObservationFieldInputs.style.display = actionType.value === 'copyObservationField' ? 'block' : 'none';
     });
 
     const fieldNameInput = actionDiv.querySelector('.fieldName');
@@ -559,6 +574,18 @@ function addActionToForm(action = null) {
     const annotationValue = actionDiv.querySelector('.annotationValue');
     populateAnnotationFields(annotationField);
     annotationField.addEventListener('change', () => updateAnnotationValues(annotationField, annotationValue));
+
+    const sourceFieldNameInput = actionDiv.querySelector('.sourceFieldName');
+    const sourceFieldIdInput = actionDiv.querySelector('.sourceFieldId');
+    setupAutocompleteDropdown(sourceFieldNameInput, lookupObservationField, (result) => {
+        sourceFieldIdInput.value = result.id;
+    });
+
+    const targetFieldNameInput = actionDiv.querySelector('.targetFieldName');
+    const targetFieldIdInput = actionDiv.querySelector('.targetFieldId');
+    setupAutocompleteDropdown(targetFieldNameInput, lookupObservationField, (result) => {
+        targetFieldIdInput.value = result.id;
+    });
 
     const removeButton = actionDiv.querySelector('.removeActionButton');
     removeButton.addEventListener('click', () => actionDiv.remove());
@@ -597,6 +624,12 @@ function addActionToForm(action = null) {
                 actionDiv.querySelector('.qualityMetricType').value = action.metric;
                 actionDiv.querySelector('.qualityMetricVote').value = action.vote;
                 break;    
+            case 'copyObservationField':
+                actionDiv.querySelector('.sourceFieldId').value = action.sourceFieldId;
+                actionDiv.querySelector('.sourceFieldName').value = action.sourceFieldName;
+                actionDiv.querySelector('.targetFieldId').value = action.targetFieldId;
+                actionDiv.querySelector('.targetFieldName').value = action.targetFieldName;
+                break;                
         }
     }
 }
@@ -731,8 +764,10 @@ function formatAction(action) {
         case 'qualityMetric':
             const metricLabel = qualityMetrics.find(m => m.value === action.metric).label;
             return `Quality Metric: "${metricLabel}" - ${action.vote}`;
+        case 'copyObservationField':
+            return `Copy value from "${action.sourceFieldName}" to "${action.targetFieldName}"`;
         default:
-            return 'Unknown action';
+            return 'Unknown action';       
     }
 }
 

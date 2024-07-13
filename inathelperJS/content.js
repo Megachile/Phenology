@@ -958,6 +958,41 @@ function getMetricLabel(value) {
     return metric ? metric.label : value;
 }
 
+async function copyObservationField(observationId, sourceFieldId, targetFieldId) {
+    try {
+        // GET request to fetch the observation details
+        const observationResponse = await makeAPIRequest(`/observations/${observationId}`);
+        if (!observationResponse.results || observationResponse.results.length === 0) {
+            throw new Error('Observation not found');
+        }
+
+        const observation = observationResponse.results[0];
+        const sourceFieldValue = observation.ofvs.find(ofv => ofv.field_id === parseInt(sourceFieldId));
+
+        if (!sourceFieldValue) {
+            throw new Error('Source field not found on the observation');
+        }
+
+        // POST request to add the value to the target field
+        const postResponse = await makeAPIRequest('/observation_field_values', {
+            method: 'POST',
+            body: JSON.stringify({
+                observation_field_value: {
+                    observation_id: observationId,
+                    observation_field_id: targetFieldId,
+                    value: sourceFieldValue.value
+                }
+            })
+        });
+
+        console.log('Field value copied successfully:', postResponse);
+        return { success: true, data: postResponse };
+    } catch (error) {
+        console.error('Error in copyObservationField:', error);
+        return { success: false, error: error.toString() };
+    }
+}
+
 function animateButtonResult(button, success) {
     button.classList.add(success ? 'button-success' : 'button-failure');
     setTimeout(() => {
@@ -1189,6 +1224,9 @@ function performActions(actions) {
                         needsPageUpdate = false; // Don't update page for non-needs_id quality actions on observation page
                         return handleQualityMetric(currentObservationId, action.metric, action.vote);
                     }
+                case 'copyObservationField':
+                    return copyObservationField(currentObservationId, action.sourceFieldId, action.targetFieldId);
+           
             }
         });
     }, Promise.resolve())
