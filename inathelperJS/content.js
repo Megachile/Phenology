@@ -13,6 +13,16 @@ let currentObservationId = null;
 let checkInterval = null;
 let observationTabsContainer = null;
 
+const qualityMetrics = [
+    { value: 'needs_id', label: 'Can the Community Taxon still be confirmed or improved?' },
+    { value: 'date', label: 'Date is accurate' },
+    { value: 'location', label: 'Location is accurate' },
+    { value: 'wild', label: 'Organism is wild' },
+    { value: 'evidence', label: 'Evidence of organism' },
+    { value: 'recent', label: 'Recent evidence of an organism' },
+    { value: 'subject', label: 'Evidence related to a single subject' }
+];
+
 function getJWTFromPage() {
     const metaTag = document.querySelector('meta[name="inaturalist-api-token"]');
     return metaTag ? metaTag.getAttribute('content') : null;
@@ -792,8 +802,7 @@ async function addTaxonId(observationId, taxonId) {
         return { success: false, error: error.toString() };
     }
 }
-
-async function handleQualityMetric(observationId, metric, vote) {
+async function handleQualityMetricAPI(observationId, metric, vote) {
     const jwt = await getJWT();
     if (!jwt) {
         console.error('No JWT found');
@@ -834,11 +843,119 @@ async function handleQualityMetric(observationId, metric, vote) {
         
         const responseData = await response.json();
         console.log(`Quality metric ${metric} ${vote} successful:`, responseData);
+
+        if (metric !== 'needs_id') {
+            await updateQualityMetrics(observationId);
+        }
+
         return { success: true, data: responseData };
     } catch (error) {
         console.error(`Error in quality metric ${metric} ${vote}:`, error);
         return { success: false, error: error.toString() };
     }
+}
+
+async function handleQualityMetric(observationId, metricValue, vote) {
+    const metricLabel = getMetricLabel(metricValue);
+    console.log(`Handling quality metric: ${metricLabel}, vote: ${vote}`);
+    
+    const metricsContainer = document.querySelector('.QualityMetrics');
+    if (!metricsContainer) {
+        console.error('QualityMetrics container not found');
+        return { success: false, error: 'QualityMetrics container not found' };
+    }
+
+    const rows = metricsContainer.querySelectorAll('tr');
+    const targetRow = Array.from(rows).find(row => {
+        const titleCell = row.querySelector('td.metric_title');
+        return titleCell && titleCell.textContent.trim() === metricLabel;
+    });
+
+    if (!targetRow) {
+        console.error(`Metric "${metricLabel}" not found`);
+        return { success: false, error: 'Metric not found' };
+    }
+
+    const agreeCell = targetRow.querySelector('td.agree');
+    const disagreeCell = targetRow.querySelector('td.disagree');
+    const agreeButton = agreeCell.querySelector('button');
+    const disagreeButton = disagreeCell.querySelector('button');
+    
+    if (!agreeButton || !disagreeButton) {
+        console.error(`Buttons for "${metricLabel}" not found`);
+        return { success: false, error: 'Buttons not found' };
+    }
+
+    const currentState = getCurrentState(agreeCell, disagreeCell);
+    console.log(`Current state for ${metricLabel}: ${currentState}`);
+
+    let buttonToClick;
+    switch (vote) {
+        case 'agree':
+            buttonToClick = currentState !== 'agree' ? agreeButton : null;
+            break;
+        case 'disagree':
+            buttonToClick = currentState !== 'disagree' ? disagreeButton : null;
+            break;
+        case 'remove':
+            buttonToClick = currentState === 'agree' ? agreeButton : 
+                            currentState === 'disagree' ? disagreeButton : null;
+            break;
+    }
+
+    if (buttonToClick) {
+        console.log(`Clicking ${buttonToClick === agreeButton ? 'agree' : 'disagree'} button for "${metricLabel}"`);
+        buttonToClick.click();
+        await waitForStateChange(targetRow, currentState);
+    } else {
+        console.log(`No action needed for ${metricLabel} - already in desired state`);
+    }
+
+    console.log(`${metricLabel} ${vote} action completed`);
+    return { success: true };
+}
+
+function getCurrentState(agreeCell, disagreeCell) {
+    const agreeButton = agreeCell.querySelector('button');
+    const disagreeButton = disagreeCell.querySelector('button');
+
+    if (agreeButton.querySelector('.fa-thumbs-up')) {
+        return 'agree';
+    } else if (disagreeButton.querySelector('.fa-thumbs-down')) {
+        return 'disagree';
+    } else {
+        return 'none';
+    }
+}
+
+function waitForStateChange(row, originalState) {
+    return new Promise((resolve) => {
+        const observer = new MutationObserver(() => {
+            const newState = getCurrentState(row.querySelector('td.agree'), row.querySelector('td.disagree'));
+            if (newState !== originalState) {
+                observer.disconnect();
+                resolve();
+            }
+        });
+
+        observer.observe(row, { 
+            subtree: true, 
+            childList: true,
+            attributes: true,
+            attributeFilter: ['class']
+        });
+
+        // Timeout after 5 seconds in case the state doesn't change
+        setTimeout(() => {
+            observer.disconnect();
+            resolve();
+        }, 50);
+    });
+}
+
+function getMetricLabel(value) {
+    const metric = qualityMetrics.find(m => m.value === value);
+    return metric ? metric.label : value;
 }
 
 function animateButtonResult(button, success) {
@@ -987,25 +1104,52 @@ function updateRefreshIndicator(indicator = document.getElementById('refresh-ind
     }
 }
 
-function notifyUserOfQualityMetricChange() {
-    const notification = document.createElement('div');
-    notification.textContent = 'Quality metric updated. You may need to refresh the page to see all changes.';
-    notification.style.cssText = `
-        position: fixed;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: #4CAF50;
-        color: white;
-        padding: 15px;
-        border-radius: 5px;
-        z-index: 10000;
-    `;
-    document.body.appendChild(notification);
-    setTimeout(() => {
-        notification.remove();
-    }, 5000);
+async function updateQualityMetrics(observationId) {
+    try {
+        const jwt = await getJWT();
+        if (!jwt) {
+            console.error('No JWT found');
+            return;
+        }
+
+        const qualityMetricsUrl = `https://api.inaturalist.org/v1/observations/${observationId}/quality_metrics?ttl=-1`;
+        const response = await fetch(qualityMetricsUrl, {
+            headers: {
+                'Authorization': `Bearer ${jwt}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        updateQualityMetricsUI(data.results);
+    } catch (error) {
+        console.error('Error fetching quality metrics:', error);
+    }
 }
+
+
+function updateQualityMetricsUI(metrics) {
+    const qualityContainer = document.querySelector('.quality_assessment');
+    if (!qualityContainer) return;
+
+    metrics.forEach(metric => {
+        if (metric.metric === 'needs_id') return; // Skip the needs_id metric
+
+        const metricElement = qualityContainer.querySelector(`[data-metric="${metric.metric}"]`);
+        if (metricElement) {
+            metricElement.classList.toggle('assessed', metric.agree);
+            const icon = metricElement.querySelector('.fa');
+            if (icon) {
+                icon.classList.toggle('fa-check-circle', metric.agree);
+                icon.classList.toggle('fa-circle-o', !metric.agree);
+            }
+        }
+    });
+}
+
 
 function clearObservationId() {
     currentObservationId = null;
@@ -1021,6 +1165,10 @@ function performActions(actions) {
         return Promise.resolve();
     }
 
+    const isIdentifyPage = window.location.pathname.includes('/identify');
+    const isObservationPage = window.location.pathname.match(/^\/observations\/\d+/);
+    let needsPageUpdate = true;
+
     return actions.reduce((promise, action) => {
         return promise.then(() => {
             switch (action.type) {
@@ -1035,27 +1183,26 @@ function performActions(actions) {
                 case 'addTaxonId':
                     return addTaxonId(currentObservationId, action.taxonId);
                 case 'qualityMetric':
-                    return handleQualityMetric(currentObservationId, action.metric, action.vote)
-                        .then(result => {
-                            if (result.success && window.location.pathname.match(/^\/observations\/\d+/) && action.metric !== 'needs_id') {
-                                notifyUserOfQualityMetricChange();
-                            }
-                            return result;
-                        });
+                    if (isIdentifyPage || action.metric === 'needs_id') {
+                        return handleQualityMetricAPI(currentObservationId, action.metric, action.vote);
+                    } else {
+                        needsPageUpdate = false; // Don't update page for non-needs_id quality actions on observation page
+                        return handleQualityMetric(currentObservationId, action.metric, action.vote);
                     }
+            }
         });
     }, Promise.resolve())
     .then(() => {
-        if (window.location.pathname.match(/^\/observations\/\d+/)) {
+        if (isIdentifyPage) {
+            return refreshObservation();
+        } else if (isObservationPage && needsPageUpdate) {
             console.log('Actions completed. Updating the page...');
             return updateObservationPage(currentObservationId);
-        } else {
-            return refreshObservation();
         }
     })
     .catch(error => console.error('Error in performActions:', error));
 }
-  
+
   function refreshObservation() {
     return new Promise((resolve, reject) => {
         if (!refreshEnabled || !currentObservationId) {
