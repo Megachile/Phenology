@@ -619,6 +619,7 @@ function addActionToForm(action = null) {
             case 'addTaxonId':
                 taxonNameInput.value = action.taxonName;
                 taxonIdInput.value = action.taxonId;
+                taxonNameInput.dataset.taxonId = action.taxonId;     
                 break;
             case 'qualityMetric':
                 actionDiv.querySelector('.qualityMetricType').value = action.metric;
