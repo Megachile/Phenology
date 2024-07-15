@@ -292,7 +292,7 @@ function extractActionsFromForm() {
     });
 }
 
-function validateConfiguration(config) {
+function validateConfiguration(config, isEditing = false) {
     if (!config.name) {
         throw new Error("Please enter a button name.");
     }
@@ -303,7 +303,7 @@ function validateConfiguration(config) {
 
     if (config.shortcut && (config.shortcut.key || config.shortcut.ctrlKey || config.shortcut.shiftKey || config.shortcut.altKey)) {
         const conflictingShortcut = customButtons.find((button) => {
-            if (config.id && button.id === config.id) return false; // Ignore self when editing
+            if (isEditing && button.id === config.id) return false; 
             return button.shortcut &&
                    button.shortcut.key === config.shortcut.key &&
                    button.shortcut.ctrlKey === config.shortcut.ctrlKey &&
@@ -360,11 +360,11 @@ function updateOrAddConfiguration(config) {
     }
 }
 
-// Refactored save configuration function
 async function saveConfiguration() {
     try {
         const formData = extractFormData();
-        validateConfiguration(formData);
+        const isEditing = !!document.getElementById('saveButton').dataset.editIndex;
+        validateConfiguration(formData, isEditing);
 
         const editIndex = document.getElementById('saveButton').dataset.editIndex;
         const newConfig = {
@@ -844,22 +844,23 @@ function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunctio
                 return;
             }
             lookupFunction(inputElement.value)
-                .then(results => {
-                    suggestionContainer.innerHTML = '';
-                    results.forEach(result => {
-                        const suggestion = document.createElement('div');
-                        suggestion.className = 'autocomplete-suggestion';
-                        suggestion.textContent = result.title || result.name;
-                        suggestion.addEventListener('click', () => {
-                            inputElement.value = result.title || result.name;
-                            onSelectFunction(result, inputElement);
-                            suggestionContainer.innerHTML = '';
-                        });
-                        suggestionContainer.appendChild(suggestion);
+            .then(results => {
+                suggestionContainer.innerHTML = '';
+                results.forEach(result => {
+                    const suggestion = document.createElement('div');
+                    suggestion.className = 'autocomplete-suggestion';
+                    const usageCount = result.usageCount || 0;
+                    suggestion.textContent = `${result.title || result.name} (Used ${usageCount} times)`;
+                    suggestion.addEventListener('click', () => {
+                        inputElement.value = result.title || result.name;
+                        onSelectFunction(result, inputElement);
+                        suggestionContainer.innerHTML = '';
                     });
-                })
-                .catch(error => console.error('Error fetching suggestions:', error));
-        }, 300);
+                    suggestionContainer.appendChild(suggestion);
+                });
+            })
+            .catch(error => console.error('Error fetching suggestions:', error));
+          }, 300);
     });
 
     // Close dropdown when clicking outside
@@ -888,7 +889,11 @@ function lookupObservationField(name, perPage = 10) {
             })
             .then(data => {
                 if (data.results && data.results.length > 0) {
-                    resolve(data.results);
+                    const fieldsWithUsage = data.results.map(field => ({
+                        ...field,
+                        usageCount: field.values_count || 0 // Assuming 'values_count' represents usage
+                    }));
+                    resolve(fieldsWithUsage);
                 } else {
                     reject(new Error('No observation fields found'));
                 }
@@ -1222,7 +1227,10 @@ function setupTaxonAutocomplete(inputElement, idElement) {
     inputElement.parentNode.insertBefore(suggestionContainer, inputElement.nextSibling);
 
     let debounceTimeout;
-    inputElement.addEventListener('input', () => {
+    inputElement.addEventListener('input', showTaxonSuggestions);
+    inputElement.addEventListener('focus', showTaxonSuggestions);
+
+    function showTaxonSuggestions() {
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
             if (inputElement.value.length < 2) {
@@ -1251,7 +1259,8 @@ function setupTaxonAutocomplete(inputElement, idElement) {
                                 inputElement.value = taxon.preferred_common_name ? 
                                     `${taxon.preferred_common_name} (${taxon.name})` : 
                                     taxon.name;
-                                    inputElement.dataset.taxonId = taxon.id;
+                                inputElement.dataset.taxonId = taxon.id;
+                                idElement.value = taxon.id;
                                 suggestionContainer.innerHTML = '';
                             }
                         });
@@ -1260,7 +1269,7 @@ function setupTaxonAutocomplete(inputElement, idElement) {
                 })
                 .catch(error => console.error('Error fetching taxa:', error));
         }, 300);
-    });
+    }
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (event) => {
