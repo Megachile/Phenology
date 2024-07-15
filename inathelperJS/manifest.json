@@ -21,6 +21,9 @@
         "https://www.inaturalist.org/observations/identify*",
         "https://www.inaturalist.org/observations/*"
   ],
+  "exclude_matches": [
+      "https://www.inaturalist.org/observations/upload*"
+    ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
