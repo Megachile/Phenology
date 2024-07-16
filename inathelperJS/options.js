@@ -107,13 +107,21 @@ const qualityMetrics = [
 
 function isShortcutForbidden(shortcut) {
     if (!shortcut) return false; // If no shortcut, it can't be forbidden
-    return forbiddenShortcuts.some(forbidden => {
+
+    // Check against predefined forbidden shortcuts
+    const isForbidden = forbiddenShortcuts.some(forbidden => {
         return Object.keys(forbidden).every(key => 
             key === 'key' ? 
                 forbidden[key].toLowerCase() === (shortcut.key || '').toLowerCase() :
                 !!forbidden[key] === !!shortcut[key]
         );
     });
+
+    // Check if it's a single key press used by iNaturalist
+    const isSingleKeyPress = !shortcut.ctrlKey && !shortcut.shiftKey && !shortcut.altKey &&
+                             iNatSingleKeyPresses.includes(shortcut.key.toLowerCase());
+
+    return isForbidden || isSingleKeyPress;
 }
 
 function toggleSort() {
@@ -256,7 +264,7 @@ function validateNewConfiguration(config) {
     }
 
     if (config.shortcut && isShortcutForbidden(config.shortcut)) {
-        throw new Error("This shortcut is not allowed as it conflicts with browser functionality or extension shortcuts.");
+        throw new Error("This shortcut is not allowed as it conflicts with iNat shortcuts, browser functionality, or extension shortcuts.");
     }
 
     if (config.shortcut && (config.shortcut.key || config.shortcut.ctrlKey || config.shortcut.shiftKey || config.shortcut.altKey)) {
@@ -360,9 +368,18 @@ async function saveConfiguration() {
 
         updateOrAddConfiguration(newConfig);
 
+        // Update button order
+        let buttonOrder = await browserAPI.storage.sync.get('buttonOrder');
+        buttonOrder = buttonOrder.buttonOrder || [];
+        if (!editIndex) {
+            // If it's a new button, add it to the end of the order
+            buttonOrder.push(newConfig.id);
+        }
+
         await browserAPI.storage.sync.set({
             customButtons: customButtons,
             observationFieldMap: observationFieldMap,
+            buttonOrder: buttonOrder,
             lastConfigUpdate: Date.now(),
         });
 

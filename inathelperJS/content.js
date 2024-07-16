@@ -1378,53 +1378,58 @@ function createDynamicButtons() {
             orderedButtons.forEach(buttonId => {
                 const config = data.customButtons.find(c => c.id === buttonId);
                 if (config && !config.configurationDisabled) {
-                    let button = document.createElement('button');
-                    button.classList.add('button-ph');
-                    button.draggable = true;
-                    button.dataset.buttonId = config.id;
-                    button.innerText = config.name;
-                    
-                    // Create tooltip if shortcut exists
-                    if (config.shortcut && config.shortcut.key) {
-                        let tooltip = document.createElement('span');
-                        tooltip.classList.add('tooltip');
-                        tooltip.textContent = formatShortcut(config.shortcut);
-                        button.appendChild(tooltip);
-                    }
-                    button.onclick = function(e) {
-                        if (!hasMoved) {  // Only trigger click if not dragging
-                            animateButton(this);
-                            performActions(config.actions)
-                                .then(() => {
-                                    animateButtonResult(this, true);
-                                })
-                                .catch(error => {
-                                    console.error('Error performing actions:', error);
-                                    animateButtonResult(this, false);
-                                });
-                        }
-                        hasMoved = false; // Reset hasMoved after the click event
-                    };
-                    button.style.display = config.buttonHidden ? 'none' : 'inline-block';
- 
-                    buttonContainer.appendChild(button);
-
-                    if (config.shortcut) {
-                        customShortcuts.push({
-                            name: config.name,
-                            key: config.shortcut.key,
-                            ctrlKey: config.shortcut.ctrlKey,
-                            shiftKey: config.shortcut.shiftKey,
-                            altKey: config.shortcut.altKey,
-                            button: button  // Store the button element itself
-                        });
-                    }
+                    createButton(config);
                 }
             });
 
             initializeDragAndDrop();
         }
     });
+}
+
+function createButton(config) {
+    let button = document.createElement('button');
+    button.classList.add('button-ph');
+    button.draggable = true;
+    button.dataset.buttonId = config.id;
+    button.innerText = config.name;
+    
+    // Create tooltip if shortcut exists
+    if (config.shortcut && config.shortcut.key) {
+        let tooltip = document.createElement('span');
+        tooltip.classList.add('tooltip');
+        tooltip.textContent = formatShortcut(config.shortcut);
+        button.appendChild(tooltip);
+    }
+    
+    button.onclick = function(e) {
+        if (!hasMoved) {  // Only trigger click if not dragging
+            animateButton(this);
+            performActions(config.actions)
+                .then(() => {
+                    animateButtonResult(this, true);
+                })
+                .catch(error => {
+                    console.error('Error performing actions:', error);
+                    animateButtonResult(this, false);
+                });
+        }
+        hasMoved = false; // Reset hasMoved after the click event
+    };
+    
+    button.style.display = config.buttonHidden ? 'none' : 'inline-block';
+    buttonContainer.appendChild(button);
+
+    if (config.shortcut) {
+        customShortcuts.push({
+            name: config.name,
+            key: config.shortcut.key,
+            ctrlKey: config.shortcut.ctrlKey,
+            shiftKey: config.shortcut.shiftKey,
+            altKey: config.shortcut.altKey,
+            button: button  // Store the button element itself
+        });
+    }
 }
 function formatShortcut(shortcut) {
     if (!shortcut || !shortcut.key) return '';
