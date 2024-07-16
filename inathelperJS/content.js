@@ -12,6 +12,7 @@ let currentJWT = null;
 let currentObservationId = null;
 let checkInterval = null;
 let observationTabsContainer = null;
+let hasMoved = false;
 
 const qualityMetrics = [
     { value: 'needs_id', label: 'Can the Community Taxon still be confirmed or improved?' },
@@ -251,9 +252,13 @@ function handleAllShortcuts(event) {
             event.ctrlKey === shortcut.ctrlKey &&
             event.shiftKey === shortcut.shiftKey &&
             event.altKey === shortcut.altKey) {
-            // Find and click the corresponding button
-            const button = Array.from(document.querySelectorAll('button')).find(btn => btn.innerText === shortcut.name);
-            if (button) button.click();
+            console.log('Custom shortcut matched:', shortcut.name);
+            if (shortcut.button && shortcut.button.isConnected) {
+                console.log('Clicking button:', shortcut.button.innerText);
+                shortcut.button.click();
+            } else {
+                console.log('Button not found or not connected to DOM for shortcut:', shortcut.name);
+            }
         }
     });
 }
@@ -1386,7 +1391,6 @@ function createDynamicButtons() {
                         tooltip.textContent = formatShortcut(config.shortcut);
                         button.appendChild(tooltip);
                     }
-
                     button.onclick = function(e) {
                         if (!hasMoved) {  // Only trigger click if not dragging
                             animateButton(this);
@@ -1399,6 +1403,7 @@ function createDynamicButtons() {
                                     animateButtonResult(this, false);
                                 });
                         }
+                        hasMoved = false; // Reset hasMoved after the click event
                     };
                     button.style.display = config.buttonHidden ? 'none' : 'inline-block';
  
@@ -1411,7 +1416,7 @@ function createDynamicButtons() {
                             ctrlKey: config.shortcut.ctrlKey,
                             shiftKey: config.shortcut.shiftKey,
                             altKey: config.shortcut.altKey,
-                            button: button
+                            button: button  // Store the button element itself
                         });
                     }
                 }
@@ -1445,7 +1450,6 @@ function initializeDragAndDrop() {
     let placeholder = null;
     let dragStartX, dragStartY;
     const moveThreshold = 5; // pixels
-    let hasMoved = false;
 
     container.addEventListener('mousedown', (e) => {
         if (e.target.classList.contains('button-ph')) {
@@ -1453,7 +1457,7 @@ function initializeDragAndDrop() {
             const rect = draggingElement.getBoundingClientRect();
             dragStartX = e.clientX - rect.left;
             dragStartY = e.clientY - rect.top;
-            hasMoved = false;
+            hasMoved = false; // Reset hasMoved when starting a drag
 
             // Store original container dimensions
             container.style.setProperty('--original-height', `${container.offsetHeight}px`);
@@ -1472,7 +1476,7 @@ function initializeDragAndDrop() {
             const deltaY = e.clientY - dragStartY - draggingElement.offsetTop;
             
             if (!hasMoved && (Math.abs(deltaX) > moveThreshold || Math.abs(deltaY) > moveThreshold)) {
-                hasMoved = true;
+                hasMoved = true; // Set hasMoved to true when movement threshold is exceeded
                 placeholder = document.createElement('div');
                 placeholder.classList.add('button-placeholder');
                 placeholder.style.width = `${draggingElement.offsetWidth}px`;
