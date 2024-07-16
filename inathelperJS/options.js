@@ -133,90 +133,46 @@ function filterConfigurations() {
 }
 
 function updateFieldValueInput(field, container) {
-    container.innerHTML = '';
-    let input;
+    const existingInput = container.querySelector('.fieldValue');
+    let input = existingInput || document.createElement('input');
+    input.className = 'fieldValue';
 
     switch (field.datatype) {
         case 'text':
         case 'date':
         case 'datetime':
         case 'time':
-            input = document.createElement('input');
             input.type = field.datatype;
             break;
         case 'numeric':
-            input = document.createElement('input');
             input.type = 'number';
             break;
         case 'boolean':
-            input = document.createElement('select');
+            const select = document.createElement('select');
+            select.className = 'fieldValue';
             ['', 'Yes', 'No'].forEach(option => {
                 const opt = document.createElement('option');
                 opt.value = option;
                 opt.textContent = option;
-                input.appendChild(opt);
+                select.appendChild(opt);
             });
+            input = select;
             break;
-            case 'taxon':
-                input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'fieldValue taxonInput';
-                input.placeholder = 'Enter species name';
-                
-                const suggestionContainer = document.createElement('div');
-                suggestionContainer.className = 'taxonSuggestions';
-                container.appendChild(input);
-                container.appendChild(suggestionContainer);
-    
-                let debounceTimeout;
-                input.addEventListener('input', () => {
-                    clearTimeout(debounceTimeout);
-                    debounceTimeout = setTimeout(() => {
-                        if (input.value.length < 2) {
-                            suggestionContainer.innerHTML = '';
-                            return;
-                        }
-                        lookupTaxon(input.value)
-                            .then(taxa => {
-                                suggestionContainer.innerHTML = '';
-                                taxa.forEach(taxon => {
-                                    const suggestion = document.createElement('div');
-                                    suggestion.className = 'taxonSuggestion';
-                                    suggestion.innerHTML = `
-                                        <img src="${taxon.default_photo?.square_url || 'placeholder.jpg'}" alt="${taxon.name}">
-                                        <span class="taxon-name">
-                                            ${taxon.preferred_common_name ? `${taxon.preferred_common_name} (` : ''}
-                                            <a href="https://www.inaturalist.org/taxa/${taxon.id}" target="_blank" class="taxon-link">
-                                                ${taxon.name}
-                                            </a>
-                                            ${taxon.preferred_common_name ? ')' : ''}
-                                        </span>
-                                    `;
-                                    suggestion.addEventListener('click', (event) => {
-                                        if (event.target.tagName !== 'A') {
-                                            event.preventDefault();
-                                            input.value = taxon.preferred_common_name ? 
-                                                `${taxon.preferred_common_name} (${taxon.name})` : 
-                                                taxon.name;
-                                            input.dataset.taxonId = taxon.id;
-                                            suggestionContainer.innerHTML = '';
-                                        }
-                                    });
-                                    suggestionContainer.appendChild(suggestion);
-                                });
-                            })
-                            .catch(error => console.error('Error fetching taxa:', error));
-                    }, 300);
-                });
-                break;
+        case 'taxon':
+            input.type = 'text';
+            input.className += ' taxonInput';
+            input.placeholder = 'Enter species name';
+            break;
         default:
-            input = document.createElement('input');
             input.type = 'text';
     }
 
-    input.className = 'fieldValue';
     input.placeholder = 'Field Value';
-    container.appendChild(input);
+    
+    if (!existingInput) {
+        container.innerHTML = '';
+        container.appendChild(input);
+    }
 
     if (field.allowed_values && field.datatype !== 'taxon') {
         const allowedValues = field.allowed_values.split('|');
@@ -232,6 +188,8 @@ function updateFieldValueInput(field, container) {
             input.setAttribute('list', datalist.id);
         }
     }
+
+    return input;
 }
 
 function extractFormData() {
@@ -292,7 +250,7 @@ function extractActionsFromForm() {
     });
 }
 
-function validateConfiguration(config, isEditing = false) {
+function validateNewConfiguration(config) {
     if (!config.name) {
         throw new Error("Please enter a button name.");
     }
@@ -303,7 +261,6 @@ function validateConfiguration(config, isEditing = false) {
 
     if (config.shortcut && (config.shortcut.key || config.shortcut.ctrlKey || config.shortcut.shiftKey || config.shortcut.altKey)) {
         const conflictingShortcut = customButtons.find((button) => {
-            if (isEditing && button.id === config.id) return false; 
             return button.shortcut &&
                    button.shortcut.key === config.shortcut.key &&
                    button.shortcut.ctrlKey === config.shortcut.ctrlKey &&
@@ -316,6 +273,37 @@ function validateConfiguration(config, isEditing = false) {
         }
     }
 
+    validateCommonConfiguration(config);
+}
+
+function validateEditConfiguration(config, originalConfig) {
+    if (!config.name) {
+        throw new Error("Please enter a button name.");
+    }
+
+    if (config.shortcut && isShortcutForbidden(config.shortcut)) {
+        throw new Error("This shortcut is not allowed as it conflicts with browser functionality or extension shortcuts.");
+    }
+
+    if (config.shortcut && (config.shortcut.key || config.shortcut.ctrlKey || config.shortcut.shiftKey || config.shortcut.altKey)) {
+        const conflictingShortcut = customButtons.find((button) => {
+            return button.id !== originalConfig.id && // Ignore the original config
+                   button.shortcut &&
+                   button.shortcut.key === config.shortcut.key &&
+                   button.shortcut.ctrlKey === config.shortcut.ctrlKey &&
+                   button.shortcut.shiftKey === config.shortcut.shiftKey &&
+                   button.shortcut.altKey === config.shortcut.altKey;
+        });
+
+        if (conflictingShortcut) {
+            throw new Error(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
+        }
+    }
+
+    validateCommonConfiguration(config);
+}
+
+function validateCommonConfiguration(config) {
     if (config.actions.length === 0) {
         throw new Error("Please add at least one action to the configuration.");
     }
@@ -351,22 +339,18 @@ function validateConfiguration(config, isEditing = false) {
     });
 }
 
-function updateOrAddConfiguration(config) {
-    const existingIndex = customButtons.findIndex(c => c.id === config.id);
-    if (existingIndex !== -1) {
-        customButtons[existingIndex] = config;
-    } else {
-        customButtons.push(config);
-    }
-}
-
 async function saveConfiguration() {
     try {
         const formData = extractFormData();
-        const isEditing = !!document.getElementById('saveButton').dataset.editIndex;
-        validateConfiguration(formData, isEditing);
-
         const editIndex = document.getElementById('saveButton').dataset.editIndex;
+        
+        if (editIndex) {
+            const originalConfig = customButtons.find(c => c.id === editIndex);
+            validateEditConfiguration(formData, originalConfig);
+        } else {
+            validateNewConfiguration(formData);
+        }
+
         const newConfig = {
             id: editIndex || Date.now().toString(),
             ...formData,
@@ -389,13 +373,27 @@ async function saveConfiguration() {
         alert(error.message);
     }
 }
+
+
+function updateOrAddConfiguration(config) {
+    const existingIndex = customButtons.findIndex(c => c.id === config.id);
+    if (existingIndex !== -1) {
+        customButtons[existingIndex] = config;
+    } else {
+        customButtons.push(config);
+    }
+}
+
 function editConfiguration(configId) {
     try {
+        console.log('Editing configuration:', configId);
         const config = customButtons.find(c => c.id === configId);
         if (!config) {
             console.error(`Configuration with id ${configId} not found`);
             return;
         }
+
+        console.log('Found configuration:', config);
 
         document.getElementById('buttonName').value = config.name;
         
@@ -412,7 +410,9 @@ function editConfiguration(configId) {
         }
 
         document.getElementById('actionsContainer').innerHTML = '';
-        config.actions.forEach(action => {
+        console.log('Adding actions to form');
+        config.actions.forEach((action, index) => {
+            console.log(`Adding action ${index + 1}:`, action);
             addActionToForm(action);
         });
 
@@ -421,20 +421,23 @@ function editConfiguration(configId) {
         saveButton.dataset.editIndex = configId;
 
         window.scrollTo(0, 0);
+        console.log('Configuration loaded for editing');
     } catch (error) {
         console.error('Error in editConfiguration:', error);
-        alert('An error occurred while editing the configuration. Please try again.');
+        alert(`An error occurred while editing the configuration: ${error.message}\n\nPlease check the console for more details.`);
     }
 }
 
 function duplicateConfiguration(configId) {
     try {
+        console.log('Duplicating configuration:', configId);
         const config = customButtons.find(c => c.id === configId);
         if (!config) {
             console.error(`Configuration with id ${configId} not found`);
             return;
         }
 
+        console.log('Found configuration to duplicate:', config);
         editConfiguration(configId); // Reuse edit logic
 
         document.getElementById('buttonName').value = `${config.name} (Copy)`;
@@ -442,6 +445,8 @@ function duplicateConfiguration(configId) {
         const saveButton = document.getElementById('saveButton');
         saveButton.textContent = 'Save New Configuration';
         delete saveButton.dataset.editIndex;
+
+        console.log('Configuration duplicated and ready for editing');
     } catch (error) {
         console.error('Error in duplicateConfiguration:', error);
         alert('An error occurred while duplicating the configuration. Please try again.');
@@ -555,20 +560,37 @@ function addActionToForm(action = null) {
     const fieldNameInput = actionDiv.querySelector('.fieldName');
     const fieldIdInput = actionDiv.querySelector('.fieldId');
     const fieldValueContainer = actionDiv.querySelector('.fieldValueContainer');
+    const fieldValueInput = fieldValueContainer.querySelector('.fieldValue');
+    
     setupAutocompleteDropdown(fieldNameInput, lookupObservationField, (result) => {
         fieldIdInput.value = result.id;
-        updateFieldValueInput(result, fieldValueContainer);
+        const updatedFieldValueInput = updateFieldValueInput(result, fieldValueContainer);
+        if (result.datatype === 'taxon') {
+            setupTaxonAutocompleteForInput(updatedFieldValueInput);
+        }
     });
+
+    const taxonNameInput = actionDiv.querySelector('.taxonName');
+    const taxonIdInput = actionDiv.querySelector('.taxonId');
+    
+    function setupTaxonAutocompleteForInput(input, idInput) {
+        if (input) {
+            setupTaxonAutocomplete(input, idInput);
+            input.addEventListener('focus', () => {
+                if (input.value.length >= 2) {
+                    input.dispatchEvent(new Event('input'));
+                }
+            });
+        }
+    }
+          
+    setupTaxonAutocompleteForInput(taxonNameInput, taxonIdInput);
 
     const projectNameInput = actionDiv.querySelector('.projectName');
     const projectIdInput = actionDiv.querySelector('.projectId');
     setupAutocompleteDropdown(projectNameInput, lookupProject, (result) => {
         projectIdInput.value = result.id;
     });
-
-    const taxonNameInput = actionDiv.querySelector('.taxonName');
-    const taxonIdInput = actionDiv.querySelector('.taxonId');
-    setupTaxonAutocomplete(taxonNameInput, taxonIdInput);
 
     const annotationField = actionDiv.querySelector('.annotationField');
     const annotationValue = actionDiv.querySelector('.annotationValue');
@@ -596,12 +618,28 @@ function addActionToForm(action = null) {
         
         switch (action.type) {
             case 'observationField':
-                actionDiv.querySelector('.fieldId').value = action.fieldId;
-                actionDiv.querySelector('.fieldName').value = action.fieldName || '';
-                const fieldValueInput = actionDiv.querySelector('.fieldValue');
+                fieldNameInput.value = action.fieldName || '';
+                fieldIdInput.value = action.fieldId;
                 fieldValueInput.value = action.displayValue || action.fieldValue;
                 if (action.taxonId) {
                     fieldValueInput.dataset.taxonId = action.taxonId;
+                }
+                lookupObservationField(action.fieldName).then(results => {
+                    const field = results.find(f => f.id.toString() === action.fieldId);
+                    if (field) {
+                        const updatedFieldValueInput = updateFieldValueInput(field, fieldValueContainer);
+                        if (field.datatype === 'taxon') {
+                            setupTaxonAutocompleteForInput(updatedFieldValueInput);
+                        }
+                    }
+                });
+                break;
+            case 'addTaxonId':
+                if (taxonNameInput && taxonIdInput) {
+                    taxonNameInput.value = action.taxonName;
+                    taxonIdInput.value = action.taxonId;
+                    taxonNameInput.dataset.taxonId = action.taxonId;
+                    taxonNameInput.dispatchEvent(new Event('focus'));
                 }
                 break;
             case 'annotation':
@@ -615,11 +653,6 @@ function addActionToForm(action = null) {
                 break;
             case 'addComment':
                 actionDiv.querySelector('.commentBody').value = action.commentBody;
-                break;
-            case 'addTaxonId':
-                taxonNameInput.value = action.taxonName;
-                taxonIdInput.value = action.taxonId;
-                taxonNameInput.dataset.taxonId = action.taxonId;     
                 break;
             case 'qualityMetric':
                 actionDiv.querySelector('.qualityMetricType').value = action.metric;
@@ -830,38 +863,56 @@ function formatShortcut(shortcut) {
     return parts.join(' + ');
 }
 
-function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunction) {
+function setupTaxonAutocomplete(inputElement, idElement) {
     const suggestionContainer = document.createElement('div');
-    suggestionContainer.className = 'autocomplete-suggestions';
+    suggestionContainer.className = 'taxonSuggestions';
     inputElement.parentNode.insertBefore(suggestionContainer, inputElement.nextSibling);
 
     let debounceTimeout;
-    inputElement.addEventListener('input', () => {
+
+    function showTaxonSuggestions() {
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
             if (inputElement.value.length < 2) {
                 suggestionContainer.innerHTML = '';
                 return;
             }
-            lookupFunction(inputElement.value)
-            .then(results => {
-                suggestionContainer.innerHTML = '';
-                results.forEach(result => {
-                    const suggestion = document.createElement('div');
-                    suggestion.className = 'autocomplete-suggestion';
-                    const usageCount = result.usageCount || 0;
-                    suggestion.textContent = `${result.title || result.name} (Used ${usageCount} times)`;
-                    suggestion.addEventListener('click', () => {
-                        inputElement.value = result.title || result.name;
-                        onSelectFunction(result, inputElement);
-                        suggestionContainer.innerHTML = '';
+            lookupTaxon(inputElement.value)
+                .then(taxa => {
+                    suggestionContainer.innerHTML = '';
+                    taxa.forEach(taxon => {
+                        const suggestion = document.createElement('div');
+                        suggestion.className = 'taxonSuggestion';
+                        suggestion.innerHTML = `
+                            <img src="${taxon.default_photo?.square_url || 'placeholder.jpg'}" alt="${taxon.name}">
+                            <span class="taxon-name">
+                                ${taxon.preferred_common_name ? `${taxon.preferred_common_name} (` : ''}
+                                <a href="https://www.inaturalist.org/taxa/${taxon.id}" target="_blank" class="taxon-link">
+                                    ${taxon.name}
+                                </a>
+                                ${taxon.preferred_common_name ? ')' : ''}
+                            </span>
+                        `;
+                        suggestion.addEventListener('click', (event) => {
+                            if (event.target.tagName !== 'A') {
+                                event.preventDefault();
+                                inputElement.value = taxon.preferred_common_name ? 
+                                    `${taxon.preferred_common_name} (${taxon.name})` : 
+                                    taxon.name;
+                                inputElement.dataset.taxonId = taxon.id;
+                                if (idElement) idElement.value = taxon.id;
+                                suggestionContainer.innerHTML = '';
+                            }
+                        });
+                        suggestionContainer.appendChild(suggestion);
                     });
-                    suggestionContainer.appendChild(suggestion);
-                });
-            })
-            .catch(error => console.error('Error fetching suggestions:', error));
-          }, 300);
-    });
+                })
+                .catch(error => console.error('Error fetching taxa:', error));
+        }, 300);
+    }
+
+    inputElement.addEventListener('input', showTaxonSuggestions);
+    inputElement.addEventListener('focus', showTaxonSuggestions);
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (event) => {
@@ -1221,55 +1272,40 @@ function resolveConflicts(conflicts, callback) {
     resolveConflicts(conflicts, callback);
 }
 
-function setupTaxonAutocomplete(inputElement, idElement) {
+function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunction) {
     const suggestionContainer = document.createElement('div');
-    suggestionContainer.className = 'taxonSuggestions';
+    suggestionContainer.className = 'autocomplete-suggestions';
     inputElement.parentNode.insertBefore(suggestionContainer, inputElement.nextSibling);
 
     let debounceTimeout;
-    inputElement.addEventListener('input', showTaxonSuggestions);
-    inputElement.addEventListener('focus', showTaxonSuggestions);
-
-    function showTaxonSuggestions() {
+    inputElement.addEventListener('input', () => {
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
             if (inputElement.value.length < 2) {
                 suggestionContainer.innerHTML = '';
                 return;
             }
-            lookupTaxon(inputElement.value)
-                .then(taxa => {
+            lookupFunction(inputElement.value)
+                .then(results => {
                     suggestionContainer.innerHTML = '';
-                    taxa.forEach(taxon => {
+                    results.forEach(result => {
                         const suggestion = document.createElement('div');
-                        suggestion.className = 'taxonSuggestion';
-                        suggestion.innerHTML = `
-                            <img src="${taxon.default_photo?.square_url || 'placeholder.jpg'}" alt="${taxon.name}">
-                            <span class="taxon-name">
-                                ${taxon.preferred_common_name ? `${taxon.preferred_common_name} (` : ''}
-                                <a href="https://www.inaturalist.org/taxa/${taxon.id}" target="_blank" class="taxon-link">
-                                    ${taxon.name}
-                                </a>
-                                ${taxon.preferred_common_name ? ')' : ''}
-                            </span>
-                        `;
-                        suggestion.addEventListener('click', (event) => {
-                            if (event.target.tagName !== 'A') {
-                                event.preventDefault();
-                                inputElement.value = taxon.preferred_common_name ? 
-                                    `${taxon.preferred_common_name} (${taxon.name})` : 
-                                    taxon.name;
-                                inputElement.dataset.taxonId = taxon.id;
-                                idElement.value = taxon.id;
-                                suggestionContainer.innerHTML = '';
-                            }
+                        suggestion.className = 'autocomplete-suggestion';
+                        suggestion.textContent = result.title || result.name;
+                        if (result.usageCount !== undefined) {
+                            suggestion.textContent += ` (Used: ${result.usageCount} times)`;
+                        }
+                        suggestion.addEventListener('click', () => {
+                            inputElement.value = result.title || result.name;
+                            onSelectFunction(result, inputElement);
+                            suggestionContainer.innerHTML = '';
                         });
                         suggestionContainer.appendChild(suggestion);
                     });
                 })
-                .catch(error => console.error('Error fetching taxa:', error));
+                .catch(error => console.error('Error fetching suggestions:', error));
         }, 300);
-    }
+    });
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (event) => {
