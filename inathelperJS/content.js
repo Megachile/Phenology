@@ -494,6 +494,8 @@ document.addEventListener('DOMContentLoaded', function() {
         createOrUpdateIdDisplay(observationId);
     }
     checkForConfigUpdates();
+    initializeDragAndDrop();
+    loadButtonOrder();
 });
 
 // Handle URL changes
@@ -999,7 +1001,6 @@ function animateButtonResult(button, success) {
         button.classList.remove('button-success', 'button-failure');
     }, 1200); 
 }
-
 const style = document.createElement('style');
 style.textContent = `
   #observation-id-display {
@@ -1028,17 +1029,21 @@ style.textContent = `
   }
   .button-success {
       animation: pulseGreen 1.5s ease-out;
-      background-color: rgba(0, 255, 0, 0.7);
+      background-color: rgba(0, 255, 0, 0.7) !important;
   }
   .button-failure {
       animation: pulseRed 1.5s ease-out;
-      background-color: rgba(255, 0, 0, 0.7);
+      background-color: rgba(255, 0, 0, 0.7) !important;
   }
   #custom-extension-container {
       display: flex;
       flex-wrap: wrap;
       gap: 5px;
       max-width: 600px;
+  }
+    #custom-extension-container.dragging {
+    height: var(--original-height);
+    width: var(--original-width);
   }
   .button-ph {
     font-size: 14px;
@@ -1053,15 +1058,31 @@ style.textContent = `
     cursor: pointer;
     transition: background-color 0.3s ease;
     position: relative;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .button-ph:hover {
-      background-color: rgba(0, 0, 0, 0.7); /* Darker background on hover */
+      background-color: rgba(0, 0, 0, 0.7);
+  }
+  .button-ph.dragging {
+    opacity: 0.5;
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+  }
+  .button-placeholder {
+    border: 2px dashed #ccc;
+    background-color: #f0f0f0;
+    min-width: 100px;
+    flex-grow: 1;
+    margin: 3px;
+    border-radius: 5px;
   }
   #custom-extension-input {
       width: 120px;
   }
-  .tooltip {
-    visibility: hidden;
+  .button-ph .tooltip {
+    visibility: visible;
     background-color: black;
     color: white;
     text-align: center;
@@ -1071,14 +1092,15 @@ style.textContent = `
     z-index: 10002;
     bottom: 125%;
     left: 50%;
-    margin-left: -60px;
+    transform: translateX(-50%);
     opacity: 0;
     transition: opacity 0.3s;
-}
-    .button-ph:hover .tooltip {
+  }
+  .button-ph:hover .tooltip {
     visibility: visible;
     opacity: 1;
-}
+    pointer-events: auto;
+  }
   #custom-extension-input:focus + .tooltip {
       display: block;
   }
@@ -1341,14 +1363,20 @@ function toggleRefresh() {
 }
 
 function createDynamicButtons() {
-    browserAPI.storage.sync.get('customButtons', function(data) {
+    browserAPI.storage.sync.get(['customButtons', 'buttonOrder'], function(data) {
         if (data.customButtons && data.customButtons.length > 0) {
             customShortcuts = [];
+            buttonContainer.innerHTML = ''; // Clear existing buttons
 
-            data.customButtons.forEach(config => {
-                if (!config.configurationDisabled) {
+            const orderedButtons = data.buttonOrder || data.customButtons.map(config => config.id);
+
+            orderedButtons.forEach(buttonId => {
+                const config = data.customButtons.find(c => c.id === buttonId);
+                if (config && !config.configurationDisabled) {
                     let button = document.createElement('button');
                     button.classList.add('button-ph');
+                    button.draggable = true;
+                    button.dataset.buttonId = config.id;
                     button.innerText = config.name;
                     
                     // Create tooltip if shortcut exists
@@ -1359,16 +1387,18 @@ function createDynamicButtons() {
                         button.appendChild(tooltip);
                     }
 
-                    button.onclick = function() {
-                        animateButton(this);
-                        performActions(config.actions)
-                            .then(() => {
-                                animateButtonResult(this, true);
-                            })
-                            .catch(error => {
-                                console.error('Error performing actions:', error);
-                                animateButtonResult(this, false);
-                            });
+                    button.onclick = function(e) {
+                        if (!hasMoved) {  // Only trigger click if not dragging
+                            animateButton(this);
+                            performActions(config.actions)
+                                .then(() => {
+                                    animateButtonResult(this, true);
+                                })
+                                .catch(error => {
+                                    console.error('Error performing actions:', error);
+                                    animateButtonResult(this, false);
+                                });
+                        }
                     };
                     button.style.display = config.buttonHidden ? 'none' : 'inline-block';
  
@@ -1386,10 +1416,11 @@ function createDynamicButtons() {
                     }
                 }
             });
+
+            initializeDragAndDrop();
         }
     });
 }
-
 function formatShortcut(shortcut) {
     if (!shortcut || !shortcut.key) return '';
     let parts = [];
@@ -1401,11 +1432,135 @@ function formatShortcut(shortcut) {
 }
 
 
-createDynamicButtons();
-
 window.addEventListener('error', function(event) {
     if (event.error && event.error.message && event.error.message.includes('Extension context invalidated')) {
         console.log('Extension context invalidated. This is likely due to the extension being reloaded.');
         event.preventDefault(); // Prevent the error from being thrown
     }
 });
+
+function initializeDragAndDrop() {
+    const container = document.getElementById('custom-extension-container');
+    let draggingElement = null;
+    let placeholder = null;
+    let dragStartX, dragStartY;
+    const moveThreshold = 5; // pixels
+    let hasMoved = false;
+
+    container.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('button-ph')) {
+            draggingElement = e.target;
+            const rect = draggingElement.getBoundingClientRect();
+            dragStartX = e.clientX - rect.left;
+            dragStartY = e.clientY - rect.top;
+            hasMoved = false;
+
+            // Store original container dimensions
+            container.style.setProperty('--original-height', `${container.offsetHeight}px`);
+            container.style.setProperty('--original-width', `${container.offsetWidth}px`);
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            
+            e.preventDefault();
+        }
+    });
+
+    function onMouseMove(e) {
+        if (draggingElement) {
+            const deltaX = e.clientX - dragStartX - draggingElement.offsetLeft;
+            const deltaY = e.clientY - dragStartY - draggingElement.offsetTop;
+            
+            if (!hasMoved && (Math.abs(deltaX) > moveThreshold || Math.abs(deltaY) > moveThreshold)) {
+                hasMoved = true;
+                placeholder = document.createElement('div');
+                placeholder.classList.add('button-placeholder');
+                placeholder.style.width = `${draggingElement.offsetWidth}px`;
+                placeholder.style.height = `${draggingElement.offsetHeight}px`;
+                draggingElement.parentNode.insertBefore(placeholder, draggingElement.nextSibling);
+                draggingElement.classList.add('dragging');
+                container.classList.add('dragging');
+            }
+
+            if (hasMoved) {
+                draggingElement.style.left = `${e.clientX - dragStartX}px`;
+                draggingElement.style.top = `${e.clientY - dragStartY}px`;
+                
+                const closestButton = getClosestButton(container, e.clientX, e.clientY);
+                if (closestButton && closestButton !== placeholder) {
+                    if (isBeforeButton(e.clientY, closestButton)) {
+                        closestButton.parentNode.insertBefore(placeholder, closestButton);
+                    } else {
+                        closestButton.parentNode.insertBefore(placeholder, closestButton.nextSibling);
+                    }
+                }
+            }
+        }
+    }
+
+    function onMouseUp() {
+        if (draggingElement) {
+            draggingElement.classList.remove('dragging');
+            draggingElement.style.removeProperty('left');
+            draggingElement.style.removeProperty('top');
+            container.classList.remove('dragging');
+            if (placeholder) {
+                placeholder.parentNode.insertBefore(draggingElement, placeholder);
+                placeholder.remove();
+            }
+            if (hasMoved) {
+                saveButtonOrder();
+            }
+        }
+        
+        draggingElement = null;
+        placeholder = null;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    }
+}
+
+
+function getClosestButton(container, x, y) {
+    const buttons = Array.from(container.querySelectorAll('.button-ph:not(.dragging), .button-placeholder'));
+    return buttons.reduce((closest, button) => {
+        const box = button.getBoundingClientRect();
+        const offsetX = x - (box.left + box.width / 2);
+        const offsetY = y - (box.top + box.height / 2);
+        const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+        
+        if (distance < closest.distance) {
+            return { distance, element: button };
+        } else {
+            return closest;
+        }
+    }, { distance: Number.POSITIVE_INFINITY }).element;
+}
+
+function isBeforeButton(y, button) {
+    const box = button.getBoundingClientRect();
+    return y < box.top + box.height / 2;
+}
+
+function saveButtonOrder() {
+    const buttons = document.querySelectorAll('.button-ph');
+    const order = Array.from(buttons).map(button => button.dataset.buttonId);
+    browserAPI.storage.sync.set({ buttonOrder: order }, function() {
+        //console.log('Button order saved:', order);
+    });
+}
+
+function loadButtonOrder() {
+    browserAPI.storage.sync.get('buttonOrder', (data) => {
+        if (data.buttonOrder) {
+            const container = document.getElementById('custom-extension-container');
+            data.buttonOrder.forEach(buttonId => {
+                const button = container.querySelector(`[data-button-id="${buttonId}"]`);
+                if (button) container.appendChild(button);
+            });
+        }
+    });
+}
+
+createDynamicButtons();
+
