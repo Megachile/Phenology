@@ -381,47 +381,68 @@ function updatePositions() {
 }
 
 function extractObservationId() {
-    //console.log("Extracting observation ID");
-    if (window.location.pathname.match(/^\/observations\/\d+/)) {
+    console.log("Extracting observation ID");
+    console.log("Current URL:", window.location.href);
+
+    // Check if we're on an individual observation page
+    if (window.location.pathname.match(/^\/observations\/\d+$/)) {
         const id = window.location.pathname.split('/').pop();
-        console.log("Extracted ID from URL:", id);
-        currentObservationId = id;
-        createOrUpdateIdDisplay(id);
-        return;
+        if (id && /^\d+$/.test(id)) {
+            console.log("Extracted ID from URL:", id);
+            currentObservationId = id;
+            createOrUpdateIdDisplay(id);
+            return;
+        }
     }
     
     const modal = document.querySelector('.ObservationModal.FullScreenModal');
     if (modal) {
+        console.log("Modal found, checking for observation ID");
         const selectors = [
+            '.obs-modal-header a[href^="/observations/"]',
             '.obs-modal-header .comname.display-name',
-            '.obs-modal-header .sciname.secondary-name',
-            '.obs-modal-header a[href^="/observations/"]'
+            '.obs-modal-header .sciname.secondary-name'
         ];
 
         let id = null;
         for (let selector of selectors) {
             const element = modal.querySelector(selector);
             if (element) {
+                console.log(`Element found for selector '${selector}':`, element.outerHTML);
                 const href = element.getAttribute('href');
-                id = href.split('/').pop();
-                break;
+                if (href) {
+                    console.log(`Href found:`, href);
+                    const potentialId = href.split('/').pop();
+                    console.log(`Potential ID:`, potentialId);
+                    if (potentialId && /^\d+$/.test(potentialId)) {
+                        id = potentialId;
+                        console.log(`Valid ID found:`, id);
+                        break;
+                    } else {
+                        console.log(`Invalid ID, continuing search`);
+                    }
+                }
+            } else {
+                console.log(`No element found for selector '${selector}'`);
             }
         }
 
         if (id && id !== currentObservationId) {
             currentObservationId = id;
             console.log('New Observation ID:', id);
-            createOrUpdateIdDisplay(id);  
+            createOrUpdateIdDisplay(id);
         } else if (!id) {
-            console.log('Could not find observation ID in modal');
-            logModalStructure();
+            console.log('Could not find valid observation ID in modal');
+            createOrUpdateIdDisplay('Unknown');
+            currentObservationId = null;
         }
     } else {
         console.log('Modal not found');
-        if (!window.location.pathname.match(/^\/observations\/\d+/)) {
-        clearObservationId();
-        }
+        createOrUpdateIdDisplay('None');
+        currentObservationId = null;
     }
+
+    console.log("Final currentObservationId:", currentObservationId);
 }
 
 function extractObservationIdFromUrl() {
