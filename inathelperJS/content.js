@@ -802,7 +802,7 @@ async function addComment(observationId, commentBody) {
     }
 }
 
-async function addTaxonId(observationId, taxonId) {
+async function addTaxonId(observationId, taxonId, comment = '') {
     if (!observationId) {
         console.log('No observation ID provided. Please select an observation first.');
         return { success: false, error: 'No observation ID provided' };
@@ -818,7 +818,8 @@ async function addTaxonId(observationId, taxonId) {
     const data = {
         identification: {
             observation_id: observationId,
-            taxon_id: taxonId
+            taxon_id: taxonId,
+            body: comment
         }
     };
 
@@ -1278,7 +1279,7 @@ function performActions(actions) {
                 case 'addComment':
                     return addComment(currentObservationId, action.commentBody);
                 case 'addTaxonId':
-                    return addTaxonId(currentObservationId, action.taxonId);
+                    return addTaxonId(currentObservationId, action.taxonId, action.comment);
                 case 'qualityMetric':
                     if (isIdentifyPage || action.metric === 'needs_id') {
                         return handleQualityMetricAPI(currentObservationId, action.metric, action.vote);

@@ -241,6 +241,7 @@ function extractActionsFromForm() {
                 const taxonNameInput = actionDiv.querySelector('.taxonName');
                 action.taxonId = taxonNameInput.dataset.taxonId;
                 action.taxonName = taxonNameInput.value.trim();
+                action.comment = actionDiv.querySelector('.taxonComment').value.trim();
                 break;
             case 'qualityMetric':
                 action.metric = actionDiv.querySelector('.qualityMetricType').value;
@@ -579,7 +580,11 @@ function addActionToForm(action = null) {
     const taxonIdInputs = actionDiv.querySelector('.taxonIdInputs');
     const qualityMetricInputs = actionDiv.querySelector('.qualityMetricInputs');
     const copyObservationFieldInputs = actionDiv.querySelector('.copyObservationFieldInputs');
-
+    if (taxonIdInputs) {
+        taxonIdInputs.innerHTML += `
+            <textarea class="taxonComment" placeholder="Enter comment (optional)"></textarea>
+        `;
+    }
     actionType.addEventListener('change', () => {
         ofInputs.style.display = actionType.value === 'observationField' ? 'block' : 'none';
         annotationInputs.style.display = actionType.value === 'annotation' ? 'block' : 'none';
@@ -673,6 +678,7 @@ function addActionToForm(action = null) {
                     taxonIdInput.value = action.taxonId;
                     taxonNameInput.dataset.taxonId = action.taxonId;
                     taxonNameInput.dispatchEvent(new Event('focus'));
+                    actionDiv.querySelector('.taxonComment').value = action.comment || '';
                 }
                 break;
             case 'annotation':
@@ -827,7 +833,11 @@ function formatAction(action) {
         case 'addComment':
             return `Add comment: "${action.commentBody.substring(0, 30)}${action.commentBody.length > 30 ? '...' : ''}"`;
         case 'addTaxonId':
-            return `Add taxon ID: ${action.taxonName} (ID: ${action.taxonId})`;
+            let taxonDisplay = `Add taxon ID: ${action.taxonName} (ID: ${action.taxonId})`;
+            if (action.comment) {
+                taxonDisplay += `\nwith\ncomment: "${action.comment.substring(0, 30)}${action.comment.length > 30 ? '...' : ''}"`;
+            }
+            return taxonDisplay;
         case 'qualityMetric':
             const metricLabel = qualityMetrics.find(m => m.value === action.metric).label;
             return `Quality Metric: "${metricLabel}" - ${action.vote}`;
@@ -939,6 +949,11 @@ function setupTaxonAutocomplete(inputElement, idElement) {
                         });
                         suggestionContainer.appendChild(suggestion);
                     });
+                    const inputRect = inputElement.getBoundingClientRect();
+                    const containerRect = inputElement.closest('.taxonIdInputs').getBoundingClientRect();
+                    suggestionContainer.style.top = `${inputRect.bottom - containerRect.top}px`;
+                    suggestionContainer.style.left = `${inputRect.left - containerRect.left}px`;
+                    suggestionContainer.style.width = `${inputRect.width}px`;
                 })
                 .catch(error => console.error('Error fetching taxa:', error));
         }, 300);
