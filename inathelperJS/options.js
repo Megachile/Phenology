@@ -105,6 +105,10 @@ const qualityMetrics = [
     { value: 'subject', label: 'Evidence related to a single subject' }
 ];
 
+document.getElementById('openBulkActionsButton').addEventListener('click', () => {
+    browserAPI.runtime.sendMessage({ action: "openBulkActionsPage" });
+  });
+
 function isShortcutForbidden(shortcut) {
     if (!shortcut) return false; // If no shortcut, it can't be forbidden
 
@@ -140,65 +144,6 @@ function filterConfigurations() {
     displayConfigurations();
 }
 
-function updateFieldValueInput(field, container) {
-    const existingInput = container.querySelector('.fieldValue');
-    let input = existingInput || document.createElement('input');
-    input.className = 'fieldValue';
-
-    switch (field.datatype) {
-        case 'text':
-        case 'date':
-        case 'datetime':
-        case 'time':
-            input.type = field.datatype;
-            break;
-        case 'numeric':
-            input.type = 'number';
-            break;
-        case 'boolean':
-            const select = document.createElement('select');
-            select.className = 'fieldValue';
-            ['', 'Yes', 'No'].forEach(option => {
-                const opt = document.createElement('option');
-                opt.value = option;
-                opt.textContent = option;
-                select.appendChild(opt);
-            });
-            input = select;
-            break;
-        case 'taxon':
-            input.type = 'text';
-            input.className += ' taxonInput';
-            input.placeholder = 'Enter species name';
-            break;
-        default:
-            input.type = 'text';
-    }
-
-    input.placeholder = 'Field Value';
-    
-    if (!existingInput) {
-        container.innerHTML = '';
-        container.appendChild(input);
-    }
-
-    if (field.allowed_values && field.datatype !== 'taxon') {
-        const allowedValues = field.allowed_values.split('|');
-        if (allowedValues.length > 0) {
-            const datalist = document.createElement('datalist');
-            datalist.id = `allowedValues-${field.id || Date.now()}`;
-            allowedValues.forEach(value => {
-                const option = document.createElement('option');
-                option.value = value.trim();
-                datalist.appendChild(option);
-            });
-            container.appendChild(datalist);
-            input.setAttribute('list', datalist.id);
-        }
-    }
-
-    return input;
-}
 
 function extractFormData() {
     return {
@@ -487,34 +432,7 @@ function duplicateConfiguration(configId) {
     }
 }
 
-function lookupTaxon(query, per_page = 10) {
-    const baseUrl = 'https://api.inaturalist.org/v1/taxa/autocomplete';
-    const params = new URLSearchParams({
-        q: query,
-        per_page: per_page
-    });
-    const url = `${baseUrl}?${params.toString()}`;
 
-    return fetch(url)
-        .then(response => response.json())
-        .then(data => data.results.map(taxon => ({
-            ...taxon,
-            displayName: taxon.preferred_common_name ? `${taxon.preferred_common_name} (${taxon.name})` : taxon.name
-        })));
-}
-
-function lookupProject(query, perPage = 10) {
-    const baseUrl = 'https://api.inaturalist.org/v1/projects';
-    const params = new URLSearchParams({
-        q: query,
-        per_page: perPage
-    });
-    const url = `${baseUrl}?${params.toString()}`;
-
-    return fetch(url)
-        .then(response => response.json())
-        .then(data => data.results);
-}
 
 function addActionToForm(action = null) {
     const actionDiv = document.createElement('div');
@@ -707,18 +625,6 @@ function addActionToForm(action = null) {
     }
 }
 
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
 function loadConfigurations() {
     browserAPI.storage.sync.get(['customButtons', 'observationFieldMap'], function(data) {
         console.log('Loaded data:', data);
@@ -904,101 +810,6 @@ function formatShortcut(shortcut) {
     if (shortcut.altKey) parts.push('Alt');
     if (shortcut.key) parts.push(shortcut.key);
     return parts.join(' + ');
-}
-
-function setupTaxonAutocomplete(inputElement, idElement) {
-    const suggestionContainer = document.createElement('div');
-    suggestionContainer.className = 'taxonSuggestions';
-    inputElement.parentNode.insertBefore(suggestionContainer, inputElement.nextSibling);
-
-    let debounceTimeout;
-
-    function showTaxonSuggestions() {
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(() => {
-            if (inputElement.value.length < 2) {
-                suggestionContainer.innerHTML = '';
-                return;
-            }
-            lookupTaxon(inputElement.value)
-                .then(taxa => {
-                    suggestionContainer.innerHTML = '';
-                    taxa.forEach(taxon => {
-                        const suggestion = document.createElement('div');
-                        suggestion.className = 'taxonSuggestion';
-                        suggestion.innerHTML = `
-                            <img src="${taxon.default_photo?.square_url || 'placeholder.jpg'}" alt="${taxon.name}">
-                            <span class="taxon-name">
-                                ${taxon.preferred_common_name ? `${taxon.preferred_common_name} (` : ''}
-                                <a href="https://www.inaturalist.org/taxa/${taxon.id}" target="_blank" class="taxon-link">
-                                    ${taxon.name}
-                                </a>
-                                ${taxon.preferred_common_name ? ')' : ''}
-                            </span>
-                        `;
-                        suggestion.addEventListener('click', (event) => {
-                            if (event.target.tagName !== 'A') {
-                                event.preventDefault();
-                                inputElement.value = taxon.preferred_common_name ? 
-                                    `${taxon.preferred_common_name} (${taxon.name})` : 
-                                    taxon.name;
-                                inputElement.dataset.taxonId = taxon.id;
-                                if (idElement) idElement.value = taxon.id;
-                                suggestionContainer.innerHTML = '';
-                            }
-                        });
-                        suggestionContainer.appendChild(suggestion);
-                    });
-                    const inputRect = inputElement.getBoundingClientRect();
-                    const containerRect = inputElement.closest('.taxonIdInputs').getBoundingClientRect();
-                    suggestionContainer.style.top = `${inputRect.bottom - containerRect.top}px`;
-                    suggestionContainer.style.left = `${inputRect.left - containerRect.left}px`;
-                    suggestionContainer.style.width = `${inputRect.width}px`;
-                })
-                .catch(error => console.error('Error fetching taxa:', error));
-        }, 300);
-    }
-
-    inputElement.addEventListener('input', showTaxonSuggestions);
-    inputElement.addEventListener('focus', showTaxonSuggestions);
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (event) => {
-        if (!inputElement.contains(event.target) && !suggestionContainer.contains(event.target)) {
-            suggestionContainer.innerHTML = '';
-        }
-    });
-}
-
-function lookupObservationField(name, perPage = 10) {
-    return new Promise((resolve, reject) => {
-        const baseUrl = 'https://api.inaturalist.org/v1/observation_fields/autocomplete';
-        const params = new URLSearchParams({
-            q: name,
-            per_page: perPage
-        });
-        const url = `${baseUrl}?${params.toString()}`;
-
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.results && data.results.length > 0) {
-                    const fieldsWithUsage = data.results.map(field => ({
-                        ...field,
-                        usageCount: field.values_count || 0 // Assuming 'values_count' represents usage
-                    }));
-                    resolve(fieldsWithUsage);
-                } else {
-                    reject(new Error('No observation fields found'));
-                }
-            })
-            .catch(reject);
-    });
 }
 
 function getAnnotationFieldName(fieldId) {
@@ -1320,45 +1131,3 @@ function resolveConflicts(conflicts, callback) {
     resolveConflicts(conflicts, callback);
 }
 
-function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunction) {
-    const suggestionContainer = document.createElement('div');
-    suggestionContainer.className = 'autocomplete-suggestions';
-    inputElement.parentNode.insertBefore(suggestionContainer, inputElement.nextSibling);
-
-    let debounceTimeout;
-    inputElement.addEventListener('input', () => {
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(() => {
-            if (inputElement.value.length < 2) {
-                suggestionContainer.innerHTML = '';
-                return;
-            }
-            lookupFunction(inputElement.value)
-                .then(results => {
-                    suggestionContainer.innerHTML = '';
-                    results.forEach(result => {
-                        const suggestion = document.createElement('div');
-                        suggestion.className = 'autocomplete-suggestion';
-                        suggestion.textContent = result.title || result.name;
-                        if (result.usageCount !== undefined) {
-                            suggestion.textContent += ` (Used: ${result.usageCount} times)`;
-                        }
-                        suggestion.addEventListener('click', () => {
-                            inputElement.value = result.title || result.name;
-                            onSelectFunction(result, inputElement);
-                            suggestionContainer.innerHTML = '';
-                        });
-                        suggestionContainer.appendChild(suggestion);
-                    });
-                })
-                .catch(error => console.error('Error fetching suggestions:', error));
-        }, 300);
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (event) => {
-        if (!inputElement.contains(event.target) && !suggestionContainer.contains(event.target)) {
-            suggestionContainer.innerHTML = '';
-        }
-    });
-}

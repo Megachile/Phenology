@@ -1,0 +1,87 @@
+/* shared_styles.css */
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+}
+
+h1, h2 {
+    color: #333;
+}
+
+fieldset {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 20px;
+    background-color: #fff;
+}
+
+legend {
+    font-weight: bold;
+    color: #444;
+}
+
+input[type="text"], input[type="number"], select, textarea {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+.action-item {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #f9f9f9;
+}
+
+.autocomplete-suggestions {
+    border: 1px solid #ddd;
+    background: #fff;
+    overflow: auto;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.autocomplete-suggestion {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.autocomplete-suggestion:hover {
+    background-color: #f0f0f0;
+}
+
+#generatedUrl {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #e7f3fe;
+    border: 1px solid #b6d4fe;
+    border-radius: 4px;
+}
+
+#generatedUrl a {
+    color: #0056b3;
+    text-decoration: none;
+}
+
+#generatedUrl a:hover {
+    text-decoration: underline;
+}

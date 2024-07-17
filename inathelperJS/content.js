@@ -1258,7 +1258,8 @@ function clearObservationId() {
 }
 
 function performActions(actions) {
-    if (!currentObservationId) {
+    const lockedObservationId = currentObservationId;
+    if (!lockedObservationId) {
         alert('Please open an observation before using this button.');
         return Promise.resolve();
     }
@@ -1271,24 +1272,24 @@ function performActions(actions) {
         return promise.then(() => {
             switch (action.type) {
                 case 'observationField':
-                    return addObservationField(currentObservationId, action.fieldId, action.fieldValue);
+                    return addObservationField(lockedObservationId, action.fieldId, action.fieldValue);
                 case 'annotation':
-                    return addAnnotation(currentObservationId, action.annotationField, action.annotationValue);
+                    return addAnnotation(lockedObservationId, action.annotationField, action.annotationValue);
                 case 'addToProject':
-                    return addObservationToProject(currentObservationId, action.projectId);
+                    return addObservationToProject(lockedObservationId, action.projectId);
                 case 'addComment':
-                    return addComment(currentObservationId, action.commentBody);
+                    return addComment(lockedObservationId, action.commentBody);
                 case 'addTaxonId':
-                    return addTaxonId(currentObservationId, action.taxonId, action.comment);
+                    return addTaxonId(lockedObservationId, action.taxonId, action.comment);
                 case 'qualityMetric':
                     if (isIdentifyPage || action.metric === 'needs_id') {
-                        return handleQualityMetricAPI(currentObservationId, action.metric, action.vote);
+                        return handleQualityMetricAPI(lockedObservationId, action.metric, action.vote);
                     } else {
                         needsPageUpdate = false; // Don't update page for non-needs_id quality actions on observation page
-                        return handleQualityMetric(currentObservationId, action.metric, action.vote);
+                        return handleQualityMetric(lockedObservationId, action.metric, action.vote);
                     }
                 case 'copyObservationField':
-                    return copyObservationField(currentObservationId, action.sourceFieldId, action.targetFieldId);
+                    return copyObservationField(lockedObservationId, action.sourceFieldId, action.targetFieldId);
            
             }
         });

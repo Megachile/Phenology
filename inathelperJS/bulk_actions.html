@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Actions - Observation Selection</title>
+    <link rel="stylesheet" href="bulk_actions.css">
+</head>
+<body>
+    <h1>Select Observations for Bulk Actions</h1>
+    <form id="observationSelectionForm">
+        <fieldset>
+            <legend>Quality Grade</legend>
+            <label><input type="checkbox" name="quality_grade" value="casual"> Casual</label>
+            <label><input type="checkbox" name="quality_grade" value="needs_id"> Needs ID</label>
+            <label><input type="checkbox" name="quality_grade" value="research"> Research Grade</label>
+        </fieldset>
+
+        <fieldset>
+            <legend>Reviewed Status</legend>
+            <label><input type="radio" name="reviewed" value="any" checked> Any</label>
+            <label><input type="radio" name="reviewed" value="true"> Yes</label>
+            <label><input type="radio" name="reviewed" value="false"> No</label>
+        </fieldset>
+
+        <fieldset>
+            <legend>Taxon</legend>
+            <input type="text" id="taxonInput" placeholder="Enter taxon name">
+            <input type="hidden" id="taxonId">
+        </fieldset>
+
+        <fieldset>
+            <legend>Place</legend>
+            <input type="text" id="placeInput" placeholder="Enter place name">
+            <input type="hidden" id="placeId">
+        </fieldset>
+
+        <fieldset>
+            <legend>User</legend>
+            <input type="text" id="userInput" placeholder="Enter username">
+            <input type="hidden" id="userId">
+        </fieldset>
+
+        <fieldset>
+            <legend>Project</legend>
+            <input type="text" id="projectInput" placeholder="Enter project name">
+            <input type="hidden" id="projectId">
+        </fieldset>
+
+        <fieldset>
+            <legend>Observation Fields</legend>
+            <div id="observationFieldsContainer"></div>
+            <button type="button" id="addObservationField">Add Observation Field</button>
+        </fieldset>
+
+        <button type="submit">Generate iNaturalist URL</button>
+    </form>
+
+    <div id="generatedUrl"></div>
+
+    <script src="shared_api.js"></script>
+    <script src="bulk_actions.js"></script>
+</body>
+</html>
