@@ -316,6 +316,12 @@ function validateCommonConfiguration(config) {
         throw new Error("Please add at least one action to the configuration.");
     }
 
+    if (config.shortcut) {
+        if (!config.shortcut.key && (config.shortcut.ctrlKey || config.shortcut.shiftKey || config.shortcut.altKey)) {
+            throw new Error("A key must be selected along with modifier keys for the shortcut.");
+        }
+    }
+
     config.actions.forEach(action => {
         switch (action.type) {
             case 'observationField':
@@ -341,6 +347,16 @@ function validateCommonConfiguration(config) {
             case 'addTaxonId':
                 if (!action.taxonId || !action.taxonName) {
                     throw new Error("Please select a valid taxon for all Add Taxon ID actions.");
+                }
+                break;
+            case 'qualityMetric':
+                if (!action.metric || !action.vote) {
+                    throw new Error("Please select both a metric and a vote for all Quality Metric actions.");
+                }
+                break;
+            case 'copyObservationField':
+                if (!action.sourceFieldId || !action.sourceFieldName || !action.targetFieldId || !action.targetFieldName) {
+                    throw new Error("Please enter Source Field Name, ID, Target Field Name, and ID for all Copy Observation Field actions.");
                 }
                 break;
         }
