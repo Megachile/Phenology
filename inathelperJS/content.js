@@ -380,69 +380,83 @@ function updatePositions() {
     }
 }
 
+let lastLoggedState = {
+    url: null,
+    observationId: null,
+    modalFound: null,
+    gridFound: null
+};
+
 function extractObservationId() {
-    console.log("Extracting observation ID");
-    console.log("Current URL:", window.location.href);
+    const currentUrl = window.location.href;
+    const currentState = {
+        url: currentUrl,
+        observationId: null,
+        modalFound: false,
+        gridFound: false
+    };
 
     // Check if we're on an individual observation page
     if (window.location.pathname.match(/^\/observations\/\d+$/)) {
         const id = window.location.pathname.split('/').pop();
         if (id && /^\d+$/.test(id)) {
-            console.log("Extracted ID from URL:", id);
-            currentObservationId = id;
-            createOrUpdateIdDisplay(id);
-            return;
+            currentState.observationId = id;
         }
     }
-    
+
     const modal = document.querySelector('.ObservationModal.FullScreenModal');
+    currentState.modalFound = !!modal;
+
     if (modal) {
-        console.log("Modal found, checking for observation ID");
         const selectors = [
             '.obs-modal-header a[href^="/observations/"]',
             '.obs-modal-header .comname.display-name',
             '.obs-modal-header .sciname.secondary-name'
         ];
 
-        let id = null;
         for (let selector of selectors) {
             const element = modal.querySelector(selector);
             if (element) {
-                console.log(`Element found for selector '${selector}':`, element.outerHTML);
                 const href = element.getAttribute('href');
                 if (href) {
-                    console.log(`Href found:`, href);
                     const potentialId = href.split('/').pop();
-                    console.log(`Potential ID:`, potentialId);
                     if (potentialId && /^\d+$/.test(potentialId)) {
-                        id = potentialId;
-                        console.log(`Valid ID found:`, id);
+                        currentState.observationId = potentialId;
                         break;
-                    } else {
-                        console.log(`Invalid ID, continuing search`);
                     }
                 }
-            } else {
-                console.log(`No element found for selector '${selector}'`);
             }
         }
-
-        if (id && id !== currentObservationId) {
-            currentObservationId = id;
-            console.log('New Observation ID:', id);
-            createOrUpdateIdDisplay(id);
-        } else if (!id) {
-            console.log('Could not find valid observation ID in modal');
-            createOrUpdateIdDisplay('Unknown');
-            currentObservationId = null;
-        }
-    } else {
-        console.log('Modal not found');
-        createOrUpdateIdDisplay('None');
-        currentObservationId = null;
     }
 
-    console.log("Final currentObservationId:", currentObservationId);
+    const grid = document.querySelector("#Identify > div > div.mainrow.false.row > div.main-col > div.ObservationsGrid.flowed.false.row");
+    currentState.gridFound = !!grid;
+
+    // Only log if there's a change or unexpected state
+    if (JSON.stringify(currentState) !== JSON.stringify(lastLoggedState)) {
+        console.log('extractObservationId: State changed', {
+            url: currentState.url,
+            observationId: currentState.observationId,
+            modalFound: currentState.modalFound,
+            gridFound: currentState.gridFound
+        });
+
+        if (!currentState.observationId) {
+            console.log('extractObservationId: No valid observation ID found');
+        }
+
+        if (!currentState.modalFound && !currentState.gridFound) {
+            console.log('extractObservationId: Neither modal nor grid found');
+        }
+
+        lastLoggedState = currentState;
+    }
+
+    if (currentState.observationId !== currentObservationId) {
+        console.log('extractObservationId: New Observation ID:', currentState.observationId);
+        currentObservationId = currentState.observationId;
+        createOrUpdateIdDisplay(currentState.observationId || 'Unknown');
+    }
 }
 
 function extractObservationIdFromUrl() {
@@ -1280,43 +1294,61 @@ function performActions(actions) {
     }, Promise.resolve())
     .then(() => {
         if (isIdentifyPage) {
-            return refreshObservation();
+            console.log('Attempting to refresh observation');
+            return refreshObservation().catch(error => {
+                console.error('Error in refreshObservation:', error);
+            });
         } else if (isObservationPage && needsPageUpdate) {
-            console.log('Actions completed. Updating the page...');
-            return updateObservationPage(currentObservationId);
+            console.log('Updating observation page');
+            return updateObservationPage(currentObservationId).catch(error => {
+                console.error('Error in updateObservationPage:', error);
+            });
         }
     })
-    .catch(error => console.error('Error in performActions:', error));
+    .catch(error => {
+        console.error('Error in performActions:', error);
+    });
 }
 
-  function refreshObservation() {
+function refreshObservation() {
+    console.log('refreshObservation called');
     return new Promise((resolve, reject) => {
+        console.log('refreshEnabled:', refreshEnabled);
+        console.log('currentObservationId:', currentObservationId);
         if (!refreshEnabled || !currentObservationId) {
+            console.log('Refresh not enabled or no current observation ID');
             resolve();
             return;
         }
 
         if (window.location.pathname.match(/^\/observations\/\d+/)) {
+            console.log('On individual observation page, reloading');
             window.location.reload();
         }
 
         const grid = document.querySelector("#Identify > div > div.mainrow.false.row > div.main-col > div.ObservationsGrid.flowed.false.row");
+        console.log('Grid element found:', !!grid);
         if (!grid) {
+            console.log('Grid not found, rejecting');
             reject(new Error('Grid not found'));
             return;
         }
 
         const observationLink = grid.querySelector(`a[href="/observations/${currentObservationId}"]`);
+        console.log('Observation link found:', !!observationLink);
         if (observationLink) {
+            console.log('Clicking observation link');
             observationLink.click();
             const observer = new MutationObserver((mutations, obs) => {
                 if (document.querySelector('.ObservationModal')) {
+                    console.log('ObservationModal found, resolving');
                     obs.disconnect();
                     resolve();
                 }
             });
             observer.observe(document.body, { childList: true, subtree: true });
         } else {
+            console.log('Observation not found in grid, rejecting');
             reject(new Error('Observation not found in grid'));
         }
     });
