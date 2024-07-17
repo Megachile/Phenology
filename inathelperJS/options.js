@@ -105,9 +105,9 @@ const qualityMetrics = [
     { value: 'subject', label: 'Evidence related to a single subject' }
 ];
 
-document.getElementById('openBulkActionsButton').addEventListener('click', () => {
+/* document.getElementById('openBulkActionsButton').addEventListener('click', () => {
     browserAPI.runtime.sendMessage({ action: "openBulkActionsPage" });
-  });
+  }); */
 
 function isShortcutForbidden(shortcut) {
     if (!shortcut) return false; // If no shortcut, it can't be forbidden
