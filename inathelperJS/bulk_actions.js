@@ -42,55 +42,61 @@ function addField(type) {
     const fieldGroup = document.createElement('div');
     fieldGroup.className = 'field-group';
 
-    let innerHTML = `
-        <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
-        <input type="hidden" id="${type}Id${fieldCount}">
-    `;
-
     if (type === 'observationField') {
-        innerHTML += `<input type="text" id="${type}Value${fieldCount}" placeholder="Field Value (optional)">`;
+        fieldGroup.innerHTML = `
+            <input type="text" class="fieldName" id="${type}${fieldCount}" placeholder="Observation Field Name">
+            <input type="number" class="fieldId" id="${type}Id${fieldCount}" placeholder="Field ID" readonly>
+            <div class="fieldValueContainer">
+                <input type="text" class="fieldValue" id="${type}Value${fieldCount}" placeholder="Field Value">
+            </div>
+            <p class="fieldDescription"></p>
+            <button class="removeFieldButton">Remove</button>
+            <label><input type="checkbox" class="negationCheckbox"> Without</label>
+        `;
+
+        const fieldNameInput = fieldGroup.querySelector('.fieldName');
+        const fieldIdInput = fieldGroup.querySelector('.fieldId');
+        const fieldValueContainer = fieldGroup.querySelector('.fieldValueContainer');
+        const fieldDescriptionElement = fieldGroup.querySelector('.fieldDescription');
+
+        setupObservationFieldAutocomplete(fieldNameInput, fieldIdInput);
+
+        fieldNameInput.addEventListener('change', () => {
+            lookupObservationField(fieldNameInput.value).then(results => {
+                const selectedField = results.find(f => f.id.toString() === fieldIdInput.value);
+                if (selectedField) {
+                    updateFieldValueInput(selectedField, fieldValueContainer);
+                    fieldDescriptionElement.textContent = selectedField.description || '';
+                }
+            });
+        });
     } else if (type === 'annotation') {
-        innerHTML = `
+        fieldGroup.innerHTML = `
             <select id="${type}Field${fieldCount}">
                 <option value="">Select Field</option>
             </select>
             <select id="${type}Value${fieldCount}">
                 <option value="">Select Value</option>
             </select>
+            <button class="removeFieldButton">Remove</button>
+            <label><input type="checkbox" class="negationCheckbox"> Without</label>
+        `;
+    } else {
+        fieldGroup.innerHTML = `
+            <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
+            <input type="hidden" id="${type}Id${fieldCount}">
+            <button class="removeFieldButton">Remove</button>
+            <label><input type="checkbox" class="negationCheckbox"> Without</label>
         `;
     }
 
-    innerHTML += `
-        <button class="removeFieldButton">Remove</button>
-        <label><input type="checkbox" class="negationCheckbox"> Without</label>
-    `;
-
-    fieldGroup.innerHTML = innerHTML;
-    console.log(`Appending field group with innerHTML: ${innerHTML}`);
+    console.log(`Appending field group for type ${type} with index ${fieldCount}`);
     container.appendChild(fieldGroup);
 
-    // Log the created elements
-    console.log(`Created elements for type ${type} with index ${fieldCount}:`);
     if (type === 'annotation') {
-        console.log(document.getElementById(`${type}Field${fieldCount}`)); // Log select field
-        console.log(document.getElementById(`${type}Value${fieldCount}`)); // Log select value
-
-        // Only call setupAutocomplete if elements are found
-        if (document.getElementById(`${type}Field${fieldCount}`) && document.getElementById(`${type}Value${fieldCount}`)) {
-            setupAutocomplete(type, fieldCount);
-        } else {
-            console.error(`Failed to create select elements for type ${type} with index ${fieldCount}`);
-        }
-    } else {
-        console.log(document.getElementById(`${type}${fieldCount}`));  // Log text input
-        console.log(document.getElementById(`${type}Id${fieldCount}`)); // Log hidden input
-
-        // Only call setupAutocomplete if elements are found
-        if (document.getElementById(`${type}${fieldCount}`) && document.getElementById(`${type}Id${fieldCount}`)) {
-            setupAutocomplete(type, fieldCount);
-        } else {
-            console.error(`Failed to create input elements for type ${type} with index ${fieldCount}`);
-        }
+        setupAnnotationDropdowns(fieldCount);
+    } else if (type !== 'observationField') {
+        setupAutocomplete(type, fieldCount);
     }
 
     fieldGroup.querySelector('.removeFieldButton').addEventListener('click', removeField);

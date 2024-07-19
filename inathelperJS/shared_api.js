@@ -314,6 +314,7 @@ function setupTaxonAutocomplete(inputElement, idElement) {
     console.log('Taxon autocomplete setup complete for:', inputElement);
 }
 
+
 function updateFieldValueInput(field, container) {
     console.log('Updating field value input for:', field);
     const existingInput = container.querySelector('.fieldValue');
@@ -371,12 +372,7 @@ function updateFieldValueInput(field, container) {
         console.log('Updating existing input element');
     }
 
-    // Remove any existing datalist
-    const existingDatalist = container.querySelector('datalist');
-    if (existingDatalist) {
-        existingDatalist.remove();
-    }
-
+    // Handle allowed values
     if (field.allowed_values && field.datatype !== 'taxon') {
         console.log('Setting up allowed values for non-taxon field');
         const allowedValues = field.allowed_values.split('|');
@@ -391,13 +387,6 @@ function updateFieldValueInput(field, container) {
             container.appendChild(datalist);
             input.setAttribute('list', datalist.id);
         }
-    }
-
-    // Remove taxon suggestions container
-    const suggestionContainer = document.querySelector('.taxonSuggestions');
-    if (suggestionContainer) {
-        console.log('Removing taxon suggestions container');
-        suggestionContainer.remove();
     }
 
     console.log('Field value input updated');
