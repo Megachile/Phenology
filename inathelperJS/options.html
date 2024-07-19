@@ -278,7 +278,29 @@ button:hover {
         margin-right: 10px;
         object-fit: cover;
     }
+    .sort-button {
+    font-weight: normal;
+    background-color: #f0f0f0;
+    color: #333;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.sort-buttons-container {
+    margin-bottom: 20px; /* Adds space below the buttons */
+}
+.active-sort {
+    font-weight: bold;
+    background-color: #4CAF50;
+    color: white;
+    border-color: #45a049;
+}
 
+.inactive-sort {
+    opacity: 0.6;
+}
     .autocomplete-suggestion .taxon-name,
     .autocomplete-suggestion .project-name {
         flex-grow: 1;
@@ -331,7 +353,10 @@ button:hover {
     <h2>Existing Configurations</h2>
     <div id="configControls">
         <input type="text" id="searchInput" placeholder="Search configurations...">
-        <button id="toggleSort">Sort Oldest/Newest</button>
+        <div id="configControls" class="sort-buttons-container">
+            <button id="toggleDateSort" class="sort-button">Sorted Newest First</button>
+            <button id="toggleAlphaSort" class="sort-button">Sorted A-Z</button>
+        </div>
     </div>
     <div id="buttonConfigs"></div>
 

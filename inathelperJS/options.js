@@ -1,6 +1,8 @@
 let customButtons = [];
 let currentConfig = { actions: [] };
-let sortNewestFirst = true;
+let dateSortNewestFirst = true;
+let alphaSortAtoZ = true;
+let lastUsedSort = 'date';
 let searchTerm = '';
 let observationFieldMap = {};
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
@@ -129,22 +131,47 @@ function isShortcutForbidden(shortcut) {
     return isForbidden || isSingleKeyPress;
 }
 
-function toggleSort() {
-    sortNewestFirst = !sortNewestFirst;
-    updateSortButtonText();
-    displayConfigurations();
-}
-
-function updateSortButtonText() {
-    const button = document.getElementById('toggleSort');
-    button.textContent = sortNewestFirst ? 'Sorted Newest First' : 'Sorted Oldest First';
-}
-
 function filterConfigurations() {
     searchTerm = document.getElementById('searchInput').value.toLowerCase();
     displayConfigurations();
 }
 
+function updateSortButtons() {
+    const dateButton = document.getElementById('toggleDateSort');
+    const alphaButton = document.getElementById('toggleAlphaSort');
+
+    dateButton.textContent = dateSortNewestFirst ? 'Sorted Newest First' : 'Sorted Oldest First';
+    alphaButton.textContent = alphaSortAtoZ ? 'Sorted A-Z' : 'Sorted Z-A';
+
+    // Reset all button styles
+    dateButton.classList.remove('active-sort', 'inactive-sort');
+    alphaButton.classList.remove('active-sort', 'inactive-sort');
+    dateButton.classList.add('sort-button');
+    alphaButton.classList.add('sort-button');
+
+    // Apply active and inactive styles
+    if (lastUsedSort === 'date') {
+        dateButton.classList.add('active-sort');
+        alphaButton.classList.add('inactive-sort');
+    } else {
+        alphaButton.classList.add('active-sort');
+        dateButton.classList.add('inactive-sort');
+    }
+}
+
+function toggleDateSort() {
+    dateSortNewestFirst = !dateSortNewestFirst;
+    lastUsedSort = 'date';
+    updateSortButtons();
+    displayConfigurations();
+}
+
+function toggleAlphaSort() {
+    alphaSortAtoZ = !alphaSortAtoZ;
+    lastUsedSort = 'alpha';
+    updateSortButtons();
+    displayConfigurations();
+}
 
 function extractFormData() {
     return {
@@ -657,9 +684,21 @@ function displayConfigurations() {
     container.innerHTML = '';
 
     let buttonsToDisplay = [...customButtons];
-    if (sortNewestFirst) {
-        buttonsToDisplay.reverse();
+    
+    if (lastUsedSort === 'date') {
+        buttonsToDisplay.sort((a, b) => {
+            return dateSortNewestFirst ? 
+                (parseInt(b.id) - parseInt(a.id)) : 
+                (parseInt(a.id) - parseInt(b.id));
+        });
+    } else {
+        buttonsToDisplay.sort((a, b) => {
+            return alphaSortAtoZ ? 
+                a.name.localeCompare(b.name) : 
+                b.name.localeCompare(a.name);
+        });
     }
+
 
     buttonsToDisplay.filter(config => 
         config.name.toLowerCase().includes(searchTerm) ||
@@ -954,9 +993,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('saveButton').addEventListener('click', saveConfiguration);
     document.getElementById('cancelButton').addEventListener('click', clearForm);
     document.getElementById('addActionButton').addEventListener('click', addActionToForm);
-    document.getElementById('toggleSort').addEventListener('click', toggleSort);
-    document.getElementById('searchInput').addEventListener('input', filterConfigurations);
-    updateSortButtonText();
+     document.getElementById('searchInput').addEventListener('input', filterConfigurations);
+     document.getElementById('toggleDateSort').addEventListener('click', toggleDateSort);
+     document.getElementById('toggleAlphaSort').addEventListener('click', toggleAlphaSort);
+     updateSortButtons();
     const shortcutsToggle = document.getElementById('hardcoded-shortcuts-toggle');
     const shortcutsList = document.getElementById('hardcoded-shortcuts-list');
 
