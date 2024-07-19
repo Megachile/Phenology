@@ -26,13 +26,18 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('generateUrlButton').addEventListener('click', function(e) {
         e.preventDefault();
         const url = generateURL();
-        generatedUrlDiv.innerHTML = `<a href="${url}" target="_blank">${url}</a>`;
+        const encodedUrl = encodeURI(url); // Properly encode the URL
+        const link = document.createElement('a');
+        link.href = encodedUrl;
+        link.target = '_blank';
+        link.textContent = url; // Use raw URL as text content to avoid HTML entity issues
+        generatedUrlDiv.innerHTML = ''; // Clear previous content
+        generatedUrlDiv.appendChild(link); // Append new link
     });
 });
 
 
 function addField(type) {
-    console.log(`Adding field of type: ${type}`);
     const container = document.getElementById(`${type}Container`);
     if (!container) {
         console.error(`Container for type '${type}' not found.`);
@@ -43,84 +48,43 @@ function addField(type) {
     const fieldGroup = document.createElement('div');
     fieldGroup.className = 'field-group';
 
-    if (type === 'observationField') {
+    if (type === 'taxon') {
         fieldGroup.innerHTML = `
-            <input type="text" class="fieldName" id="${type}${fieldCount}" placeholder="Observation Field Name">
-            <input type="number" class="fieldId" id="${type}Id${fieldCount}" placeholder="Field ID" readonly>
-            <div class="fieldValueContainer">
-                <input type="text" class="fieldValue" id="${type}Value${fieldCount}" placeholder="Field Value">
-            </div>
-            <p class="fieldDescription"></p>
-            <button class="removeFieldButton">Remove</button>
-            <label><input type="checkbox" class="negationCheckbox"> Without</label>
-        `;
-
-        const fieldNameInput = fieldGroup.querySelector('.fieldName');
-        const fieldIdInput = fieldGroup.querySelector('.fieldId');
-        const fieldValueContainer = fieldGroup.querySelector('.fieldValueContainer');
-        const fieldDescriptionElement = fieldGroup.querySelector('.fieldDescription');
-
-        setupObservationFieldAutocomplete(fieldNameInput, fieldIdInput);
-
-        fieldNameInput.addEventListener('change', () => {
-            lookupObservationField(fieldNameInput.value).then(results => {
-                const selectedField = results.find(f => f.id.toString() === fieldIdInput.value);
-                if (selectedField) {
-                    updateFieldValueInput(selectedField, fieldValueContainer);
-                    fieldDescriptionElement.textContent = selectedField.description || '';
-                }
-            });
-        });
-    } else if (type === 'annotation') {
-        fieldGroup.innerHTML = `
-            <select id="${type}Field${fieldCount}">
-                <option value="">Select Field</option>
-            </select>
-            <select id="${type}Value${fieldCount}">
-                <option value="">Select Value</option>
-            </select>
+            <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
+            <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
             <button class="removeFieldButton">Remove</button>
             <label><input type="checkbox" class="negationCheckbox"> Without</label>
         `;
     } else {
         fieldGroup.innerHTML = `
             <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
-            <input type="hidden" id="${type}Id${fieldCount}">
+            <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
             <button class="removeFieldButton">Remove</button>
             <label><input type="checkbox" class="negationCheckbox"> Without</label>
         `;
     }
 
-    console.log(`Appending field group for type ${type} with index ${fieldCount}`);
+    console.log(`Adding field of type: ${type}`);
     container.appendChild(fieldGroup);
 
     if (type === 'annotation') {
         setupAnnotationDropdowns(fieldCount);
-    } else if (type !== 'observationField') {
+    } else {
         setupAutocomplete(type, fieldCount);
     }
 
     fieldGroup.querySelector('.removeFieldButton').addEventListener('click', removeField);
     fieldGroup.querySelector('.negationCheckbox').addEventListener('change', toggleNegation);
+
+    console.log(`Field added: `, fieldGroup);
 }
 
 function setupAutocomplete(type, index) {
-    let input, idInput;
+    let input = document.getElementById(`${type}${index}`);
+    let idInput = document.getElementById(`${type}Id${index}`);
 
-    if (type === 'annotation') {
-        input = document.getElementById(`${type}Field${index}`);
-        idInput = document.getElementById(`${type}Value${index}`);
-    } else {
-        input = document.getElementById(`${type}${index}`);
-        idInput = document.getElementById(`${type}Id${index}`);
-    }
-
-    if (!input) {
-        console.error(`Input element with ID ${type}${index} not found`);
-        return;
-    }
-    if (!idInput) {
-        console.error(`ID input element with ID ${type}Id${index} not found`);
+    if (!input || !idInput) {
+        console.error(`Input elements not found for ${type}${index}`);
         return;
     }
 
@@ -128,22 +92,19 @@ function setupAutocomplete(type, index) {
 
     if (type === 'taxon') {
         setupTaxonAutocomplete(input, idInput);
-    } else if (type === 'observationField') {
-        setupObservationFieldAutocomplete(input, idInput);
-    } else if (type === 'user') {
-        setupUserAutocomplete(input, idInput);
-    } else if (type === 'project') {
-        setupProjectAutocomplete(input, idInput);
-    } else if (type === 'annotation') {
-        setupAnnotationDropdowns(index);
     } else {
         setupAutocompleteDropdown(input, window[`lookup${type.charAt(0).toUpperCase() + type.slice(1)}`], (result) => {
             idInput.value = result.id;
+            input.value = result.name || result.title || result.login;
+            console.log(`Autocomplete selection for ${type}:`, { value: input.value, id: idInput.value });
+            console.log(`ID input (${type}Id${index}) value set to:`, idInput.value);
         });
     }
 
     input.addEventListener('input', () => {
         if (input.value === '') {
+            idInput.value = '';
+            console.log(`Cleared ID for ${type}${index}`);
             clearFieldFromUrl(input.id);
         } else {
             generateURL();
@@ -210,113 +171,85 @@ function clearFieldFromUrl(fieldName) {
 function generateURL() {
     console.log('Generating URL...');
     let url = 'https://www.inaturalist.org/observations/identify?';
-    const params = new URLSearchParams();
-    
+    let params = [];
+
     // Quality Grade
     const qualityGrades = Array.from(document.querySelectorAll('input[name="quality_grade"]:checked'))
         .map(input => input.value);
     if (qualityGrades.length > 0) {
-        params.append('quality_grade', qualityGrades.join(','));
+        params.push(`quality_grade=${encodeURIComponent(qualityGrades.join(','))}`);
+        console.log('Added quality grade:', params[params.length - 1]);
     }
 
     // Reviewed Status
     const reviewedStatus = document.querySelector('input[name="reviewed"]:checked');
     if (reviewedStatus) {
-        params.append('reviewed', reviewedStatus.value);
+        params.push(`reviewed=${encodeURIComponent(reviewedStatus.value)}`);
+        console.log('Added reviewed status:', params[params.length - 1]);
     }
 
-    // Taxon
-    const taxonInputs = document.querySelectorAll('#taxonContainer input[type="text"]');
-    console.log('Taxon inputs:', taxonInputs);
-    const taxonIds = [];
-    const withoutTaxonIds = [];
-    taxonInputs.forEach(input => {
-        const taxonId = input.nextElementSibling.value;
-        if (taxonId) {
-            if (input.dataset.negated === 'true') {
-                withoutTaxonIds.push(taxonId);
-            } else {
-                taxonIds.push(taxonId);
+    function processInputs(type) {
+        const container = document.getElementById(`${type}Container`);
+        const inputGroups = container.querySelectorAll('.field-group');
+        const ids = [];
+        const withoutIds = [];
+
+        inputGroups.forEach((group, index) => {
+            const input = group.querySelector(`#${type}${index}`);
+            const idInput = group.querySelector(`#${type}Id${index}`);
+            const negated = group.querySelector('.negationCheckbox').checked;
+
+            if (input && idInput && idInput.value) {
+                console.log(`${type} input ${index}:`, {
+                    value: input.value,
+                    id: idInput.value,
+                    negated: negated
+                });
+
+                if (negated) {
+                    withoutIds.push(idInput.value);
+                } else {
+                    ids.push(idInput.value);
+                }
             }
-        }
-    });
-    if (taxonIds.length > 0) {
-        params.append('taxon_ids', taxonIds.join(','));
-    }
-    if (withoutTaxonIds.length > 0) {
-        params.append('without_taxon_id', withoutTaxonIds.join(','));
+        });
+
+        return { ids, withoutIds };
     }
 
-    // User
-    const userInputs = document.querySelectorAll('#userContainer input[type="text"]');
-    console.log('User inputs:', userInputs);
-    const userIds = [];
-    const withoutUserIds = [];
-    userInputs.forEach(input => {
-        const userId = input.nextElementSibling.value;
-        if (userId) {
-            if (input.dataset.negated === 'true') {
-                withoutUserIds.push(userId);
-            } else {
-                userIds.push(userId);
+    // Process each input type
+    const types = ['taxon', 'user', 'project', 'place'];
+    types.forEach(type => {
+        const { ids, withoutIds } = processInputs(type);
+        
+        if (ids.length > 0) {
+            params.push(`${type}_id=${encodeURIComponent(ids.join(','))}`);
+            console.log(`Added ${type} ids:`, params[params.length - 1]);
+        }
+        if (withoutIds.length > 0) {
+            let withoutParam;
+            switch(type) {
+                case 'place':
+                    withoutParam = 'not_in_place';
+                    break;
+                case 'user':
+                    withoutParam = 'not_user_id';
+                    break;
+                case 'project':
+                    withoutParam = 'not_in_project';
+                    break;
+                case 'taxon':
+                    withoutParam = 'without_taxon_id';
+                    break;
             }
+            params.push(`${withoutParam}=${encodeURIComponent(withoutIds.join(','))}`);
+            console.log(`Added ${type} without ids:`, params[params.length - 1]);
         }
     });
-    if (userIds.length > 0) {
-        params.append('user_id', userIds.join(','));
-    }
-    if (withoutUserIds.length > 0) {
-        params.append('not_user_id', withoutUserIds.join(','));
-    }
-
-    // Project
-    const projectInputs = document.querySelectorAll('#projectContainer input[type="text"]');
-    console.log('Project inputs:', projectInputs);
-    const projectIds = [];
-    const withoutProjectIds = [];
-    projectInputs.forEach(input => {
-        const projectId = input.nextElementSibling.value;
-        if (projectId) {
-            if (input.dataset.negated === 'true') {
-                withoutProjectIds.push(projectId);
-            } else {
-                projectIds.push(projectId);
-            }
-        }
-    });
-    if (projectIds.length > 0) {
-        params.append('project_id', projectIds.join(','));
-    }
-    if (withoutProjectIds.length > 0) {
-        params.append('not_in_project', withoutProjectIds.join(','));
-    }
-
-    // Place
-    const placeInputs = document.querySelectorAll('#placeContainer input[type="text"]');
-    console.log('Place inputs:', placeInputs);
-    const placeIds = [];
-    const withoutPlaceIds = [];
-    placeInputs.forEach(input => {
-        const placeId = input.nextElementSibling.value;
-        if (placeId) {
-            if (input.dataset.negated === 'true') {
-                withoutPlaceIds.push(placeId);
-            } else {
-                placeIds.push(placeId);
-            }
-        }
-    });
-    if (placeIds.length > 0) {
-        params.append('place_id', placeIds.join(','));
-    }
-    if (withoutPlaceIds.length > 0) {
-        params.append('not_in_place', withoutPlaceIds.join(','));
-    }
 
     // Observation Field
     const ofInputs = document.querySelectorAll('#observationFieldContainer .field-group');
-    console.log('Observation Field inputs:', ofInputs);
-    ofInputs.forEach(group => {
+    ofInputs.forEach((group, index) => {
         const fieldNameInput = group.querySelector('.fieldName');
         const fieldValueInput = group.querySelector('.fieldValue');
         const negated = group.querySelector('.negationCheckbox').checked;
@@ -325,43 +258,63 @@ function generateURL() {
             const fieldName = fieldNameInput.value;
             let fieldValue = fieldValueInput.value;
             
-            // Check if it's a taxon input
-            if (fieldValueInput.classList.contains('taxonInput') && fieldValueInput.dataset.taxonId) {
-                fieldValue = fieldValueInput.dataset.taxonId;
-            }
+            console.log(`Observation Field ${index}:`, { fieldName, fieldValue, negated });
             
             if (fieldName) {
                 if (negated) {
-                    params.append('without_field', fieldName);
+                    params.push(`without_field=${encodeURIComponent(fieldName)}`);
                 } else if (fieldValue) {
-                    params.append(`field:${encodeURIComponent(fieldName)}`, fieldValue);
+                    params.push(`field:${encodeURIComponent(fieldName)}=${encodeURIComponent(fieldValue)}`);
                 } else {
-                    params.append(`field:${encodeURIComponent(fieldName)}`, '');
+                    params.push(`field:${encodeURIComponent(fieldName)}=`);
                 }
+                console.log('Added Observation Field:', params[params.length - 1]);
             }
         }
     });
 
     // Annotation
     const annotationInputs = document.querySelectorAll('#annotationContainer .field-group');
-    console.log('Annotation inputs:', annotationInputs);
-    annotationInputs.forEach(group => {
-        const fieldId = group.querySelector('select:first-child').value;
-        const valueId = group.querySelector('select:last-child').value;
-        if (fieldId && valueId) {
+    annotationInputs.forEach((group, index) => {
+        const fieldSelect = group.querySelector('select:first-child');
+        const valueSelect = group.querySelector('select:last-child');
+        
+        if (fieldSelect && valueSelect) {
+            const fieldId = fieldSelect.value;
+            const valueId = valueSelect.value;
             const negated = group.querySelector('.negationCheckbox').checked;
-            if (negated) {
-                params.append('without_term_id', fieldId);
-            } else {
-                params.append('term_id', fieldId);
-                params.append('term_value_id', valueId);
+            
+            console.log(`Annotation ${index}:`, { fieldId, valueId, negated });
+            
+            if (fieldId && valueId) {
+                if (negated) {
+                    params.push(`without_term_id=${encodeURIComponent(fieldId)}`);
+                } else {
+                    params.push(`term_id=${encodeURIComponent(fieldId)}`);
+                    params.push(`term_value_id=${encodeURIComponent(valueId)}`);
+                }
+                console.log('Added Annotation:', params[params.length - 1]);
             }
         }
     });
 
-    const finalUrl = url + params.toString();
-    console.log('Generated URL:', finalUrl);
-    return finalUrl;
+    const rawUrl = url + params.join('&');
+    console.log('Raw generated URL:', rawUrl);
+
+    // Check for any unexpected encodings
+    const encodedUrl = encodeURI(rawUrl);
+    console.log('Encoded URL:', encodedUrl);
+
+    if (rawUrl !== encodedUrl) {
+        console.warn('URL encoding changed some characters. Differences:');
+        for (let i = 0; i < rawUrl.length; i++) {
+            if (rawUrl[i] !== encodedUrl[i]) {
+                console.warn(`Position ${i}: '${rawUrl[i]}' became '${encodedUrl[i]}'`);
+            }
+        }
+    }
+
+    return rawUrl;
 }
 
 function setupUserAutocomplete(input, idInput) {
