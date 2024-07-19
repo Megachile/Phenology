@@ -85,3 +85,29 @@ button:hover {
 #generatedUrl a:hover {
     text-decoration: underline;
 }
+.field-group {
+    position: relative;
+}
+.taxonSuggestions {
+    position: relative;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    background-color: white;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+.taxonSuggestion {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    cursor: pointer;
+}
+.taxonSuggestion:hover {
+    background-color: #f0f0f0;
+}

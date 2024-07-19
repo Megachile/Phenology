@@ -1,3 +1,75 @@
+const controlledTerms = {
+    "Alive or Dead": {
+      id: 17,
+      values: {
+        "Alive": 18,
+        "Dead": 19,
+        "Cannot Be Determined": 20
+      }
+    },
+    "Established": {
+      id: 33,
+      values: {
+        "Not Established": 34
+      }
+    },
+    "Life Stage": {
+      id: 1,
+      values: {
+        "Adult": 2,
+        "Teneral": 3,
+        "Pupa": 4,
+        "Nymph": 5,
+        "Larva": 6,
+        "Egg": 7,
+        "Juvenile": 8,
+        "Subimago": 16
+      }
+    },
+    "Evidence of Presence": {
+      id: 22,
+      values: {
+        "Feather": 23,
+        "Organism": 24,
+        "Scat": 25,
+        "Gall": 29,
+        "Track": 26,
+        "Bone": 27,
+        "Molt": 28,
+        "Egg": 30,
+        "Hair": 31,
+        "Leafmine": 32,
+        "Construction": 35
+      }
+    },
+    "Leaves": {
+      id: 36,
+      values: {
+        "Breaking Leaf Buds": 37,
+        "Green Leaves": 38,
+        "Colored Leaves": 39,
+        "No Live Leaves": 40
+      }
+    },
+    "Sex": {
+      id: 9,
+      values: {
+        "Female": 10,
+        "Male": 11,
+        "Cannot Be Determined": 20
+      }
+    },
+    "Flowers and Fruits": {
+      id: 12,
+      values: {
+        "Flowers": 13,
+        "Fruits or Seeds": 14,
+        "Flower Buds": 15,
+        "No Flowers or Fruits": 21
+      }
+    }
+};
+
 function lookupTaxon(query, per_page = 10) {
     const baseUrl = 'https://api.inaturalist.org/v1/taxa/autocomplete';
     const params = new URLSearchParams({
@@ -18,13 +90,18 @@ function lookupProject(query, perPage = 10) {
     const baseUrl = 'https://api.inaturalist.org/v1/projects';
     const params = new URLSearchParams({
         q: query,
-        per_page: perPage
+        per_page: perPage,
+        order_by: 'observation_count',
+        order: 'desc'
     });
     const url = `${baseUrl}?${params.toString()}`;
 
     return fetch(url)
         .then(response => response.json())
-        .then(data => data.results);
+        .then(data => data.results.map(project => ({
+            ...project,
+            displayName: `${project.title}`
+        })));
 }
 
 function lookupObservationField(name, perPage = 10) {
@@ -83,7 +160,7 @@ function lookupUser(query, perPage = 10) {
         .then(response => response.json())
         .then(data => data.results.map(user => ({
             ...user,
-            displayName: user.login,
+            displayName: `${user.login} (${user.name || ''})`,
             icon_url: user.icon_url
         })));
 }
@@ -102,20 +179,27 @@ function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunctio
                 return;
             }
             lookupFunction(inputElement.value)
-                .then(results => {
+        .then(results => {
+            suggestionContainer.innerHTML = '';
+            results.forEach(result => {
+                const suggestion = document.createElement('div');
+                suggestion.className = 'autocomplete-suggestion';
+                if (result.icon_url) {
+                    suggestion.innerHTML = `<img src="${result.icon_url}" alt="${result.login}" style="width: 30px; height: 30px; margin-right: 10px;">`;
+                }
+                suggestion.innerHTML += result.displayName || result.name || result.title || result.login;
+                if (result.usageCount !== undefined) {
+                    suggestion.innerHTML += ` (${result.usageCount} uses)`;
+                }
+                suggestion.addEventListener('click', () => {
+                    onSelectFunction(result, inputElement);
+                    inputElement.value = result.login || result.name || result.title;
                     suggestionContainer.innerHTML = '';
-                    results.forEach(result => {
-                        const suggestion = document.createElement('div');
-                        suggestion.className = 'autocomplete-suggestion';
-                        suggestion.textContent = result.name || result.title || result.login;
-                        suggestion.addEventListener('click', () => {
-                            onSelectFunction(result, inputElement);
-                            suggestionContainer.innerHTML = '';
-                        });
-                        suggestionContainer.appendChild(suggestion);
-                    });
-                })
-                .catch(error => console.error('Error fetching suggestions:', error));
+                });
+                suggestionContainer.appendChild(suggestion);
+            });
+        })
+        .catch(error => console.error('Error fetching suggestions:', error));
         }, 300);
     });
 
@@ -208,6 +292,7 @@ function updateFieldValueInput(field, container) {
 
     return input;
 }
+
 function setupTaxonAutocomplete(inputElement, idElement) {
     const suggestionContainer = document.createElement('div');
     suggestionContainer.className = 'taxonSuggestions';

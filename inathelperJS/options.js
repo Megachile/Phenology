@@ -7,78 +7,6 @@ let searchTerm = '';
 let observationFieldMap = {};
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
-const controlledTerms = {
-    "Alive or Dead": {
-      id: 17,
-      values: {
-        "Alive": 18,
-        "Dead": 19,
-        "Cannot Be Determined": 20
-      }
-    },
-    "Established": {
-      id: 33,
-      values: {
-        "Not Established": 34
-      }
-    },
-    "Life Stage": {
-      id: 1,
-      values: {
-        "Adult": 2,
-        "Teneral": 3,
-        "Pupa": 4,
-        "Nymph": 5,
-        "Larva": 6,
-        "Egg": 7,
-        "Juvenile": 8,
-        "Subimago": 16
-      }
-    },
-    "Evidence of Presence": {
-      id: 22,
-      values: {
-        "Feather": 23,
-        "Organism": 24,
-        "Scat": 25,
-        "Gall": 29,
-        "Track": 26,
-        "Bone": 27,
-        "Molt": 28,
-        "Egg": 30,
-        "Hair": 31,
-        "Leafmine": 32,
-        "Construction": 35
-      }
-    },
-    "Leaves": {
-      id: 36,
-      values: {
-        "Breaking Leaf Buds": 37,
-        "Green Leaves": 38,
-        "Colored Leaves": 39,
-        "No Live Leaves": 40
-      }
-    },
-    "Sex": {
-      id: 9,
-      values: {
-        "Female": 10,
-        "Male": 11,
-        "Cannot Be Determined": 20
-      }
-    },
-    "Flowers and Fruits": {
-      id: 12,
-      values: {
-        "Flowers": 13,
-        "Fruits or Seeds": 14,
-        "Flower Buds": 15,
-        "No Flowers or Fruits": 21
-      }
-    }
-};
-
 const iNatSingleKeyPresses = [
     'x', 'r', 'c', 'a', 'i', 'f', 'z', 'space', 'left', 'right', 'up', 'down', '?',
     'e', 'l', 's', 'p'
@@ -107,10 +35,10 @@ const qualityMetrics = [
     { value: 'subject', label: 'Evidence related to a single subject' }
 ];
 
-/* document.getElementById('openBulkActionsButton').addEventListener('click', () => {
+document.getElementById('openBulkActionsButton').addEventListener('click', () => {
     browserAPI.runtime.sendMessage({ action: "openBulkActionsPage" });
   });
- */
+
 
 function isShortcutForbidden(shortcut) {
     if (!shortcut) return false; // If no shortcut, it can't be forbidden
@@ -553,7 +481,7 @@ function addActionToForm(action = null) {
             setupTaxonAutocompleteForInput(updatedFieldValueInput);
         }
     });
-    
+
     const taxonNameInput = actionDiv.querySelector('.taxonName');
     const taxonIdInput = actionDiv.querySelector('.taxonId');
     
