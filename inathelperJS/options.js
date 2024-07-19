@@ -165,6 +165,12 @@ function validateNewConfiguration(config) {
         throw new Error("Please enter a button name.");
     }
 
+    // Check for name duplication
+    const duplicateName = customButtons.find(button => button.name === config.name);
+    if (duplicateName) {
+        throw new Error("This button name is already in use. Please choose a different name.");
+    }
+
     if (config.shortcut && isShortcutForbidden(config.shortcut)) {
         throw new Error("This shortcut is not allowed as it conflicts with iNat shortcuts, browser functionality, or extension shortcuts.");
     }
@@ -186,9 +192,16 @@ function validateNewConfiguration(config) {
     validateCommonConfiguration(config);
 }
 
+
 function validateEditConfiguration(config, originalConfig) {
     if (!config.name) {
         throw new Error("Please enter a button name.");
+    }
+
+    // Check for name duplication, excluding the original config
+    const duplicateName = customButtons.find(button => button.name === config.name && button.id !== originalConfig.id);
+    if (duplicateName) {
+        throw new Error("This button name is already in use. Please choose a different name.");
     }
 
     if (config.shortcut && isShortcutForbidden(config.shortcut)) {
