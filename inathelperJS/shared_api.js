@@ -225,7 +225,9 @@ function debounce(func, wait) {
 
 
 function setupFieldAutocomplete(fieldNameInput, fieldIdInput, fieldValueContainer, fieldDescriptionElement) {
+    console.log('Setting up field autocomplete');
     setupAutocompleteDropdown(fieldNameInput, lookupObservationField, (result) => {
+        console.log('Field selected:', result);
         fieldIdInput.value = result.id;
         if (fieldDescriptionElement) {
             fieldDescriptionElement.textContent = result.description || '';
@@ -233,10 +235,99 @@ function setupFieldAutocomplete(fieldNameInput, fieldIdInput, fieldValueContaine
         updateFieldValueInput(result, fieldValueContainer);
     });
 }
+function setupTaxonAutocomplete(inputElement, idElement) {
+    console.log('Setting up taxon autocomplete for:', inputElement);
+    
+    const suggestionContainer = document.createElement('div');
+    suggestionContainer.className = 'taxonSuggestions';
+    suggestionContainer.style.position = 'absolute';
+    suggestionContainer.style.display = 'none';
+    document.body.appendChild(suggestionContainer);
+
+    let debounceTimeout;
+
+    function showTaxonSuggestions() {
+        console.log('showTaxonSuggestions called for:', inputElement.value);
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            if (inputElement.value.length < 2) {
+                console.log('Input too short, hiding suggestions');
+                suggestionContainer.innerHTML = '';
+                suggestionContainer.style.display = 'none';
+                return;
+            }
+            console.log('Fetching taxon suggestions for:', inputElement.value);
+            lookupTaxon(inputElement.value)
+                .then(taxa => {
+                    console.log('Received taxa suggestions:', taxa);
+                    suggestionContainer.innerHTML = '';
+                    taxa.forEach(taxon => {
+                        const suggestion = document.createElement('div');
+                        suggestion.className = 'taxonSuggestion';
+                        suggestion.innerHTML = `
+                            <img src="${taxon.default_photo?.square_url || 'placeholder.jpg'}" alt="${taxon.name}">
+                            <span class="taxon-name">
+                                ${taxon.preferred_common_name ? `${taxon.preferred_common_name} (` : ''}
+                                <a href="https://www.inaturalist.org/taxa/${taxon.id}" target="_blank" class="taxon-link">
+                                    ${taxon.name}
+                                </a>
+                                ${taxon.preferred_common_name ? ')' : ''}
+                            </span>
+                        `;
+                        suggestion.addEventListener('click', (event) => {
+                            if (event.target.tagName !== 'A') {
+                                event.preventDefault();
+                                inputElement.value = taxon.preferred_common_name ? 
+                                    `${taxon.preferred_common_name} (${taxon.name})` : 
+                                    taxon.name;
+                                inputElement.dataset.taxonId = taxon.id;
+                                if (idElement) idElement.value = taxon.id;
+                                suggestionContainer.innerHTML = '';
+                                suggestionContainer.style.display = 'none';
+                                console.log('Taxon selected:', taxon.name, 'ID:', taxon.id);
+                            }
+                        });
+                        suggestionContainer.appendChild(suggestion);
+                    });
+
+                    const inputRect = inputElement.getBoundingClientRect();
+                    suggestionContainer.style.top = `${inputRect.bottom + window.scrollY}px`;
+                    suggestionContainer.style.left = `${inputRect.left + window.scrollX}px`;
+                    suggestionContainer.style.width = `${inputRect.width}px`;
+                    suggestionContainer.style.display = 'block';
+                    console.log('Showing taxon suggestions');
+                })
+                .catch(error => console.error('Error fetching taxa:', error));
+        }, 300);
+    }
+
+    inputElement.addEventListener('input', showTaxonSuggestions);
+    inputElement.addEventListener('focus', showTaxonSuggestions);
+    inputElement.addEventListener('blur', () => {
+        setTimeout(() => {
+            console.log('Hiding taxon suggestions on blur');
+            suggestionContainer.innerHTML = '';
+            suggestionContainer.style.display = 'none';
+        }, 200);
+    });
+
+    console.log('Taxon autocomplete setup complete for:', inputElement);
+}
+
 function updateFieldValueInput(field, container) {
+    console.log('Updating field value input for:', field);
     const existingInput = container.querySelector('.fieldValue');
     let input = existingInput || document.createElement('input');
+    
+    // Remove all existing event listeners and classes
+    const newInput = input.cloneNode(false);
+    if (existingInput) {
+        existingInput.parentNode.replaceChild(newInput, existingInput);
+    }
+    input = newInput;
+
     input.className = 'fieldValue';
+    console.log('Field datatype:', field.datatype);
 
     switch (field.datatype) {
         case 'text':
@@ -263,6 +354,8 @@ function updateFieldValueInput(field, container) {
             input.type = 'text';
             input.className += ' taxonInput';
             input.placeholder = 'Enter species name';
+            console.log('Setting up taxon autocomplete for taxon input');
+            setupTaxonAutocomplete(input);
             break;
         default:
             input.type = 'text';
@@ -271,11 +364,21 @@ function updateFieldValueInput(field, container) {
     input.placeholder = 'Field Value';
     
     if (!existingInput) {
+        console.log('Creating new input element');
         container.innerHTML = '';
         container.appendChild(input);
+    } else {
+        console.log('Updating existing input element');
+    }
+
+    // Remove any existing datalist
+    const existingDatalist = container.querySelector('datalist');
+    if (existingDatalist) {
+        existingDatalist.remove();
     }
 
     if (field.allowed_values && field.datatype !== 'taxon') {
+        console.log('Setting up allowed values for non-taxon field');
         const allowedValues = field.allowed_values.split('|');
         if (allowedValues.length > 0) {
             const datalist = document.createElement('datalist');
@@ -290,76 +393,15 @@ function updateFieldValueInput(field, container) {
         }
     }
 
-    return input;
-}
-
-function setupTaxonAutocomplete(inputElement, idElement) {
-    const suggestionContainer = document.createElement('div');
-    suggestionContainer.className = 'taxonSuggestions';
-    suggestionContainer.style.position = 'absolute';
-    suggestionContainer.style.display = 'none';
-    document.body.appendChild(suggestionContainer);
-
-    let debounceTimeout;
-
-    function showTaxonSuggestions() {
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(() => {
-            if (inputElement.value.length < 2) {
-                suggestionContainer.innerHTML = '';
-                suggestionContainer.style.display = 'none';
-                return;
-            }
-            lookupTaxon(inputElement.value)
-                .then(taxa => {
-                    suggestionContainer.innerHTML = '';
-                    taxa.forEach(taxon => {
-                        const suggestion = document.createElement('div');
-                        suggestion.className = 'taxonSuggestion';
-                        suggestion.innerHTML = `
-                            <img src="${taxon.default_photo?.square_url || 'placeholder.jpg'}" alt="${taxon.name}">
-                            <span class="taxon-name">
-                                ${taxon.preferred_common_name ? `${taxon.preferred_common_name} (` : ''}
-                                <a href="https://www.inaturalist.org/taxa/${taxon.id}" target="_blank" class="taxon-link">
-                                    ${taxon.name}
-                                </a>
-                                ${taxon.preferred_common_name ? ')' : ''}
-                            </span>
-                        `;
-                        suggestion.addEventListener('click', (event) => {
-                            if (event.target.tagName !== 'A') {
-                                event.preventDefault();
-                                inputElement.value = taxon.preferred_common_name ? 
-                                    `${taxon.preferred_common_name} (${taxon.name})` : 
-                                    taxon.name;
-                                inputElement.dataset.taxonId = taxon.id;
-                                if (idElement) idElement.value = taxon.id;
-                                suggestionContainer.innerHTML = '';
-                                suggestionContainer.style.display = 'none';
-                            }
-                        });
-                        suggestionContainer.appendChild(suggestion);
-                    });
-
-                    const inputRect = inputElement.getBoundingClientRect();
-
-                    suggestionContainer.style.top = `${inputRect.bottom + window.scrollY}px`;
-                    suggestionContainer.style.left = `${inputRect.left + window.scrollX}px`;
-                    suggestionContainer.style.width = `${inputRect.width}px`;
-                    suggestionContainer.style.display = 'block';
-                })
-                .catch(error => console.error('Error fetching taxa:', error));
-        }, 300);
+    // Remove taxon suggestions container
+    const suggestionContainer = document.querySelector('.taxonSuggestions');
+    if (suggestionContainer) {
+        console.log('Removing taxon suggestions container');
+        suggestionContainer.remove();
     }
 
-    inputElement.addEventListener('input', showTaxonSuggestions);
-    inputElement.addEventListener('focus', showTaxonSuggestions);
-    inputElement.addEventListener('blur', () => {
-        setTimeout(() => {
-            suggestionContainer.innerHTML = '';
-            suggestionContainer.style.display = 'none';
-        }, 200);
-    });
+    console.log('Field value input updated');
+    return input;
 }
 
 
