@@ -296,7 +296,9 @@ function updateFieldValueInput(field, container) {
 function setupTaxonAutocomplete(inputElement, idElement) {
     const suggestionContainer = document.createElement('div');
     suggestionContainer.className = 'taxonSuggestions';
-    inputElement.parentNode.insertBefore(suggestionContainer, inputElement.nextSibling);
+    suggestionContainer.style.position = 'absolute';
+    suggestionContainer.style.display = 'none';
+    document.body.appendChild(suggestionContainer);
 
     let debounceTimeout;
 
@@ -305,6 +307,7 @@ function setupTaxonAutocomplete(inputElement, idElement) {
         debounceTimeout = setTimeout(() => {
             if (inputElement.value.length < 2) {
                 suggestionContainer.innerHTML = '';
+                suggestionContainer.style.display = 'none';
                 return;
             }
             lookupTaxon(inputElement.value)
@@ -332,15 +335,18 @@ function setupTaxonAutocomplete(inputElement, idElement) {
                                 inputElement.dataset.taxonId = taxon.id;
                                 if (idElement) idElement.value = taxon.id;
                                 suggestionContainer.innerHTML = '';
+                                suggestionContainer.style.display = 'none';
                             }
                         });
                         suggestionContainer.appendChild(suggestion);
                     });
+
                     const inputRect = inputElement.getBoundingClientRect();
-                    const containerRect = inputElement.closest('.taxonIdInputs').getBoundingClientRect();
-                    suggestionContainer.style.top = `${inputRect.bottom - containerRect.top}px`;
-                    suggestionContainer.style.left = `${inputRect.left - containerRect.left}px`;
+
+                    suggestionContainer.style.top = `${inputRect.bottom + window.scrollY}px`;
+                    suggestionContainer.style.left = `${inputRect.left + window.scrollX}px`;
                     suggestionContainer.style.width = `${inputRect.width}px`;
+                    suggestionContainer.style.display = 'block';
                 })
                 .catch(error => console.error('Error fetching taxa:', error));
         }, 300);
@@ -348,14 +354,14 @@ function setupTaxonAutocomplete(inputElement, idElement) {
 
     inputElement.addEventListener('input', showTaxonSuggestions);
     inputElement.addEventListener('focus', showTaxonSuggestions);
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (event) => {
-        if (!inputElement.contains(event.target) && !suggestionContainer.contains(event.target)) {
+    inputElement.addEventListener('blur', () => {
+        setTimeout(() => {
             suggestionContainer.innerHTML = '';
-        }
+            suggestionContainer.style.display = 'none';
+        }, 200);
     });
 }
+
 
 function setupObservationFieldAutocomplete(nameInput, idInput) {
     setupAutocompleteDropdown(nameInput, lookupObservationField, (result) => {
