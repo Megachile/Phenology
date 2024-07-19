@@ -149,66 +149,65 @@ function setupFieldAutocomplete(fieldNameInput, fieldIdInput, fieldValueContaine
         updateFieldValueInput(result, fieldValueContainer);
     });
 }
-
 function updateFieldValueInput(field, container) {
-    container.innerHTML = '';
-    let input;
+    const existingInput = container.querySelector('.fieldValue');
+    let input = existingInput || document.createElement('input');
+    input.className = 'fieldValue';
 
     switch (field.datatype) {
-        case 'taxon':
-            input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'fieldValue taxonInput';
-            input.placeholder = 'Enter species name';
-            setupTaxonAutocomplete(input);
-            break;
         case 'text':
         case 'date':
         case 'datetime':
         case 'time':
-            input = document.createElement('input');
             input.type = field.datatype;
-            input.className = 'fieldValue';
             break;
         case 'numeric':
-            input = document.createElement('input');
             input.type = 'number';
-            input.className = 'fieldValue';
             break;
         case 'boolean':
-            input = document.createElement('select');
-            input.className = 'fieldValue';
+            const select = document.createElement('select');
+            select.className = 'fieldValue';
             ['', 'Yes', 'No'].forEach(option => {
                 const opt = document.createElement('option');
                 opt.value = option;
                 opt.textContent = option;
-                input.appendChild(opt);
+                select.appendChild(opt);
             });
+            input = select;
+            break;
+        case 'taxon':
+            input.type = 'text';
+            input.className += ' taxonInput';
+            input.placeholder = 'Enter species name';
             break;
         default:
-            input = document.createElement('input');
             input.type = 'text';
-            input.className = 'fieldValue';
     }
 
     input.placeholder = 'Field Value';
-    container.appendChild(input);
+    
+    if (!existingInput) {
+        container.innerHTML = '';
+        container.appendChild(input);
+    }
 
     if (field.allowed_values && field.datatype !== 'taxon') {
-        const datalist = document.createElement('datalist');
-        datalist.id = `allowedValues-${field.id || Date.now()}`;
-        field.allowed_values.split('|').forEach(value => {
-            const option = document.createElement('option');
-            option.value = value.trim();
-            datalist.appendChild(option);
-        });
-        container.appendChild(datalist);
-        input.setAttribute('list', datalist.id);
+        const allowedValues = field.allowed_values.split('|');
+        if (allowedValues.length > 0) {
+            const datalist = document.createElement('datalist');
+            datalist.id = `allowedValues-${field.id || Date.now()}`;
+            allowedValues.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value.trim();
+                datalist.appendChild(option);
+            });
+            container.appendChild(datalist);
+            input.setAttribute('list', datalist.id);
+        }
     }
 
     return input;
 }
-
 function setupTaxonAutocomplete(inputElement, idElement) {
     const suggestionContainer = document.createElement('div');
     suggestionContainer.className = 'taxonSuggestions';

@@ -544,10 +544,16 @@ function addActionToForm(action = null) {
     const fieldNameInput = actionDiv.querySelector('.fieldName');
     const fieldIdInput = actionDiv.querySelector('.fieldId');
     const fieldValueContainer = actionDiv.querySelector('.fieldValueContainer');
-    const fieldDescription = actionDiv.querySelector('.fieldDescription');
-
-    setupFieldAutocomplete(fieldNameInput, fieldIdInput, fieldValueContainer, fieldDescription);
-
+    const fieldValueInput = fieldValueContainer.querySelector('.fieldValue');
+    
+    setupAutocompleteDropdown(fieldNameInput, lookupObservationField, (result) => {
+        fieldIdInput.value = result.id;
+        const updatedFieldValueInput = updateFieldValueInput(result, fieldValueContainer);
+        if (result.datatype === 'taxon') {
+            setupTaxonAutocompleteForInput(updatedFieldValueInput);
+        }
+    });
+    
     const taxonNameInput = actionDiv.querySelector('.taxonName');
     const taxonIdInput = actionDiv.querySelector('.taxonId');
     
