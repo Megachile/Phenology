@@ -1,12 +1,27 @@
 document.addEventListener('DOMContentLoaded', function() {
     const generatedUrlDiv = document.getElementById('generatedUrl');
 
-    document.getElementById('addTaxonButton').addEventListener('click', () => addField('taxon'));
-    document.getElementById('addUserButton').addEventListener('click', () => addField('user'));
-    document.getElementById('addProjectButton').addEventListener('click', () => addField('project'));
-    document.getElementById('addPlaceButton').addEventListener('click', () => addField('place'));
-    document.getElementById('addObservationFieldButton').addEventListener('click', () => addField('observationField'));
-    document.getElementById('addAnnotationButton').addEventListener('click', () => addField('annotation'));
+    const addTaxonButton = document.getElementById('addTaxonButton');
+    const addUserButton = document.getElementById('addUserButton');
+    const addProjectButton = document.getElementById('addProjectButton');
+    const addPlaceButton = document.getElementById('addPlaceButton');
+    const addObservationFieldButton = document.getElementById('addObservationFieldButton');
+    const addAnnotationButton = document.getElementById('addAnnotationButton');
+
+    // Check if all buttons are found
+    if (!addTaxonButton) console.error('addTaxonButton not found');
+    if (!addUserButton) console.error('addUserButton not found');
+    if (!addProjectButton) console.error('addProjectButton not found');
+    if (!addPlaceButton) console.error('addPlaceButton not found');
+    if (!addObservationFieldButton) console.error('addObservationFieldButton not found');
+    if (!addAnnotationButton) console.error('addAnnotationButton not found');
+
+    addTaxonButton.addEventListener('click', () => addField('taxon'));
+    addUserButton.addEventListener('click', () => addField('user'));
+    addProjectButton.addEventListener('click', () => addField('project'));
+    addPlaceButton.addEventListener('click', () => addField('place'));
+    addObservationFieldButton.addEventListener('click', () => addField('observationField'));
+    addAnnotationButton.addEventListener('click', () => addField('annotation'));
 
     document.getElementById('generateUrlButton').addEventListener('click', function(e) {
         e.preventDefault();
@@ -15,13 +30,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+
 function addField(type) {
     const container = document.getElementById(`${type}Container`);
+    if (!container) {
+        console.error(`Container for type '${type}' not found.`);
+        return;
+    }
+
     const fieldCount = container.querySelectorAll('.field-group').length;
     const fieldGroup = document.createElement('div');
     fieldGroup.className = 'field-group';
-    
-        let innerHTML = `
+
+    let innerHTML = `
         <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
         <input type="hidden" id="${type}Id${fieldCount}">
     `;
@@ -41,32 +62,63 @@ function addField(type) {
 
     innerHTML += `
         <button class="removeFieldButton">Remove</button>
-        <label><input type="checkbox" class="negationCheckbox"> Negate</label>
+        <label><input type="checkbox" class="negationCheckbox"> Without</label>
     `;
 
     fieldGroup.innerHTML = innerHTML;
+    console.log(`Appending field group with innerHTML: ${innerHTML}`);
     container.appendChild(fieldGroup);
-    setupAutocomplete(type, fieldCount);
+
+    // Log the created elements
+    console.log(`Created elements for type ${type} with index ${fieldCount}:`);
+    if (type === 'annotation') {
+        console.log(document.getElementById(`${type}Field${fieldCount}`)); // Log select field
+        console.log(document.getElementById(`${type}Value${fieldCount}`)); // Log select value
+
+        // Only call setupAutocomplete if elements are found
+        if (document.getElementById(`${type}Field${fieldCount}`) && document.getElementById(`${type}Value${fieldCount}`)) {
+            setupAutocomplete(type, fieldCount);
+        } else {
+            console.error(`Failed to create select elements for type ${type} with index ${fieldCount}`);
+        }
+    } else {
+        console.log(document.getElementById(`${type}${fieldCount}`));  // Log text input
+        console.log(document.getElementById(`${type}Id${fieldCount}`)); // Log hidden input
+
+        // Only call setupAutocomplete if elements are found
+        if (document.getElementById(`${type}${fieldCount}`) && document.getElementById(`${type}Id${fieldCount}`)) {
+            setupAutocomplete(type, fieldCount);
+        } else {
+            console.error(`Failed to create input elements for type ${type} with index ${fieldCount}`);
+        }
+    }
 
     fieldGroup.querySelector('.removeFieldButton').addEventListener('click', removeField);
     fieldGroup.querySelector('.negationCheckbox').addEventListener('change', toggleNegation);
 }
 
-function removeField(event) {
-    event.target.closest('.field-group').remove();
-    generateURL();
-}
-
-function toggleNegation(event) {
-    const input = event.target.closest('.field-group').querySelector('input[type="text"]');
-    input.dataset.negated = event.target.checked;
-    generateURL();
-}
-
 function setupAutocomplete(type, index) {
-    const input = document.getElementById(`${type}${index}`);
-    const idInput = document.getElementById(`${type}Id${index}`);
-    
+    let input, idInput;
+
+    if (type === 'annotation') {
+        input = document.getElementById(`${type}Field${index}`);
+        idInput = document.getElementById(`${type}Value${index}`);
+    } else {
+        input = document.getElementById(`${type}${index}`);
+        idInput = document.getElementById(`${type}Id${index}`);
+    }
+
+    if (!input) {
+        console.error(`Input element with ID ${type}${index} not found`);
+        return;
+    }
+    if (!idInput) {
+        console.error(`ID input element with ID ${type}Id${index} not found`);
+        return;
+    }
+
+    console.log(`Setting up autocomplete for type ${type} with index ${index}`);
+
     if (type === 'taxon') {
         setupTaxonAutocomplete(input, idInput);
     } else if (type === 'observationField') {
@@ -92,37 +144,19 @@ function setupAutocomplete(type, index) {
     });
 }
 
-function setupUserAutocomplete(input, idInput) {
-    setupAutocompleteDropdown(input, lookupUser, (result) => {
-        idInput.value = result.id;
-        input.value = result.login;
-    });
-}
-
-function setupProjectAutocomplete(input, idInput) {
-    setupAutocompleteDropdown(input, lookupProject, (result) => {
-        idInput.value = result.id;
-        input.value = result.title;
-    });
-}
-
-function setupObservationFieldAutocomplete(input, idInput) {
-    setupAutocompleteDropdown(input, lookupObservationField, (result) => {
-        idInput.value = result.id;
-        input.value = result.name;
-        
-        const container = input.closest('.field-group');
-        const valueInput = container.querySelector('[id^="observationFieldValue"]');
-        
-        if (result.datatype === 'taxon') {
-            setupTaxonAutocomplete(valueInput);
-        }
-    });
-}
-
 function setupAnnotationDropdowns(index) {
     const fieldSelect = document.getElementById(`annotationField${index}`);
     const valueSelect = document.getElementById(`annotationValue${index}`);
+
+    // Debugging logs
+    if (!fieldSelect) {
+        console.error(`fieldSelect with ID annotationField${index} not found`);
+        return;
+    }
+    if (!valueSelect) {
+        console.error(`valueSelect with ID annotationValue${index} not found`);
+        return;
+    }
 
     // Populate annotation fields
     Object.entries(controlledTerms).forEach(([term, data]) => {
@@ -144,6 +178,20 @@ function setupAnnotationDropdowns(index) {
             });
         }
     });
+}
+
+
+
+
+function removeField(event) {
+    event.target.closest('.field-group').remove();
+    generateURL();
+}
+
+function toggleNegation(event) {
+    const input = event.target.closest('.field-group').querySelector('input[type="text"]');
+    input.dataset.negated = event.target.checked;
+    generateURL();
 }
 
 function clearFieldFromUrl(fieldName) {
@@ -175,4 +223,18 @@ function generateURL() {
     // Add other parameters here...
 
     return url + params.toString();
+}
+
+function setupUserAutocomplete(input, idInput) {
+    setupAutocompleteDropdown(input, lookupUser, (result) => {
+        idInput.value = result.id;
+        input.value = result.login;
+    });
+}
+
+function setupProjectAutocomplete(input, idInput) {
+    setupAutocompleteDropdown(input, lookupProject, (result) => {
+        idInput.value = result.id;
+        input.value = result.title;
+    });
 }
