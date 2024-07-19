@@ -1315,8 +1315,18 @@ function performActions(actions) {
 function refreshObservation() {
     console.log('refreshObservation called');
     return new Promise((resolve, reject) => {
-        console.log('refreshEnabled:', refreshEnabled);
-        console.log('currentObservationId:', currentObservationId);
+        const logState = {
+            url: window.location.href,
+            readyState: document.readyState,
+            refreshEnabled,
+            currentObservationId,
+            userAgent: navigator.userAgent,
+            screenWidth: window.innerWidth,
+            screenHeight: window.innerHeight,
+            timeStamp: new Date().toISOString()
+        };
+        console.log('Refresh attempt state:', logState);
+
         if (!refreshEnabled || !currentObservationId) {
             console.log('Refresh not enabled or no current observation ID');
             resolve();
@@ -1326,33 +1336,123 @@ function refreshObservation() {
         if (window.location.pathname.match(/^\/observations\/\d+/)) {
             console.log('On individual observation page, reloading');
             window.location.reload();
+            return;
         }
 
-        const grid = document.querySelector("#Identify > div > div.mainrow.false.row > div.main-col > div.ObservationsGrid.flowed.false.row");
-        console.log('Grid element found:', !!grid);
+        const selectors = [
+            "#Identify > div > div.mainrow.false.row > div.main-col > div.ObservationsGrid.flowed.false.row",
+            ".ObservationsGrid",
+            "#Identify .ObservationsGrid",
+            "div[data-react-class='ObservationsGrid']"
+        ];
+
+        let grid = null;
+        for (let selector of selectors) {
+            grid = document.querySelector(selector);
+            if (grid) {
+                console.log('Grid found with selector:', selector);
+                break;
+            }
+        }
+
         if (!grid) {
-            console.log('Grid not found, rejecting');
+            console.error('Grid not found, logging page structure');
+            logPageStructure();
             reject(new Error('Grid not found'));
             return;
         }
 
-        const observationLink = grid.querySelector(`a[href="/observations/${currentObservationId}"]`);
-        console.log('Observation link found:', !!observationLink);
+        const gridInfo = {
+            childCount: grid.childElementCount,
+            classes: grid.className,
+            id: grid.id,
+            rect: grid.getBoundingClientRect()
+        };
+        console.log('Grid info:', gridInfo);
+
+        const observationLink = findObservationLink(grid, currentObservationId);
+        
         if (observationLink) {
             console.log('Clicking observation link');
-            observationLink.click();
-            const observer = new MutationObserver((mutations, obs) => {
-                if (document.querySelector('.ObservationModal')) {
-                    console.log('ObservationModal found, resolving');
-                    obs.disconnect();
+            try {
+                observationLink.click();
+            } catch (error) {
+                console.error('Error clicking observation link:', error);
+                reject(error);
+                return;
+            }
+
+            let modalCheckAttempts = 0;
+            const modalCheckInterval = setInterval(() => {
+                modalCheckAttempts++;
+                const modal = document.querySelector('.ObservationModal');
+                if (modal) {
+                    console.log('ObservationModal found after', modalCheckAttempts, 'attempts');
+                    clearInterval(modalCheckInterval);
                     resolve();
+                } else if (modalCheckAttempts >= 20) { // 2 seconds (100ms * 20)
+                    console.error('ObservationModal not found after 2 seconds');
+                    clearInterval(modalCheckInterval);
+                    reject(new Error('ObservationModal not found after timeout'));
                 }
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
+            }, 100);
         } else {
-            console.log('Observation not found in grid, rejecting');
+            console.error('Observation not found in grid, rejecting');
             reject(new Error('Observation not found in grid'));
         }
+    });
+}
+
+function findObservationLink(gridElement, observationId) {
+    console.log('Searching for observation link with ID:', observationId);
+    
+    const directLink = gridElement.querySelector(`a[href="/observations/${observationId}"]`);
+    if (directLink) {
+        console.log('Direct link found');
+        return directLink;
+    }
+    
+    const allLinks = gridElement.querySelectorAll('a[href^="/observations/"]');
+    console.log('Total observation links found:', allLinks.length);
+    
+    for (let link of allLinks) {
+        if (link.href.endsWith(observationId)) {
+            console.log('Matching link found:', link.href);
+            return link;
+        }
+    }
+    
+    console.error('No matching observation link found');
+    logLinkDetails(allLinks);
+    return null;
+}
+
+function logPageStructure() {
+    console.log('Body classes:', document.body.className);
+    console.log('Identify element:', document.getElementById('Identify')?.outerHTML);
+    const mainContent = document.querySelector('main');
+    console.log('Main content classes:', mainContent?.className);
+    console.log('Main content child elements:', Array.from(mainContent?.children || []).map(el => ({
+        tagName: el.tagName,
+        id: el.id,
+        className: el.className
+    })));
+    console.log('All grid-like elements:', Array.from(document.querySelectorAll('[class*="grid" i], [class*="list" i]')).map(el => ({
+        tagName: el.tagName,
+        id: el.id,
+        className: el.className
+    })));
+}
+
+function logLinkDetails(links) {
+    console.log('Detailed link information:');
+    Array.from(links).forEach((link, index) => {
+        console.log(`Link ${index}:`, {
+            href: link.href,
+            textContent: link.textContent,
+            className: link.className,
+            rect: link.getBoundingClientRect()
+        });
     });
 }
 

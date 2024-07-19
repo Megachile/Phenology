@@ -107,7 +107,8 @@ const qualityMetrics = [
 
 /* document.getElementById('openBulkActionsButton').addEventListener('click', () => {
     browserAPI.runtime.sendMessage({ action: "openBulkActionsPage" });
-  }); */
+  });
+ */
 
 function isShortcutForbidden(shortcut) {
     if (!shortcut) return false; // If no shortcut, it can't be forbidden
@@ -516,15 +517,9 @@ function addActionToForm(action = null) {
     const fieldNameInput = actionDiv.querySelector('.fieldName');
     const fieldIdInput = actionDiv.querySelector('.fieldId');
     const fieldValueContainer = actionDiv.querySelector('.fieldValueContainer');
-    const fieldValueInput = fieldValueContainer.querySelector('.fieldValue');
-    
-    setupAutocompleteDropdown(fieldNameInput, lookupObservationField, (result) => {
-        fieldIdInput.value = result.id;
-        const updatedFieldValueInput = updateFieldValueInput(result, fieldValueContainer);
-        if (result.datatype === 'taxon') {
-            setupTaxonAutocompleteForInput(updatedFieldValueInput);
-        }
-    });
+    const fieldDescription = actionDiv.querySelector('.fieldDescription');
+
+    setupFieldAutocomplete(fieldNameInput, fieldIdInput, fieldValueContainer, fieldDescription);
 
     const taxonNameInput = actionDiv.querySelector('.taxonName');
     const taxonIdInput = actionDiv.querySelector('.taxonId');
@@ -776,7 +771,6 @@ function updateConfigurationDisplay(config) {
     const configDiv = document.querySelector(`.config-item[data-id="${config.id}"]`);
     if (configDiv) {
         configDiv.classList.toggle('disabled-config', config.configurationDisabled);
-        // Update other visual indicators as needed
     }
 }
 

@@ -81,7 +81,11 @@ function lookupUser(query, perPage = 10) {
 
     return fetch(url)
         .then(response => response.json())
-        .then(data => data.results);
+        .then(data => data.results.map(user => ({
+            ...user,
+            displayName: user.login,
+            icon_url: user.icon_url
+        })));
 }
 
 function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunction) {
@@ -103,12 +107,8 @@ function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunctio
                     results.forEach(result => {
                         const suggestion = document.createElement('div');
                         suggestion.className = 'autocomplete-suggestion';
-                        suggestion.textContent = result.title || result.name;
-                        if (result.usageCount !== undefined) {
-                            suggestion.textContent += ` (Used: ${result.usageCount} times)`;
-                        }
+                        suggestion.textContent = result.name || result.title || result.login;
                         suggestion.addEventListener('click', () => {
-                            inputElement.value = result.title || result.name;
                             onSelectFunction(result, inputElement);
                             suggestionContainer.innerHTML = '';
                         });
@@ -119,7 +119,6 @@ function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunctio
         }, 300);
     });
 
-    // Close dropdown when clicking outside
     document.addEventListener('click', (event) => {
         if (!inputElement.contains(event.target) && !suggestionContainer.contains(event.target)) {
             suggestionContainer.innerHTML = '';
@@ -141,61 +140,70 @@ function debounce(func, wait) {
 }
 
 
+function setupFieldAutocomplete(fieldNameInput, fieldIdInput, fieldValueContainer, fieldDescriptionElement) {
+    setupAutocompleteDropdown(fieldNameInput, lookupObservationField, (result) => {
+        fieldIdInput.value = result.id;
+        if (fieldDescriptionElement) {
+            fieldDescriptionElement.textContent = result.description || '';
+        }
+        updateFieldValueInput(result, fieldValueContainer);
+    });
+}
+
 function updateFieldValueInput(field, container) {
-    const existingInput = container.querySelector('.fieldValue');
-    let input = existingInput || document.createElement('input');
-    input.className = 'fieldValue';
+    container.innerHTML = '';
+    let input;
 
     switch (field.datatype) {
+        case 'taxon':
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'fieldValue taxonInput';
+            input.placeholder = 'Enter species name';
+            setupTaxonAutocomplete(input);
+            break;
         case 'text':
         case 'date':
         case 'datetime':
         case 'time':
+            input = document.createElement('input');
             input.type = field.datatype;
+            input.className = 'fieldValue';
             break;
         case 'numeric':
+            input = document.createElement('input');
             input.type = 'number';
+            input.className = 'fieldValue';
             break;
         case 'boolean':
-            const select = document.createElement('select');
-            select.className = 'fieldValue';
+            input = document.createElement('select');
+            input.className = 'fieldValue';
             ['', 'Yes', 'No'].forEach(option => {
                 const opt = document.createElement('option');
                 opt.value = option;
                 opt.textContent = option;
-                select.appendChild(opt);
+                input.appendChild(opt);
             });
-            input = select;
-            break;
-        case 'taxon':
-            input.type = 'text';
-            input.className += ' taxonInput';
-            input.placeholder = 'Enter species name';
             break;
         default:
+            input = document.createElement('input');
             input.type = 'text';
+            input.className = 'fieldValue';
     }
 
     input.placeholder = 'Field Value';
-    
-    if (!existingInput) {
-        container.innerHTML = '';
-        container.appendChild(input);
-    }
+    container.appendChild(input);
 
     if (field.allowed_values && field.datatype !== 'taxon') {
-        const allowedValues = field.allowed_values.split('|');
-        if (allowedValues.length > 0) {
-            const datalist = document.createElement('datalist');
-            datalist.id = `allowedValues-${field.id || Date.now()}`;
-            allowedValues.forEach(value => {
-                const option = document.createElement('option');
-                option.value = value.trim();
-                datalist.appendChild(option);
-            });
-            container.appendChild(datalist);
-            input.setAttribute('list', datalist.id);
-        }
+        const datalist = document.createElement('datalist');
+        datalist.id = `allowedValues-${field.id || Date.now()}`;
+        field.allowed_values.split('|').forEach(value => {
+            const option = document.createElement('option');
+            option.value = value.trim();
+            datalist.appendChild(option);
+        });
+        container.appendChild(datalist);
+        input.setAttribute('list', datalist.id);
     }
 
     return input;
@@ -261,6 +269,23 @@ function setupTaxonAutocomplete(inputElement, idElement) {
     document.addEventListener('click', (event) => {
         if (!inputElement.contains(event.target) && !suggestionContainer.contains(event.target)) {
             suggestionContainer.innerHTML = '';
+        }
+    });
+}
+
+function setupObservationFieldAutocomplete(nameInput, idInput) {
+    setupAutocompleteDropdown(nameInput, lookupObservationField, (result) => {
+        idInput.value = result.id;
+        const actionItem = nameInput.closest('.action-item') || nameInput.closest('.field-group');
+        if (actionItem) {
+            const fieldDescription = actionItem.querySelector('.fieldDescription');
+            if (fieldDescription) {
+                fieldDescription.textContent = result.description || '';
+            }
+            const fieldValueContainer = actionItem.querySelector('.fieldValueContainer');
+            if (fieldValueContainer) {
+                updateFieldValueInput(result, fieldValueContainer);
+            }
         }
     });
 }
