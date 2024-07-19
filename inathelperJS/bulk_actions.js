@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 function addField(type) {
+    console.log(`Adding field of type: ${type}`);
     const container = document.getElementById(`${type}Container`);
     if (!container) {
         console.error(`Container for type '${type}' not found.`);
@@ -186,9 +187,6 @@ function setupAnnotationDropdowns(index) {
     });
 }
 
-
-
-
 function removeField(event) {
     event.target.closest('.field-group').remove();
     generateURL();
@@ -210,9 +208,10 @@ function clearFieldFromUrl(fieldName) {
 }
 
 function generateURL() {
-    let url = 'https://www.inaturalist.org/observations?';
+    console.log('Generating URL...');
+    let url = 'https://www.inaturalist.org/observations/identify?';
     const params = new URLSearchParams();
-
+    
     // Quality Grade
     const qualityGrades = Array.from(document.querySelectorAll('input[name="quality_grade"]:checked'))
         .map(input => input.value);
@@ -226,9 +225,143 @@ function generateURL() {
         params.append('reviewed', reviewedStatus.value);
     }
 
-    // Add other parameters here...
+    // Taxon
+    const taxonInputs = document.querySelectorAll('#taxonContainer input[type="text"]');
+    console.log('Taxon inputs:', taxonInputs);
+    const taxonIds = [];
+    const withoutTaxonIds = [];
+    taxonInputs.forEach(input => {
+        const taxonId = input.nextElementSibling.value;
+        if (taxonId) {
+            if (input.dataset.negated === 'true') {
+                withoutTaxonIds.push(taxonId);
+            } else {
+                taxonIds.push(taxonId);
+            }
+        }
+    });
+    if (taxonIds.length > 0) {
+        params.append('taxon_ids', taxonIds.join(','));
+    }
+    if (withoutTaxonIds.length > 0) {
+        params.append('without_taxon_id', withoutTaxonIds.join(','));
+    }
 
-    return url + params.toString();
+    // User
+    const userInputs = document.querySelectorAll('#userContainer input[type="text"]');
+    console.log('User inputs:', userInputs);
+    const userIds = [];
+    const withoutUserIds = [];
+    userInputs.forEach(input => {
+        const userId = input.nextElementSibling.value;
+        if (userId) {
+            if (input.dataset.negated === 'true') {
+                withoutUserIds.push(userId);
+            } else {
+                userIds.push(userId);
+            }
+        }
+    });
+    if (userIds.length > 0) {
+        params.append('user_id', userIds.join(','));
+    }
+    if (withoutUserIds.length > 0) {
+        params.append('not_user_id', withoutUserIds.join(','));
+    }
+
+    // Project
+    const projectInputs = document.querySelectorAll('#projectContainer input[type="text"]');
+    console.log('Project inputs:', projectInputs);
+    const projectIds = [];
+    const withoutProjectIds = [];
+    projectInputs.forEach(input => {
+        const projectId = input.nextElementSibling.value;
+        if (projectId) {
+            if (input.dataset.negated === 'true') {
+                withoutProjectIds.push(projectId);
+            } else {
+                projectIds.push(projectId);
+            }
+        }
+    });
+    if (projectIds.length > 0) {
+        params.append('project_id', projectIds.join(','));
+    }
+    if (withoutProjectIds.length > 0) {
+        params.append('not_in_project', withoutProjectIds.join(','));
+    }
+
+    // Place
+    const placeInputs = document.querySelectorAll('#placeContainer input[type="text"]');
+    console.log('Place inputs:', placeInputs);
+    const placeIds = [];
+    const withoutPlaceIds = [];
+    placeInputs.forEach(input => {
+        const placeId = input.nextElementSibling.value;
+        if (placeId) {
+            if (input.dataset.negated === 'true') {
+                withoutPlaceIds.push(placeId);
+            } else {
+                placeIds.push(placeId);
+            }
+        }
+    });
+    if (placeIds.length > 0) {
+        params.append('place_id', placeIds.join(','));
+    }
+    if (withoutPlaceIds.length > 0) {
+        params.append('not_in_place', withoutPlaceIds.join(','));
+    }
+
+    // Observation Field
+    const ofInputs = document.querySelectorAll('#observationFieldContainer .field-group');
+    console.log('Observation Field inputs:', ofInputs);
+    ofInputs.forEach(group => {
+        const fieldNameInput = group.querySelector('.fieldName');
+        const fieldValueInput = group.querySelector('.fieldValue');
+        const negated = group.querySelector('.negationCheckbox').checked;
+        
+        if (fieldNameInput && fieldValueInput) {
+            const fieldName = fieldNameInput.value;
+            let fieldValue = fieldValueInput.value;
+            
+            // Check if it's a taxon input
+            if (fieldValueInput.classList.contains('taxonInput') && fieldValueInput.dataset.taxonId) {
+                fieldValue = fieldValueInput.dataset.taxonId;
+            }
+            
+            if (fieldName) {
+                if (negated) {
+                    params.append('without_field', fieldName);
+                } else if (fieldValue) {
+                    params.append(`field:${encodeURIComponent(fieldName)}`, fieldValue);
+                } else {
+                    params.append(`field:${encodeURIComponent(fieldName)}`, '');
+                }
+            }
+        }
+    });
+
+    // Annotation
+    const annotationInputs = document.querySelectorAll('#annotationContainer .field-group');
+    console.log('Annotation inputs:', annotationInputs);
+    annotationInputs.forEach(group => {
+        const fieldId = group.querySelector('select:first-child').value;
+        const valueId = group.querySelector('select:last-child').value;
+        if (fieldId && valueId) {
+            const negated = group.querySelector('.negationCheckbox').checked;
+            if (negated) {
+                params.append('without_term_id', fieldId);
+            } else {
+                params.append('term_id', fieldId);
+                params.append('term_value_id', valueId);
+            }
+        }
+    });
+
+    const finalUrl = url + params.toString();
+    console.log('Generated URL:', finalUrl);
+    return finalUrl;
 }
 
 function setupUserAutocomplete(input, idInput) {
