@@ -65,7 +65,7 @@ function addField(type) {
             </select>
             <button class="removeFieldButton">Remove</button>
             <label><input type="checkbox" class="negationCheckbox"> Without</label>
-            <span class="negationNote" style="display:none; color: #888; font-style: italic;">No value: returns obs. with blank field. With value: returns obs. with other values, not blank.</span>
+            <span class="negationNote" style="display:none; color: #888; font-style: italic;">No value: selects obs. blank for this annotation. With value: selects obs. with other values, not blank.</span>
         `;
         setupAnnotationDropdowns(fieldCount);
     } else  if (type === 'observationField') {
