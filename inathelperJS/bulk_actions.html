@@ -23,6 +23,49 @@
             <label><input type="radio" name="reviewed" value="true"> Yes</label>
             <label><input type="radio" name="reviewed" value="false" checked> No</label>
         </fieldset>
+
+        <fieldset>
+            <legend>Date Observed</legend>
+            <div>
+                <input type="radio" id="dateAny" name="dateType" value="any" checked>
+                <label for="dateAny">Any</label>
+            </div>
+            <div>
+                <input type="radio" id="dateExact" name="dateType" value="exact">
+                <label for="dateExact">Exact Date</label>
+                <div id="exactDateContainer" class="date-input-container">
+                    <input type="date" id="exactDate">
+                </div>
+            </div>
+            <div>
+                <input type="radio" id="dateRange" name="dateType" value="range">
+                <label for="dateRange">Range</label>
+                <div id="rangeDateContainer" class="date-input-container">
+                    <input type="date" id="rangeStart">
+                    <input type="date" id="rangeEnd">
+                </div>
+            </div>
+            <div>
+                <input type="radio" id="dateMonths" name="dateType" value="months">
+                <label for="dateMonths">Months</label>
+                <div id="monthsContainer" class="date-input-container">
+                    <div>
+                        <button id="selectAllMonths">Select All</button>
+                        <button id="deselectAllMonths">Deselect All</button>
+                    </div>
+                    <div id="monthCheckboxes"></div>
+                </div>
+            </div>
+            <div>
+                <input type="radio" id="dateYears" name="dateType" value="years">
+                <label for="dateYears">Years</label>
+                <div id="yearsContainer" class="date-input-container">
+                    <select id="yearSelect" multiple>
+                        <!-- Years will be populated dynamically -->
+                    </select>
+                </div>
+            </div>
+        </fieldset>
     
         <button id="addTaxonButton">Add Taxon</button>
         <div id="taxonContainer"></div>

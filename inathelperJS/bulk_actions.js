@@ -7,6 +7,58 @@ document.addEventListener('DOMContentLoaded', function() {
     const addPlaceButton = document.getElementById('addPlaceButton');
     const addObservationFieldButton = document.getElementById('addObservationFieldButton');
     const addAnnotationButton = document.getElementById('addAnnotationButton');
+    
+    const dateTypeInputs = document.querySelectorAll('input[name="dateType"]');
+    const containers = {
+        exact: document.getElementById('exactDateContainer'),
+        range: document.getElementById('rangeDateContainer'),
+        months: document.getElementById('monthsContainer'),
+        years: document.getElementById('yearsContainer')
+    };
+    const monthCheckboxes = document.getElementById('monthCheckboxes');
+    const yearSelect = document.getElementById('yearSelect');
+
+    // Populate month checkboxes
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    months.forEach((month, index) => {
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `month${index + 1}`;
+        checkbox.value = index + 1;
+        const label = document.createElement('label');
+        label.htmlFor = `month${index + 1}`;
+        label.textContent = month;
+        monthCheckboxes.appendChild(checkbox);
+        monthCheckboxes.appendChild(label);
+        monthCheckboxes.appendChild(document.createElement('br'));
+    });
+
+    // Populate year select
+    const currentYear = new Date().getFullYear();
+    for (let year = currentYear; year >= 1900; year--) {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        yearSelect.appendChild(option);
+    }
+
+    // Handle radio button changes
+    dateTypeInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            Object.values(containers).forEach(container => container.style.display = 'none');
+            if (this.value in containers) {
+                containers[this.value].style.display = 'block';
+            }
+        });
+    });
+
+    // Handle Select All / Deselect All for months
+    document.getElementById('selectAllMonths').addEventListener('click', () => {
+        monthCheckboxes.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+    });
+    document.getElementById('deselectAllMonths').addEventListener('click', () => {
+        monthCheckboxes.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    });
 
     // Check if all buttons are found
     if (!addTaxonButton) console.error('addTaxonButton not found');
@@ -247,6 +299,42 @@ function generateURL() {
         });
 
         return { ids, withoutIds };
+    }
+    
+    // dates
+    const dateType = document.querySelector('input[name="dateType"]:checked').value;
+    
+    switch(dateType) {
+        case 'exact':
+            const exactDate = document.getElementById('exactDate').value;
+            if (exactDate) {
+                params.push(`d1=${exactDate}`);
+                params.push(`d2=${exactDate}`);
+            }
+            break;
+        case 'range':
+            const startDate = document.getElementById('rangeStart').value;
+            const endDate = document.getElementById('rangeEnd').value;
+            if (startDate) params.push(`d1=${startDate}`);
+            if (endDate) params.push(`d2=${endDate}`);
+            break;
+        case 'months':
+            const selectedMonths = Array.from(document.querySelectorAll('#monthCheckboxes input:checked'))
+                                        .map(cb => cb.value);
+            if (selectedMonths.length > 0) {
+                params.push(`month=${selectedMonths.join(',')}`);
+            }
+            break;
+        case 'years':
+            const selectedYears = Array.from(document.getElementById('yearSelect').selectedOptions)
+                                       .map(option => option.value);
+            if (selectedYears.length > 0) {
+                const minYear = Math.min(...selectedYears);
+                const maxYear = Math.max(...selectedYears);
+                params.push(`d1=${minYear}-01-01`);
+                params.push(`d2=${maxYear}-12-31`);
+            }
+            break;
     }
 
     // Process each input type
