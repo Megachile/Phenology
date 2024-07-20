@@ -24,48 +24,94 @@
             <label><input type="radio" name="reviewed" value="false" checked> No</label>
         </fieldset>
 
-        <fieldset>
-            <legend>Date Observed</legend>
-            <div>
-                <input type="radio" id="dateAny" name="dateType" value="any" checked>
-                <label for="dateAny">Any</label>
-            </div>
-            <div>
-                <input type="radio" id="dateExact" name="dateType" value="exact">
-                <label for="dateExact">Exact Date</label>
-                <div id="exactDateContainer" class="date-input-container">
-                    <input type="date" id="exactDate">
+        <div class="date-selectors-container">
+            <fieldset class="date-selector">
+                <legend>Date Observed</legend>
+                <div>
+                    <input type="radio" id="observedDateAny" name="observedDateType" value="any" checked>
+                    <label for="observedDateAny">Any</label>
                 </div>
-            </div>
-            <div>
-                <input type="radio" id="dateRange" name="dateType" value="range">
-                <label for="dateRange">Range</label>
-                <div id="rangeDateContainer" class="date-input-container">
-                    <input type="date" id="rangeStart">
-                    <input type="date" id="rangeEnd">
-                </div>
-            </div>
-            <div>
-                <input type="radio" id="dateMonths" name="dateType" value="months">
-                <label for="dateMonths">Months</label>
-                <div id="monthsContainer" class="date-input-container">
-                    <div>
-                        <button id="selectAllMonths">Select All</button>
-                        <button id="deselectAllMonths">Deselect All</button>
+                <div>
+                    <input type="radio" id="observedDateExact" name="observedDateType" value="exact">
+                    <label for="observedDateExact">Exact Date</label>
+                    <div id="observedExactDateContainer" class="date-input-container">
+                        <input type="date" id="observedExactDate">
                     </div>
-                    <div id="monthCheckboxes"></div>
                 </div>
-            </div>
-            <div>
-                <input type="radio" id="dateYears" name="dateType" value="years">
-                <label for="dateYears">Years</label>
-                <div id="yearsContainer" class="date-input-container">
-                    <select id="yearSelect" multiple>
-                        <!-- Years will be populated dynamically -->
-                    </select>
+                <div>
+                    <input type="radio" id="observedDateRange" name="observedDateType" value="range">
+                    <label for="observedDateRange">Range</label>
+                    <div id="observedRangeDateContainer" class="date-input-container">
+                        <input type="date" id="observedRangeStart">
+                        <input type="date" id="observedRangeEnd">
+                    </div>
                 </div>
-            </div>
-        </fieldset>
+                <div>
+                    <input type="radio" id="observedDateMonths" name="observedDateType" value="months">
+                    <label for="observedDateMonths">Months</label>
+                    <div id="observedMonthsContainer" class="date-input-container">
+                        <div>
+                            <button id="selectAllObservedMonths">Select All</button>
+                            <button id="deselectAllObservedMonths">Deselect All</button>
+                        </div>
+                        <div id="observedMonthCheckboxes"></div>
+                    </div>
+                </div>
+                <div>
+                    <input type="radio" id="observedDateYears" name="observedDateType" value="years">
+                    <label for="observedDateYears">Years</label>
+                    <div id="observedYearsContainer" class="date-input-container">
+                        <select id="observedYearSelect" multiple>
+                        </select>
+                    </div>
+                </div>
+            </fieldset>
+        
+            <fieldset class="date-selector">
+                <legend>Date Added</legend>
+                <div>
+                    <input type="radio" id="addedDateAny" name="addedDateType" value="any" checked>
+                    <label for="addedDateAny">Any</label>
+                </div>
+                <div>
+                    <input type="radio" id="addedDateExact" name="addedDateType" value="exact">
+                    <label for="addedDateExact">Exact Date</label>
+                    <div id="addedExactDateContainer" class="date-input-container">
+                        <input type="date" id="addedExactDate">
+                    </div>
+                </div>
+                <div>
+                    <input type="radio" id="addedDateRange" name="addedDateType" value="range">
+                    <label for="addedDateRange">Range</label>
+                    <div id="addedRangeDateContainer" class="date-input-container">
+                        <input type="date" id="addedRangeStart">
+                        <input type="date" id="addedRangeEnd">
+                    </div>
+                </div>
+                <div>
+                    <input type="radio" id="addedDateMonths" name="addedDateType" value="months">
+                    <label for="addedDateMonths">Months</label>
+                    <div id="addedMonthsContainer" class="date-input-container">
+                        <div>
+                            <button id="selectAllAddedMonths">Select All</button>
+                            <button id="deselectAllAddedMonths">Deselect All</button>
+                        </div>
+                        <div id="addedMonthCheckboxes"></div>
+                    </div>
+                </div>
+                <div>
+                    <input type="radio" id="addedDateYears" name="addedDateType" value="years">
+                    <label for="addedDateYears">Years</label>
+                    <div id="addedYearsContainer" class="date-input-container">
+                        <select id="addedYearSelect" multiple>
+                        </select>
+                    </div>
+                </div>
+            </fieldset>
+        </div>
+
+
+
     
         <button id="addTaxonButton">Add Taxon</button>
         <div id="taxonContainer"></div>
