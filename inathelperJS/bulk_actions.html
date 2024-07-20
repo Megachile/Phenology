@@ -24,6 +24,60 @@
             <label><input type="radio" name="reviewed" value="false" checked> No</label>
         </fieldset>
 
+        <div class="collapsible-container">
+            <button id="toggleFilters" class="collapse-toggle">Additional Filters ▼</button>
+            <fieldset id="additionalFilters" class="collapsed">
+            <div>
+              <input type="checkbox" id="captiveToggle" name="captive">
+              <label for="captiveToggle">Captive</label>
+            </div>
+            <div>
+              <input type="checkbox" id="hasSoundsToggle" name="sounds">
+              <label for="hasSoundsToggle">Has Sounds</label>
+            </div>
+            <div>
+              <input type="checkbox" id="threatenedToggle" name="threatened">
+              <label for="threatenedToggle">Threatened</label>
+            </div>
+            <div>
+              <input type="checkbox" id="hasPhotosToggle" name="photos">
+              <label for="hasPhotosToggle">Has Photos</label>
+            </div>
+            <div>
+              <input type="checkbox" id="introducedToggle" name="introduced">
+              <label for="introducedToggle">Introduced</label>
+            </div>
+            <div>
+              <input type="checkbox" id="popularToggle" name="popular">
+              <label for="popularToggle">Popular</label>
+            </div>
+            <div>
+              <input type="checkbox" id="nativeToggle" name="native">
+              <label for="nativeToggle">Native</label>
+            </div>
+            <div>
+              <input type="checkbox" id="georeferencedToggle" name="geo">
+              <label for="georeferencedToggle">Georeferenced</label>
+            </div>
+            <div>
+              <input type="checkbox" id="mappableToggle" name="mappable">
+              <label for="mappableToggle">Mappable</label>
+            </div>
+            <div>
+              <input type="checkbox" id="withDescriptionToggle" name="description">
+              <label for="withDescriptionToggle">With Description</label>
+            </div>
+            <div>
+              <input type="checkbox" id="withTagsToggle" name="tags">
+              <label for="withTagsToggle">With Tags</label>
+            </div>
+            <div>
+              <input type="checkbox" id="unidentifiedToggle" name="identified">
+              <label for="unidentifiedToggle">No IDs</label>
+            </div>
+          </fieldset>
+        </div>
+
         <div class="date-selectors-container">
             <fieldset class="date-selector">
                 <legend>Date Observed</legend>

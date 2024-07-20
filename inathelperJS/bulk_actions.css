@@ -147,3 +147,44 @@ button:hover {
         flex-direction: column;
     }
 }
+.collapsible-container {
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .collapse-toggle {
+    background-color: #4CAF50; /* A green background for better visibility */
+    color: white; /* White text on green background */
+    border: none;
+    padding: 10px 15px;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+  }
+  
+  .collapse-toggle:hover {
+    background-color: #45a049; /* Darker green on hover */
+  }
+  
+  fieldset.collapsed {
+    display: none;
+  }
+  
+  fieldset:not(.collapsed) {
+    background-color: #f9f9f9; /* Light gray background when expanded */
+    padding: 15px;
+    border-top: 1px solid #ccc;
+  }
+  
+  /* Style for the checkboxes and labels */
+  fieldset input[type="checkbox"] {
+    margin-right: 5px;
+  }
+  
+  fieldset label {
+    color: #333; /* Dark gray text for labels */
+    font-size: 14px;
+  }

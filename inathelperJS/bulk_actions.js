@@ -25,6 +25,16 @@ document.addEventListener('DOMContentLoaded', function() {
     addObservationFieldButton.addEventListener('click', () => addField('observationField'));
     addAnnotationButton.addEventListener('click', () => addField('annotation'));
 
+    const toggleButton = document.getElementById('toggleFilters');
+    const filtersFieldset = document.getElementById('additionalFilters');
+
+    toggleButton.addEventListener('click', function() {
+        filtersFieldset.classList.toggle('collapsed');
+        this.textContent = filtersFieldset.classList.contains('collapsed') 
+        ? 'Additional Filters ▼' 
+        : 'Additional Filters ▲';
+    });
+
     document.getElementById('generateUrlButton').addEventListener('click', function(e) {
         e.preventDefault();
         const url = generateURL();
@@ -298,6 +308,34 @@ function generateURL() {
     if (reviewedStatus) {
         params.push(`reviewed=${encodeURIComponent(reviewedStatus.value)}`);
         console.log('Added reviewed status:', params[params.length - 1]);
+    }
+
+    // Add new toggle parameters
+    const toggles = [
+        {id: 'captiveToggle', param: 'captive'},
+        {id: 'hasSoundsToggle', param: 'sounds'},
+        {id: 'threatenedToggle', param: 'threatened'},
+        {id: 'hasPhotosToggle', param: 'photos'},
+        {id: 'introducedToggle', param: 'introduced'},
+        {id: 'popularToggle', param: 'popular'},
+        {id: 'nativeToggle', param: 'native'},
+        {id: 'georeferencedToggle', param: 'geo'},
+        {id: 'mappableToggle', param: 'mappable'},
+        {id: 'withDescriptionToggle', param: 'description'},
+        {id: 'withTagsToggle', param: 'tags'},
+    ];
+
+    toggles.forEach(toggle => {
+        const element = document.getElementById(toggle.id);
+        if (element && element.checked) {
+            params.push(`${toggle.param}=true`);
+        }
+    });
+
+    // Special case for unidentified
+    const unidentifiedToggle = document.getElementById('unidentifiedToggle');
+    if (unidentifiedToggle && unidentifiedToggle.checked) {
+        params.push('identified=false');
     }
 
     function processInputs(type) {
