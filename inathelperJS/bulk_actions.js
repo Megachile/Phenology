@@ -55,7 +55,28 @@ function addField(type) {
             <button class="removeFieldButton">Remove</button>
             <label><input type="checkbox" class="negationCheckbox"> Without</label>
         `;
-    } else {
+    } else if (type === 'annotation') {
+        fieldGroup.innerHTML = `
+            <select class="annotationField">
+                <option value="">Select Field</option>
+            </select>
+            <select class="annotationValue" disabled>
+                <option value="">Select Value</option>
+            </select>
+            <button class="removeFieldButton">Remove</button>
+            <label><input type="checkbox" class="negationCheckbox"> Without</label>
+            <span class="negationNote" style="display:none; color: #888; font-style: italic;">No value: returns obs. with blank field. With value: returns obs. with other values, not blank.</span>
+        `;
+        setupAnnotationDropdowns(fieldCount);
+    } else  if (type === 'observationField') {
+        fieldGroup.innerHTML = `
+            <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
+            <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
+            <button class="removeFieldButton">Remove</button>
+            <label><input type="checkbox" class="negationCheckbox"> Without</label>
+            <span class="negationNote" style="display:none; color: #888; font-style: italic;">Selects obs. without this field. Specific value exclusion not supported.</span>   
+        `;
+    } else  {
         fieldGroup.innerHTML = `
             <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
             <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
@@ -113,16 +134,17 @@ function setupAutocomplete(type, index) {
 }
 
 function setupAnnotationDropdowns(index) {
-    const fieldSelect = document.getElementById(`annotationField${index}`);
-    const valueSelect = document.getElementById(`annotationValue${index}`);
-
-    // Debugging logs
-    if (!fieldSelect) {
-        console.error(`fieldSelect with ID annotationField${index} not found`);
+    const fieldGroup = document.querySelectorAll('.field-group')[index];
+    if (!fieldGroup) {
+        console.error('Field group not found for index:', index);
         return;
     }
-    if (!valueSelect) {
-        console.error(`valueSelect with ID annotationValue${index} not found`);
+
+    const fieldSelect = fieldGroup.querySelector('.annotationField');
+    const valueSelect = fieldGroup.querySelector('.annotationValue');
+
+    if (!fieldSelect || !valueSelect) {
+        console.error('Annotation selects not found in field group:', fieldGroup);
         return;
     }
 
@@ -137,15 +159,21 @@ function setupAnnotationDropdowns(index) {
     fieldSelect.addEventListener('change', () => {
         const selectedField = controlledTerms[fieldSelect.options[fieldSelect.selectedIndex].text];
         valueSelect.innerHTML = '<option value="">Select Value</option>';
-        if (selectedField) {
+        if (selectedField && fieldSelect.value !== "") {
             Object.entries(selectedField.values).forEach(([key, value]) => {
                 const option = document.createElement('option');
                 option.value = value;
                 option.textContent = key;
                 valueSelect.appendChild(option);
             });
+            valueSelect.disabled = false;
+        } else {
+            valueSelect.disabled = true;
         }
     });
+
+    // Ensure value select is initially disabled
+    valueSelect.disabled = true;
 }
 
 function removeField(event) {
@@ -154,8 +182,12 @@ function removeField(event) {
 }
 
 function toggleNegation(event) {
-    const input = event.target.closest('.field-group').querySelector('input[type="text"]');
-    input.dataset.negated = event.target.checked;
+    const fieldGroup = event.target.closest('.field-group');
+    const isNegated = event.target.checked;
+    const negationNote = fieldGroup.querySelector('.negationNote');
+    
+    negationNote.style.display = isNegated ? 'inline' : 'none';
+    
     generateURL();
 }
 
@@ -276,27 +308,32 @@ function generateURL() {
     // Annotation
     const annotationInputs = document.querySelectorAll('#annotationContainer .field-group');
     annotationInputs.forEach((group, index) => {
-        const fieldSelect = group.querySelector('select:first-child');
-        const valueSelect = group.querySelector('select:last-child');
+        const fieldSelect = group.querySelector('.annotationField');
+        const valueSelect = group.querySelector('.annotationValue');
+        const negated = group.querySelector('.negationCheckbox').checked;
         
-        if (fieldSelect && valueSelect) {
-            const fieldId = fieldSelect.value;
-            const valueId = valueSelect.value;
-            const negated = group.querySelector('.negationCheckbox').checked;
-            
-            console.log(`Annotation ${index}:`, { fieldId, valueId, negated });
-            
-            if (fieldId && valueId) {
-                if (negated) {
-                    params.push(`without_term_id=${encodeURIComponent(fieldId)}`);
+        if (fieldSelect.value) {
+            if (negated) {
+                if (valueSelect.value) {
+                    // Without a specific annotation value
+                    params.push(`term_id=${encodeURIComponent(fieldSelect.value)}`);
+                    params.push(`without_term_value_id=${encodeURIComponent(valueSelect.value)}`);
                 } else {
-                    params.push(`term_id=${encodeURIComponent(fieldId)}`);
-                    params.push(`term_value_id=${encodeURIComponent(valueId)}`);
+                    // Without annotation (no value)
+                    params.push(`without_term_id=${encodeURIComponent(fieldSelect.value)}`);
                 }
-                console.log('Added Annotation:', params[params.length - 1]);
+            } else {
+                // With Annotation
+                params.push(`term_id=${encodeURIComponent(fieldSelect.value)}`);
+                if (valueSelect.value) {
+                    // With annotation and specific value
+                    params.push(`term_value_id=${encodeURIComponent(valueSelect.value)}`);
+                }
             }
+            console.log('Added Annotation:', params[params.length - 1]);
         }
     });
+    
 
     const rawUrl = url + params.join('&');
     console.log('Raw generated URL:', rawUrl);
