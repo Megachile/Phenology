@@ -25,15 +25,42 @@ document.addEventListener('DOMContentLoaded', function() {
     addObservationFieldButton.addEventListener('click', () => addField('observationField'));
     addAnnotationButton.addEventListener('click', () => addField('annotation'));
 
-    const toggleButton = document.getElementById('toggleFilters');
-    const filtersFieldset = document.getElementById('additionalFilters');
+   const filtersFieldset = document.getElementById('additionalFilters');
 
+    const toggleFiltersButton = document.getElementById('toggleFilters');
+    const toggleAdditionalParamsButton = document.getElementById('toggleAdditionalParams');
+    const additionalParamsFieldset = document.getElementById('additionalParams');
+
+  function setupCollapsible(toggleButton, fieldset) {
     toggleButton.addEventListener('click', function() {
-        filtersFieldset.classList.toggle('collapsed');
-        this.textContent = filtersFieldset.classList.contains('collapsed') 
-        ? 'Additional Filters ▼' 
-        : 'Additional Filters ▲';
+      fieldset.classList.toggle('collapsed');
+      this.textContent = fieldset.classList.contains('collapsed') 
+        ? this.textContent.replace('▲', '▼')
+        : this.textContent.replace('▼', '▲');
     });
+  }
+
+  setupCollapsible(toggleFiltersButton, filtersFieldset);
+  setupCollapsible(toggleAdditionalParamsButton, additionalParamsFieldset);
+
+   // Add event listeners for new inputs
+   const newInputs = [
+    'listIdInput', 'descriptionTagInput', 'accountAgeMin', 'accountAgeMax',
+    'noPhotosToggle', 'noSoundsToggle', 'hasIdentificationsToggle'
+  ];
+
+  newInputs.forEach(inputId => {
+    const element = document.getElementById(inputId);
+    if (element) {
+      element.addEventListener('change', generateURL);
+    }
+  });
+
+  // Add event listeners for license checkboxes
+  const licenseCheckboxes = document.querySelectorAll('#photoLicenses input, #soundLicenses input');
+  licenseCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', generateURL);
+  });
 
     document.getElementById('generateUrlButton').addEventListener('click', function(e) {
         e.preventDefault();
@@ -46,6 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
         generatedUrlDiv.innerHTML = ''; // Clear previous content
         generatedUrlDiv.appendChild(link); // Append new link
     });
+    
 });
 
 function setupDateSelector(type) {
@@ -295,12 +323,11 @@ function generateURL() {
     let url = 'https://www.inaturalist.org/observations/identify?';
     let params = [];
 
-    // Quality Grade
-    const qualityGrades = Array.from(document.querySelectorAll('input[name="quality_grade"]:checked'))
-        .map(input => input.value);
+     // Quality Grade
+     const qualityGrades = Array.from(document.querySelectorAll('input[name="quality_grade"]:checked'))
+     .map(input => input.value);
     if (qualityGrades.length > 0) {
-        params.push(`quality_grade=${encodeURIComponent(qualityGrades.join(','))}`);
-        console.log('Added quality grade:', params[params.length - 1]);
+        params.push(`quality_grade=${qualityGrades.join(',')}`);
     }
 
     // Reviewed Status
@@ -455,6 +482,54 @@ function generateURL() {
             console.log('Added Annotation:', params[params.length - 1]);
         }
     });
+
+    // List ID
+    const listId = document.getElementById('listIdInput').value.trim();
+    if (listId) {
+        params.push(`list_id=${encodeURIComponent(listId)}`);
+    }
+
+    // Description/Tag Search
+    const descriptionTag = document.getElementById('descriptionTagInput').value.trim();
+    if (descriptionTag) {
+        params.push(`q=${encodeURIComponent(descriptionTag)}`);
+    }
+
+    // Account Age
+    const accountAgeMin = document.getElementById('accountAgeMin').value;
+    const accountAgeMax = document.getElementById('accountAgeMax').value;
+    if (accountAgeMin) params.push(`user_after=${accountAgeMin}w`);
+    if (accountAgeMax) params.push(`user_before=${accountAgeMax}w`);
+
+    // Photo Licenses
+    const photoLicenses = Array.from(document.querySelectorAll('#photoLicenses input:checked'))
+        .map(input => input.value);
+    if (photoLicenses.length > 0) {
+        params.push(`photo_license=${photoLicenses.join(',')}`);
+    }
+
+    // Sound Licenses
+    const soundLicenses = Array.from(document.querySelectorAll('#soundLicenses input:checked'))
+        .map(input => input.value);
+    if (soundLicenses.length > 0) {
+        params.push(`sound_license=${soundLicenses.join(',')}`);
+    }
+
+    // No Photos
+    if (document.getElementById('noPhotosToggle').checked) {
+        params.push('photos=false');
+    }
+
+    // No Sounds
+    if (document.getElementById('noSoundsToggle').checked) {
+        params.push('sounds=false');
+    }
+
+    // Has Identifications
+    if (document.getElementById('hasIdentificationsToggle').checked) {
+        params.push('identified=true');
+    }
+
     
 
     const rawUrl = url + params.join('&');
