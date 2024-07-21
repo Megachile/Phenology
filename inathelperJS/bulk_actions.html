@@ -25,6 +25,172 @@
         </fieldset>
 
         <div class="collapsible-container">
+            <button id="toggleCategories" class="collapse-toggle">Categories ▼</button>
+            <fieldset id="categoriesFieldset" class="collapsed">
+              <div class="categories-grid">
+                <div class="category-item">
+                  <input type="checkbox" id="category-Aves" name="categories" value="Aves">
+                  <label for="category-Aves">Birds</label>
+                </div>
+                <div class="category-item">
+                  <input type="checkbox" id="category-Amphibia" name="categories" value="Amphibia">
+                  <label for="category-Amphibia">Amphibians</label>
+                </div>
+                <div class="category-item">
+                  <input type="checkbox" id="category-Reptilia" name="categories" value="Reptilia">
+                  <label for="category-Reptilia">Reptiles</label>
+                </div>
+                <div class="category-item">
+                  <input type="checkbox" id="category-Mammalia" name="categories" value="Mammalia">
+                  <label for="category-Mammalia">Mammals</label>
+                </div>
+                <div class="category-item">
+                  <input type="checkbox" id="category-Actinopterygii" name="categories" value="Actinopterygii">
+                  <label for="category-Actinopterygii">Ray-finned Fishes</label>
+                </div>
+                <div class="category-item">
+                  <input type="checkbox" id="category-Mollusca" name="categories" value="Mollusca">
+                  <label for="category-Mollusca">Mollusks</label>
+                </div>
+                <div class="category-item">
+                  <input type="checkbox" id="category-Arachnida" name="categories" value="Arachnida">
+                  <label for="category-Arachnida">Arachnids</label>
+                </div>
+                <div class="category-item">
+                  <input type="checkbox" id="category-Insecta" name="categories" value="Insecta">
+                  <label for="category-Insecta">Insects</label>
+                </div>
+                <div class="category-item">
+                  <input type="checkbox" id="category-Plantae" name="categories" value="Plantae">
+                  <label for="category-Plantae">Plants</label>
+                </div>
+                <div class="category-item">
+                  <input type="checkbox" id="category-Fungi" name="categories" value="Fungi">
+                  <label for="category-Fungi">Fungi</label>
+                </div>
+                <div class="category-item">
+                  <input type="checkbox" id="category-Protozoa" name="categories" value="Protozoa">
+                  <label for="category-Protozoa">Protozoans</label>
+                </div>
+                <div class="category-item">
+                  <input type="checkbox" id="category-unknown" name="categories" value="unknown">
+                  <label for="category-unknown">Unknown</label>
+                </div>
+              </div>
+            </fieldset>
+          </div>
+
+<div class="collapsible-container">
+  <button id="toggleSortingRanking" class="collapse-toggle">Sorting and Ranking ▼</button>
+  <fieldset id="sortingRankingFieldset" class="collapsed">
+  <div>
+    <label for="sortBy">Sort By:</label>
+    <select id="sortBy">
+      <option value="created_at">Date Added</option>
+      <option value="observed_on">Date Observed</option>
+      <option value="updated_at">Date Updated</option>
+      <option value="votes">Faves</option>
+      <option value="random">Random</option>
+    </select>
+  </div>
+
+  <div>
+    <label for="sortOrder">Order:</label>
+    <select id="sortOrder">
+      <option value="desc">Descending</option>
+      <option value="asc">Ascending</option>
+    </select>
+  </div>
+
+  <div>
+    <label for="rankHigh">Rank (High):</label>
+    <select id="rankHigh">
+            <option value="">Any</option>
+            <option value="kingdom">Kingdom</option>
+            <option value="phylum">Phylum</option>
+            <option value="subphylum">Subphylum</option>
+            <option value="superclass">Superclass</option>
+            <option value="class">Class</option>
+            <option value="subclass">Subclass</option>
+            <option value="infraclass">Infraclass</option>
+            <option value="subterclass">Subterclass</option>
+            <option value="superorder">Superorder</option>
+            <option value="order">Order</option>
+            <option value="suborder">Suborder</option>
+            <option value="infraorder">Infraorder</option>
+            <option value="parvorder">Parvorder</option>
+            <option value="zoosection">Zoosection</option>
+            <option value="zoosubsection">Zoosubsection</option>
+            <option value="superfamily">Superfamily</option>
+            <option value="epifamily">Epifamily</option>
+            <option value="family">Family</option>
+            <option value="subfamily">Subfamily</option>
+            <option value="supertribe">Supertribe</option>
+            <option value="tribe">Tribe</option>
+            <option value="subtribe">Subtribe</option>
+            <option value="genus">Genus</option>
+            <option value="genushybrid">Genus hybrid</option>
+            <option value="subgenus">Subgenus</option>
+            <option value="section">Section</option>
+            <option value="subsection">Subsection</option>
+            <option value="complex">Complex</option>
+            <option value="species">Species</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="subspecies">Subspecies</option>
+            <option value="variety">Variety</option>
+            <option value="form">Form</option>
+            <option value="infrahybrid">Infrahybrid</option>
+          </select>
+  </div>
+
+  <div>
+    <label for="rankLow">Rank (Low):</label>
+    <select id="rankLow">
+        <option value="">Any</option>
+        <option value="kingdom">Kingdom</option>
+        <option value="phylum">Phylum</option>
+        <option value="subphylum">Subphylum</option>
+        <option value="superclass">Superclass</option>
+        <option value="class">Class</option>
+        <option value="subclass">Subclass</option>
+        <option value="infraclass">Infraclass</option>
+        <option value="subterclass">Subterclass</option>
+        <option value="superorder">Superorder</option>
+        <option value="order">Order</option>
+        <option value="suborder">Suborder</option>
+        <option value="infraorder">Infraorder</option>
+        <option value="parvorder">Parvorder</option>
+        <option value="zoosection">Zoosection</option>
+        <option value="zoosubsection">Zoosubsection</option>
+        <option value="superfamily">Superfamily</option>
+        <option value="epifamily">Epifamily</option>
+        <option value="family">Family</option>
+        <option value="subfamily">Subfamily</option>
+        <option value="supertribe">Supertribe</option>
+        <option value="tribe">Tribe</option>
+        <option value="subtribe">Subtribe</option>
+        <option value="genus">Genus</option>
+        <option value="genushybrid">Genus hybrid</option>
+        <option value="subgenus">Subgenus</option>
+        <option value="section">Section</option>
+        <option value="subsection">Subsection</option>
+        <option value="complex">Complex</option>
+        <option value="species">Species</option>
+        <option value="hybrid">Hybrid</option>
+        <option value="subspecies">Subspecies</option>
+        <option value="variety">Variety</option>
+        <option value="form">Form</option>
+        <option value="infrahybrid">Infrahybrid</option>
+      </select>
+  </div>
+
+  <div>
+    <label for="perPage">Results per page: (max 200)</label>
+    <input type="number" id="perPage" min="1" max="200" value="30">
+  </div>
+</fieldset>
+
+        <div class="collapsible-container">
             <button id="toggleAdditionalParams" class="collapse-toggle">Additional Search Parameters ▼</button>
             <fieldset id="additionalParams" class="collapsed">              
               <div>
@@ -117,9 +283,17 @@
               <label for="georeferencedToggle">Georeferenced</label>
             </div>
             <div>
+                <input type="checkbox" id="excludeNoCoordinates">
+                <label for="excludeNoCoordinates">Exclude observations without coordinates</label>
+              </div>
+            <div>
               <input type="checkbox" id="mappableToggle" name="mappable">
               <label for="mappableToggle">Mappable</label>
             </div>
+            <div>
+                <input type="checkbox" id="excludePrivateObs">
+                <label for="excludePrivateObs">Exclude location-private observations</label>
+              </div>
             <div>
               <input type="checkbox" id="withDescriptionToggle" name="description">
               <label for="withDescriptionToggle">With Description</label>

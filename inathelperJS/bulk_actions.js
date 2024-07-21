@@ -42,6 +42,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   setupCollapsible(toggleFiltersButton, filtersFieldset);
   setupCollapsible(toggleAdditionalParamsButton, additionalParamsFieldset);
+  setupCollapsible(toggleCategories, categoriesFieldset);
+  setupCollapsible(toggleSortingRanking, sortingRankingFieldset);
 
    // Add event listeners for new inputs
    const newInputs = [
@@ -530,6 +532,47 @@ function generateURL() {
         params.push('identified=true');
     }
 
+    if (document.getElementById('excludeNoCoordinates').checked) {
+        params.push('geo=true');
+    }
+
+    if (document.getElementById('excludePrivateObs').checked) {
+        params.push('geoprivacy=open,obscured');
+        params.push('taxon_geoprivacy=open,obscured');
+    }
+
+      // Sorting
+      const sortBy = document.getElementById('sortBy').value;
+        const sortOrder = document.getElementById('sortOrder').value;
+        if (sortBy && sortBy !== 'created_at') {  // Only add if it's not the default value
+            params.push(`order_by=${sortBy}`);
+        }
+        if (sortOrder === 'asc') {  // Only add if it's not the default (descending)
+            params.push(`order=asc`);
+        }
+  
+      // Ranking
+      const rankHigh = document.getElementById('rankHigh').value;
+      const rankLow = document.getElementById('rankLow').value;
+      if (rankHigh) {
+          params.push(`hrank=${rankHigh}`);
+      }
+      if (rankLow) {
+          params.push(`lrank=${rankLow}`);
+      }
+  
+      // Results per page
+      const perPage = document.getElementById('perPage').value;
+      if (perPage && perPage !== '30') {  // Only add if it's not the default value
+          params.push(`per_page=${perPage}`);
+      }
+
+    // Categories
+    const categories = Array.from(document.querySelectorAll('input[name="categories"]:checked'))
+                            .map(checkbox => checkbox.value);
+    if (categories.length > 0) {
+        params.push(`iconic_taxa=${categories.join(',')}`);
+    }
     
 
     const rawUrl = url + params.join('&');

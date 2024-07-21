@@ -188,3 +188,18 @@ button:hover {
     color: #333; /* Dark gray text for labels */
     font-size: 14px;
   }
+
+  .categories-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+  
+  .category-item {
+    display: flex;
+    align-items: center;
+  }
+  
+  .category-item input[type="checkbox"] {
+    margin-right: 5px;
+  }
