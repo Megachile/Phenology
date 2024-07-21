@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const addPlaceButton = document.getElementById('addPlaceButton');
     const addObservationFieldButton = document.getElementById('addObservationFieldButton');
     const addAnnotationButton = document.getElementById('addAnnotationButton');
+    const addIdTaxonButton = document.getElementById('addIdTaxonButton');
+    const addIdentifierButton = document.getElementById('addIdentifierButton');
     setupDateSelector('observed');
     setupDateSelector('added');
 
@@ -24,8 +26,10 @@ document.addEventListener('DOMContentLoaded', function() {
     addPlaceButton.addEventListener('click', () => addField('place'));
     addObservationFieldButton.addEventListener('click', () => addField('observationField'));
     addAnnotationButton.addEventListener('click', () => addField('annotation'));
-
-   const filtersFieldset = document.getElementById('additionalFilters');
+    addIdTaxonButton.addEventListener('click', () => addField('idTaxon'));
+    addIdentifierButton.addEventListener('click', () => addField('identifier'));
+   
+    const filtersFieldset = document.getElementById('additionalFilters');
 
     const toggleFiltersButton = document.getElementById('toggleFilters');
     const toggleAdditionalParamsButton = document.getElementById('toggleAdditionalParams');
@@ -174,6 +178,29 @@ function addField(type) {
             <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
             <button class="removeFieldButton">Remove</button>
             <label><input type="checkbox" class="negationCheckbox"> Without</label>
+            <label><input type="checkbox" class="exactCheckbox"> Exact</label>
+        `;
+    } else if (type === 'idTaxon') {
+        fieldGroup.innerHTML = `
+            <input type="text" id="${type}${fieldCount}" placeholder="Enter ID taxon">
+            <input type="text" id="${type}Id${fieldCount}" placeholder="ID Taxon ID" readonly>
+            <button class="removeFieldButton">Remove</button>
+            <label><input type="checkbox" class="negationCheckbox"> Without</label>
+        `;
+    } else if (type === 'identifier') {
+        fieldGroup.innerHTML = `
+            <input type="text" id="${type}${fieldCount}" placeholder="Enter identifier">
+            <input type="text" id="${type}Id${fieldCount}" placeholder="Identifier ID" readonly>
+            <button class="removeFieldButton">Remove</button>
+            <label><input type="checkbox" class="negationCheckbox"> Without</label>
+        `;
+    } else if (type === 'project') {
+        fieldGroup.innerHTML = `
+            <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
+            <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
+            <button class="removeFieldButton">Remove</button>
+            <label><input type="checkbox" class="negationCheckbox"> Without</label>
+            <label><input type="checkbox" class="rulesCheckbox"> Follows Project Rules</label>
         `;
     } else if (type === 'annotation') {
         fieldGroup.innerHTML = `
@@ -188,7 +215,7 @@ function addField(type) {
             <span class="negationNote" style="display:none; color: #888; font-style: italic;">No value: selects obs. blank for this annotation. With value: selects obs. with other values, not blank.</span>
         `;
         setupAnnotationDropdowns(fieldCount);
-    } else  if (type === 'observationField') {
+    } else if (type === 'observationField') {
         fieldGroup.innerHTML = `
             <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
             <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
@@ -196,7 +223,7 @@ function addField(type) {
             <label><input type="checkbox" class="negationCheckbox"> Without</label>
             <span class="negationNote" style="display:none; color: #888; font-style: italic;">Selects obs. without this field. Specific value exclusion not supported.</span>   
         `;
-    } else  {
+    } else {
         fieldGroup.innerHTML = `
             <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
             <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
@@ -210,6 +237,19 @@ function addField(type) {
 
     if (type === 'annotation') {
         setupAnnotationDropdowns(fieldCount);
+    } else if (type === 'idTaxon' || type === 'taxon') {
+        setupTaxonAutocomplete(
+            fieldGroup.querySelector(`#${type}${fieldCount}`),
+            fieldGroup.querySelector(`#${type}Id${fieldCount}`)
+        );
+    } else if (type === 'identifier') {
+        setupAutocompleteDropdown(
+            fieldGroup.querySelector(`#${type}${fieldCount}`),
+            lookupUser,
+            (result) => {
+                fieldGroup.querySelector(`#${type}Id${fieldCount}`).value = result.id;
+            }
+        );
     } else {
         setupAutocomplete(type, fieldCount);
     }
@@ -372,41 +412,67 @@ function generateURL() {
         const inputGroups = container.querySelectorAll('.field-group');
         const ids = [];
         const withoutIds = [];
-
+        const exactIds = [];
+        const withoutDirectIds = [];
+        const applyRulesIds = [];
+        const notMatchingRulesIds = [];
+    
         inputGroups.forEach((group, index) => {
             const input = group.querySelector(`#${type}${index}`);
             const idInput = group.querySelector(`#${type}Id${index}`);
             const negated = group.querySelector('.negationCheckbox').checked;
-
+            const exact = group.querySelector('.exactCheckbox')?.checked;
+            const applyRules = group.querySelector('.rulesCheckbox')?.checked;
+    
             if (input && idInput && idInput.value) {
                 console.log(`${type} input ${index}:`, {
                     value: input.value,
                     id: idInput.value,
-                    negated: negated
+                    negated: negated,
+                    exact: exact,
+                    applyRules: applyRules
                 });
-
+    
                 if (negated) {
-                    withoutIds.push(idInput.value);
+                    if (type === 'taxon' && exact) {
+                        withoutDirectIds.push(idInput.value);
+                    } else if (type === 'project' && applyRules) {
+                        notMatchingRulesIds.push(idInput.value);
+                    } else {
+                        withoutIds.push(idInput.value);
+                    }
+                } else if (exact) {
+                    exactIds.push(idInput.value);
+                } else if (applyRules) {
+                    applyRulesIds.push(idInput.value);
                 } else {
                     ids.push(idInput.value);
                 }
             }
         });
-
-        return { ids, withoutIds };
+    
+        return { ids, withoutIds, exactIds, withoutDirectIds, applyRulesIds, notMatchingRulesIds };
     }
-
-    // dates
-    addDateParams('observed', params);
-    addDateParams('added', params);
-
-    // Process each input type
-    const types = ['taxon', 'user', 'project', 'place'];
+    
+    // In the generateURL function:
+    const types = ['taxon', 'idTaxon', 'user', 'identifier', 'project', 'place'];
     types.forEach(type => {
-        const { ids, withoutIds } = processInputs(type);
+        const { ids, withoutIds, exactIds, withoutDirectIds, applyRulesIds, notMatchingRulesIds } = processInputs(type);
         
         if (ids.length > 0) {
-            params.push(`${type}_id=${encodeURIComponent(ids.join(','))}`);
+            switch(type) {
+                case 'idTaxon':
+                    params.push(`ident_taxon_id_exclusive=${encodeURIComponent(ids.join(','))}`);
+                    break;
+                case 'identifier':
+                    params.push(`ident_user_id=${encodeURIComponent(ids.join(','))}`);
+                    break;
+                case 'project':
+                    params.push(`project_id=${encodeURIComponent(ids.join(','))}`);
+                    break;
+                default:
+                    params.push(`${type}_id=${encodeURIComponent(ids.join(','))}`);
+            }
             console.log(`Added ${type} ids:`, params[params.length - 1]);
         }
         if (withoutIds.length > 0) {
@@ -418,17 +484,48 @@ function generateURL() {
                 case 'user':
                     withoutParam = 'not_user_id';
                     break;
+                case 'identifier':
+                    withoutParam = 'without_ident_user_id';
+                    break;
                 case 'project':
                     withoutParam = 'not_in_project';
                     break;
                 case 'taxon':
                     withoutParam = 'without_taxon_id';
                     break;
+                case 'idTaxon':
+                    withoutParam = 'without_ident_taxon_id';
+                    break;
             }
             params.push(`${withoutParam}=${encodeURIComponent(withoutIds.join(','))}`);
             console.log(`Added ${type} without ids:`, params[params.length - 1]);
         }
+        if (type === 'taxon') {
+            if (exactIds.length > 0) {
+                params.push(`exact_taxon_id=${encodeURIComponent(exactIds.join(','))}`);
+                console.log(`Added exact taxon ids:`, params[params.length - 1]);
+            }
+            if (withoutDirectIds.length > 0) {
+                params.push(`without_direct_taxon_id=${encodeURIComponent(withoutDirectIds.join(','))}`);
+                console.log(`Added without direct taxon ids:`, params[params.length - 1]);
+            }
+        }
+        if (type === 'project') {
+            if (applyRulesIds.length > 0) {
+                params.push(`apply_project_rules_for=${encodeURIComponent(applyRulesIds.join(','))}`);
+                console.log(`Added apply project rules ids:`, params[params.length - 1]);
+            }
+            if (notMatchingRulesIds.length > 0) {
+                params.push(`not_matching_project_rules_for=${encodeURIComponent(notMatchingRulesIds.join(','))}`);
+                console.log(`Added not matching project rules ids:`, params[params.length - 1]);
+            }
+        }
     });
+
+    // dates
+    addDateParams('observed', params);
+    addDateParams('added', params);
+
 
     // Observation Field
     const ofInputs = document.querySelectorAll('#observationFieldContainer .field-group');
