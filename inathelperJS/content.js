@@ -1542,7 +1542,48 @@ function createDynamicButtons() {
     });
 }
 
+function debugButtonCreation(config) {
+    console.log("Debug: Button Creation Start for", config.name);
+    console.log("Button Config:", JSON.stringify(config));
+
+    try {
+        // Create a test button
+        const testButton = document.createElement('button');
+        testButton.textContent = config.name || "Test Button";
+        testButton.setAttribute('data-shortcut', formatShortcut(config.shortcut));
+        
+        // Log button properties
+        console.log("Button Text:", testButton.textContent);
+        console.log("Button Shortcut:", testButton.getAttribute('data-shortcut'));
+        
+        // Check if the button is valid
+        console.log("Is button valid HTML:", testButton.outerHTML.length > 0);
+        
+        // Test button visibility
+        document.body.appendChild(testButton);
+        const isVisible = window.getComputedStyle(testButton).display !== 'none';
+        console.log("Is button visible:", isVisible);
+        document.body.removeChild(testButton);
+
+        // Log character codes
+        console.log("Name character codes:", Array.from(config.name || "").map(c => c.charCodeAt(0)));
+        console.log("Shortcut character codes:", Array.from(formatShortcut(config.shortcut) || "").map(c => c.charCodeAt(0)));
+
+        // Check for potential problematic characters
+        const problematicChars = /[~!@#$%^&*()]/;
+        console.log("Contains problematic chars in name:", problematicChars.test(config.name || ""));
+        console.log("Contains problematic chars in shortcut:", problematicChars.test(formatShortcut(config.shortcut) || ""));
+
+    } catch (error) {
+        console.error("Error in button creation:", error);
+    }
+
+    console.log("Debug: Button Creation End for", config.name);
+}
+
 function createButton(config) {
+    debugButtonCreation(config);
+
     let button = document.createElement('button');
     button.classList.add('button-ph');
     button.draggable = true;
@@ -1574,7 +1615,6 @@ function createButton(config) {
     
     button.style.display = config.buttonHidden ? 'none' : 'inline-block';
     buttonContainer.appendChild(button);
-
     if (config.shortcut) {
         customShortcuts.push({
             name: config.name,
@@ -1585,7 +1625,10 @@ function createButton(config) {
             button: button  // Store the button element itself
         });
     }
+
+    console.log("Button created and added to DOM:", button.outerHTML);
 }
+
 function formatShortcut(shortcut) {
     if (!shortcut || !shortcut.key) return '';
     let parts = [];
