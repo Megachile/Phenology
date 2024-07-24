@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('input[name="accType"]').forEach(radio => {
         radio.addEventListener('change', toggleAccInputs);
     });
-
+    
     document.getElementById('generateUrlButton').addEventListener('click', function(e) {
         e.preventDefault();
         const url = generateURL();
@@ -126,11 +126,13 @@ function toggleGeoInputs() {
     generateURL();
   }
   
-  function toggleAccInputs() {
+
+function toggleAccInputs() {
     const accInputs = document.getElementById('accInputs');
-    accInputs.style.display = this.value !== 'any' ? 'block' : 'none';
+    accInputs.style.display = (this.value !== 'any' && this.value !== 'false') ? 'block' : 'none';
     generateURL();
-  }
+}
+
 
 function setupDateSelector(type) {
     const dateTypeInputs = document.querySelectorAll(`input[name="${type}DateType"]`);
