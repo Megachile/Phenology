@@ -203,3 +203,40 @@ button:hover {
   .category-item input[type="checkbox"] {
     margin-right: 5px;
   }
+
+  .toggle-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  
+  .toggle-group label:first-child {
+    margin-right: 10px;
+    min-width: 120px;
+  }
+  
+  .toggle-group input[type="radio"] {
+    display: none;
+  }
+  
+  .toggle-group label:not(:first-child) {
+    padding: 5px 10px;
+    font-size: 14px;
+    background-color: #f1f1f1;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border: 1px solid #ccc;
+  }
+  
+  .toggle-group label:nth-child(3) {
+    border-radius: 5px 0 0 5px;
+  }
+  
+  .toggle-group label:last-child {
+    border-radius: 0 5px 5px 0;
+  }
+  
+  .toggle-group input[type="radio"]:checked + label {
+    background-color: #4CAF50;
+    color: white;
+  }

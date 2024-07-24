@@ -79,6 +79,8 @@ document.addEventListener('DOMContentLoaded', function() {
         generatedUrlDiv.innerHTML = ''; // Clear previous content
         generatedUrlDiv.appendChild(link); // Append new link
     });
+
+    setupToggleListeners();
     
 });
 
@@ -379,33 +381,15 @@ function generateURL() {
         console.log('Added reviewed status:', params[params.length - 1]);
     }
 
-    // Add new toggle parameters
-    const toggles = [
-        {id: 'captiveToggle', param: 'captive'},
-        {id: 'hasSoundsToggle', param: 'sounds'},
-        {id: 'threatenedToggle', param: 'threatened'},
-        {id: 'hasPhotosToggle', param: 'photos'},
-        {id: 'introducedToggle', param: 'introduced'},
-        {id: 'popularToggle', param: 'popular'},
-        {id: 'nativeToggle', param: 'native'},
-        {id: 'georeferencedToggle', param: 'geo'},
-        {id: 'mappableToggle', param: 'mappable'},
-        {id: 'withDescriptionToggle', param: 'description'},
-        {id: 'withTagsToggle', param: 'tags'},
-    ];
+    // Handle toggles
+    const toggles = ['captive', 'sounds', 'photos', 'threatened', 'introduced', 'native', 'popular', 'identified', 'description', 'tags', 'geo', 'mappable'];
 
     toggles.forEach(toggle => {
-        const element = document.getElementById(toggle.id);
-        if (element && element.checked) {
-            params.push(`${toggle.param}=true`);
+        const selectedValue = document.querySelector(`input[name="${toggle}"]:checked`).value;
+        if (selectedValue !== 'any') {
+            params.push(`${toggle}=${selectedValue}`);
         }
     });
-
-    // Special case for unidentified
-    const unidentifiedToggle = document.getElementById('unidentifiedToggle');
-    if (unidentifiedToggle && unidentifiedToggle.checked) {
-        params.push('identified=false');
-    }
 
     function processInputs(type) {
         const container = document.getElementById(`${type}Container`);
@@ -454,7 +438,6 @@ function generateURL() {
         return { ids, withoutIds, exactIds, withoutDirectIds, applyRulesIds, notMatchingRulesIds };
     }
     
-    // In the generateURL function:
     const types = ['taxon', 'idTaxon', 'user', 'identifier', 'project', 'place'];
     types.forEach(type => {
         const { ids, withoutIds, exactIds, withoutDirectIds, applyRulesIds, notMatchingRulesIds } = processInputs(type);
@@ -614,30 +597,6 @@ function generateURL() {
         params.push(`sound_license=${soundLicenses.join(',')}`);
     }
 
-    // No Photos
-    if (document.getElementById('noPhotosToggle').checked) {
-        params.push('photos=false');
-    }
-
-    // No Sounds
-    if (document.getElementById('noSoundsToggle').checked) {
-        params.push('sounds=false');
-    }
-
-    // Has Identifications
-    if (document.getElementById('hasIdentificationsToggle').checked) {
-        params.push('identified=true');
-    }
-
-    if (document.getElementById('excludeNoCoordinates').checked) {
-        params.push('geo=true');
-    }
-
-    if (document.getElementById('excludePrivateObs').checked) {
-        params.push('geoprivacy=open,obscured');
-        params.push('taxon_geoprivacy=open,obscured');
-    }
-
       // Sorting
       const sortBy = document.getElementById('sortBy').value;
         const sortOrder = document.getElementById('sortOrder').value;
@@ -748,4 +707,11 @@ function addDateParams(type, params) {
     if (type === 'added' && dateType.value !== 'any') {
         params.push(`createdDateType=${dateType.value}`);
     }
+}
+
+function setupToggleListeners() {
+    const toggles = document.querySelectorAll('.toggle-group input[type="radio"]');
+    toggles.forEach(toggle => {
+        toggle.addEventListener('change', generateURL);
+    });
 }
