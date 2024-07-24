@@ -306,3 +306,64 @@ button:hover {
 .field-group button:hover {
     background-color: #d32f2f;
 }
+
+#mapContainer {
+    width: 100%;
+    height: 400px;
+    margin-bottom: 20px;
+  }
+
+  #geographicFieldset:not(.collapsed) #mapContainer {
+    display: block !important;
+    height: 400px !important;
+    width: 100% !important;
+  }
+  
+  #boundingBoxInputs, #circleInputs, #accInputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  #boundingBoxInputs input, #circleInputs input, #accInputs input {
+    flex: 1;
+    min-width: 150px;
+  }
+
+  #drawRectangle.active, #drawCircle.active {
+    background-color: #ddd;
+}.input-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.input-group label {
+    width: 120px;
+    text-align: right;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.input-group input {
+    flex-grow: 1;
+    width: calc(100% - 130px); /* Adjust if needed */
+}
+
+@media (max-width: 600px) {
+    .input-group {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .input-group label {
+        width: 100%;
+        text-align: left;
+        margin-bottom: 5px;
+    }
+
+    .input-group input {
+        width: 100%;
+    }
+}

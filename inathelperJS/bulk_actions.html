@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bulk Actions - Observation Selection</title>
     <link rel="stylesheet" href="bulk_actions.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 <body>
     <fieldset>
@@ -369,6 +370,89 @@
           </fieldset>
         </div>
 
+        <div class="collapsible-container">
+          <button class="collapse-toggle" id="toggleGeographic">Geographic Selectors ▼</button>
+          <fieldset id="geographicFieldset" class="collapsed">
+            <div id="mapContainer"></div>
+            <div class="toggle-group">
+              <label>Search Type:</label>
+              <input type="radio" name="geoSearchType" id="boundingBox" value="boundingBox">
+              <label for="boundingBox">Bounding Box</label>
+              <input type="radio" name="geoSearchType" id="circle" value="circle">
+              <label for="circle">Circle</label>
+            </div>
+            <div id="geoInputs">
+              <div id="boundingBoxInputs" style="display: none;">
+                <div class="input-group">
+                    <label for="nelat">NE Latitude:</label>
+                    <input type="text" id="nelat" placeholder="NE Latitude">
+                </div>
+                <div class="input-group">
+                    <label for="nelng">NE Longitude:</label>
+                    <input type="text" id="nelng" placeholder="NE Longitude">
+                </div>
+                <div class="input-group">
+                    <label for="swlat">SW Latitude:</label>
+                    <input type="text" id="swlat" placeholder="SW Latitude">
+                </div>
+                <div class="input-group">
+                    <label for="swlng">SW Longitude:</label>
+                    <input type="text" id="swlng" placeholder="SW Longitude">
+                </div>
+            </div>
+            <div id="circleInputs" style="display: none;">
+              <div class="input-group">
+                  <label for="lat">Center Latitude:</label>
+                  <input type="text" id="lat" placeholder="Center Latitude">
+              </div>
+              <div class="input-group">
+                  <label for="lng">Center Longitude:</label>
+                  <input type="text" id="lng" placeholder="Center Longitude">
+              </div>
+              <div class="input-group">
+                  <label for="radius">Radius (km):</label>
+                  <input type="text" id="radius" placeholder="Radius (km)">
+              </div>
+          </div>
+          </div>
+            <div class="toggle-group">
+              <label>Location Accuracy:</label>
+              <input type="radio" name="accType" id="accAny" value="any" checked>
+              <label for="accAny">Any</label>
+              <input type="radio" name="accType" id="accTrue" value="true">
+              <label for="accTrue">True</label>
+              <input type="radio" name="accType" id="accFalse" value="false">
+              <label for="accFalse">False</label>
+            </div>
+            <div id="accInputs" style="display: none;">
+              <input type="number" id="accAbove" placeholder="Accuracy Above (m)">
+              <input type="number" id="accBelow" placeholder="Accuracy Below (m)">
+            </div>
+            <div class="toggle-group">
+              <label>Geoprivacy:</label>
+              <input type="radio" name="geoprivacy" id="geoOpen" value="open">
+              <label for="geoOpen">Open</label>
+              <input type="radio" name="geoprivacy" id="geoObscured" value="obscured">
+              <label for="geoObscured">Obscured</label>
+              <input type="radio" name="geoprivacy" id="geoPrivate" value="private">
+              <label for="geoPrivate">Private</label>
+              <input type="radio" name="geoprivacy" id="geoObscuredPrivate" value="obscured_private">
+              <label for="geoObscuredPrivate">Obscured or Private</label>
+            </div>
+            <div class="toggle-group">
+              <label>Taxon Geoprivacy:</label>
+              <input type="radio" name="taxonGeoprivacy" id="taxonGeoOpen" value="open">
+              <label for="taxonGeoOpen">Open</label>
+              <input type="radio" name="taxonGeoprivacy" id="taxonGeoObscured" value="obscured">
+              <label for="taxonGeoObscured">Obscured</label>
+              <input type="radio" name="taxonGeoprivacy" id="taxonGeoPrivate" value="private">
+              <label for="taxonGeoPrivate">Private</label>
+              <input type="radio" name="taxonGeoprivacy" id="taxonGeoObscuredPrivate" value="obscured_private">
+              <label for="taxonGeoObscuredPrivate">Obscured or Private</label>
+            </div>
+          </fieldset>
+        </div>
+
         <div class="date-selectors-container">
             <fieldset class="date-selector">
                 <legend>Date Observed</legend>
@@ -476,5 +560,7 @@
 
     <script src="shared_api.js"></script>
     <script src="bulk_actions.js"></script>
+    <link rel="stylesheet" href="leaflet.css" />
+    <script src="leaflet.js"></script>
 </body>
 </html>

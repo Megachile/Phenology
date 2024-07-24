@@ -1,3 +1,5 @@
+let map;
+let activeDrawTool = null;
 document.addEventListener('DOMContentLoaded', function() {
     const generatedUrlDiv = document.getElementById('generatedUrl');
 
@@ -35,21 +37,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleAdditionalParamsButton = document.getElementById('toggleAdditionalParams');
     const additionalParamsFieldset = document.getElementById('additionalParams');
 
-  function setupCollapsible(toggleButton, fieldset) {
-    toggleButton.addEventListener('click', function() {
-      fieldset.classList.toggle('collapsed');
-      this.textContent = fieldset.classList.contains('collapsed') 
-        ? this.textContent.replace('▲', '▼')
-        : this.textContent.replace('▼', '▲');
-    });
-  }
+    function setupCollapsible(toggleButton, fieldset) {
+        toggleButton.addEventListener('click', function() {
+          fieldset.classList.toggle('collapsed');
+          this.textContent = fieldset.classList.contains('collapsed') 
+            ? this.textContent.replace('▲', '▼')
+            : this.textContent.replace('▼', '▲');
+          
+          // If this is the geographic fieldset, refresh the map after a short delay
+          if (fieldset.id === 'geographicFieldset') {
+            setTimeout(refreshMap, 100);  // Short delay to allow DOM to update
+          }
+        });
+      }
 
   setupCollapsible(toggleFiltersButton, filtersFieldset);
   setupCollapsible(toggleAdditionalParamsButton, additionalParamsFieldset);
   setupCollapsible(toggleCategories, categoriesFieldset);
   setupCollapsible(toggleSortingRanking, sortingRankingFieldset);
+  setupCollapsible(document.getElementById('toggleGeographic'), document.getElementById('geographicFieldset'));
+  setupMap();
+  setupMapObserver();
 
-   // Add event listeners for new inputs
    const newInputs = [
     'listIdInput', 'descriptionTagInput', 'accountAgeMin', 'accountAgeMax',
     'noPhotosToggle', 'noSoundsToggle', 'hasIdentificationsToggle'
@@ -68,6 +77,14 @@ document.addEventListener('DOMContentLoaded', function() {
     checkbox.addEventListener('change', generateURL);
   });
 
+    document.querySelectorAll('input[name="geoSearchType"]').forEach(radio => {
+        radio.addEventListener('change', toggleGeoInputs);
+    });
+
+    document.querySelectorAll('input[name="accType"]').forEach(radio => {
+        radio.addEventListener('change', toggleAccInputs);
+    });
+
     document.getElementById('generateUrlButton').addEventListener('click', function(e) {
         e.preventDefault();
         const url = generateURL();
@@ -80,9 +97,40 @@ document.addEventListener('DOMContentLoaded', function() {
         generatedUrlDiv.appendChild(link); // Append new link
     });
 
+    const geoInputs = [
+        'nelat', 'nelng', 'swlat', 'swlng', 'lat', 'lng', 'radius',
+        'accAbove', 'accBelow'
+      ];
+      geoInputs.forEach(id => {
+        document.getElementById(id).addEventListener('input', generateURL);
+      });
+    
+      document.querySelectorAll('input[name="geoprivacy"], input[name="taxonGeoprivacy"]').forEach(radio => {
+        radio.addEventListener('change', generateURL);
+      });
+
     setupToggleListeners();
     
 });
+
+function toggleGeoInputs() {
+    const boundingBoxInputs = document.getElementById('boundingBoxInputs');
+    const circleInputs = document.getElementById('circleInputs');
+    if (this.value === 'boundingBox') {
+      boundingBoxInputs.style.display = 'block';
+      circleInputs.style.display = 'none';
+    } else {
+      boundingBoxInputs.style.display = 'none';
+      circleInputs.style.display = 'block';
+    }
+    generateURL();
+  }
+  
+  function toggleAccInputs() {
+    const accInputs = document.getElementById('accInputs');
+    accInputs.style.display = this.value !== 'any' ? 'block' : 'none';
+    generateURL();
+  }
 
 function setupDateSelector(type) {
     const dateTypeInputs = document.querySelectorAll(`input[name="${type}DateType"]`);
@@ -640,6 +688,51 @@ function generateURL() {
     if (categories.length > 0) {
         params.push(`iconic_taxa=${categories.join(',')}`);
     }
+
+    // Add geographic parameters
+    const boundingBoxInputs = document.getElementById('boundingBoxInputs');
+    const circleInputs = document.getElementById('circleInputs');
+
+    if (boundingBoxInputs.style.display !== 'none') {
+        const nelat = document.getElementById('nelat').value;
+        const nelng = document.getElementById('nelng').value;
+        const swlat = document.getElementById('swlat').value;
+        const swlng = document.getElementById('swlng').value;
+        if (nelat && nelng && swlat && swlng) {
+            params.push(`nelat=${nelat}&nelng=${nelng}&swlat=${swlat}&swlng=${swlng}`);
+        }
+    } else if (circleInputs.style.display !== 'none') {
+        const lat = document.getElementById('lat').value;
+        const lng = document.getElementById('lng').value;
+        const radius = document.getElementById('radius').value;
+        if (lat && lng && radius) {
+            params.push(`lat=${lat}&lng=${lng}&radius=${radius}`);
+        }
+    }
+
+
+  // Add accuracy parameters
+  const accType = document.querySelector('input[name="accType"]:checked');
+  if (accType && accType.value !== 'any') {
+    params.push(`acc=${accType.value}`);
+    if (accType.value === 'true') {
+      const accAbove = document.getElementById('accAbove').value;
+      const accBelow = document.getElementById('accBelow').value;
+      if (accAbove) params.push(`acc_above=${accAbove}`);
+      if (accBelow) params.push(`acc_below=${accBelow}`);
+    }
+  }
+
+  // Add geoprivacy parameters
+  const geoprivacy = document.querySelector('input[name="geoprivacy"]:checked');
+  if (geoprivacy) {
+    params.push(`geoprivacy=${geoprivacy.value}`);
+  }
+
+  const taxonGeoprivacy = document.querySelector('input[name="taxonGeoprivacy"]:checked');
+  if (taxonGeoprivacy) {
+    params.push(`taxon_geoprivacy=${taxonGeoprivacy.value}`);
+  }
     
 
     const rawUrl = url + params.join('&');
@@ -726,3 +819,284 @@ function setupToggleListeners() {
         toggle.addEventListener('change', generateURL);
     });
 }
+
+function refreshMap() {
+    if (map) {
+      console.log("Refreshing map...");
+      map.invalidateSize();
+      map.fitWorld();  // This will ensure the map fills the container
+    }
+  }
+  
+  function setupMap() {
+      console.log("Setting up map...");
+      
+      if (typeof L === 'undefined') {
+          console.error('Leaflet is not loaded');
+          return;
+      }
+  
+      const mapContainer = document.getElementById('mapContainer');
+      if (!mapContainer) {
+          console.error('Map container not found');
+          return;
+      }
+  
+      // Check if map is already initialized
+      if (map) {
+          console.log("Map already initialized. Skipping setup.");
+          return;
+      }
+  
+      console.log("Initializing map...");
+      map = L.map('mapContainer', {
+          center: [0, 0],
+          zoom: 2,
+          zoomControl: false
+      });
+  
+      console.log("Adding tile layer...");
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+  
+      // Add custom controls for drawing
+      const drawControl = L.control({position: 'topright'});
+      drawControl.onAdd = function(map) {
+          const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+          container.innerHTML = `
+              <a href="#" id="drawRectangle" title="Draw Rectangle"><i class="fa fa-square-o"></i></a>
+              <a href="#" id="drawCircle" title="Draw Circle"><i class="fa fa-circle-o"></i></a>
+          `;
+          return container;
+      };
+      drawControl.addTo(map);
+  
+      let searchLayer;
+      let drawingMode = null;
+      let isDrawing = false;
+      let startPoint;
+
+      function setActiveDrawTool(tool) {
+        if (activeDrawTool) {
+            activeDrawTool.classList.remove('active');
+        }
+        if (tool) {
+            tool.classList.add('active');
+            map.dragging.disable();
+        } else {
+            map.dragging.enable();
+        }
+        activeDrawTool = tool;
+        drawingMode = tool ? tool.id === 'drawRectangle' ? 'rectangle' : 'circle' : null;
+    }
+
+
+        document.getElementById('drawRectangle').addEventListener('click', function(e) {
+            e.preventDefault();
+            setActiveDrawTool(this === activeDrawTool ? null : this);
+        });
+
+        document.getElementById('drawCircle').addEventListener('click', function(e) {
+            e.preventDefault();
+            setActiveDrawTool(this === activeDrawTool ? null : this);
+        });
+
+    document.getElementById('drawRectangle').addEventListener('click', function(e) {
+        e.preventDefault();
+        drawingMode = 'rectangle';
+        setActiveDrawTool(this);
+        // Don't disable dragging here
+    });
+    
+    document.getElementById('drawCircle').addEventListener('click', function(e) {
+        e.preventDefault();
+        drawingMode = 'circle';
+        setActiveDrawTool(this);
+        // Don't disable dragging here
+    });
+
+    ['nelat', 'nelng', 'swlat', 'swlng', 'lat', 'lng', 'radius'].forEach(id => {
+        document.getElementById(id).addEventListener('change', updateMapFromInputs);
+    });    
+  
+    map.on('mousedown', function(e) {
+        if (drawingMode) {
+            isDrawing = true;
+            startPoint = e.latlng;
+            if (searchLayer) {
+                map.removeLayer(searchLayer);
+            }
+            searchLayer = L.layerGroup().addTo(map);
+        }
+    });
+    
+    map.on('mousemove', function(e) {
+        if (isDrawing && startPoint) {
+            searchLayer.clearLayers();
+            if (drawingMode === 'rectangle') {
+                L.rectangle([startPoint, e.latlng], {color: "#ff7800", weight: 1}).addTo(searchLayer);
+            } else if (drawingMode === 'circle') {
+                const radius = startPoint.distanceTo(e.latlng);
+                L.circle(startPoint, {radius: radius, color: 'red', fillColor: '#f03', fillOpacity: 0.5}).addTo(searchLayer);
+            }
+        }
+    });
+    
+    map.on('mouseup', function(e) {
+        if (isDrawing) {
+            isDrawing = false;
+            if (drawingMode === 'rectangle') {
+                const bounds = L.latLngBounds(startPoint, e.latlng);
+                updateBoundingBoxInputs(bounds);
+            } else if (drawingMode === 'circle') {
+                const center = startPoint;
+                const radius = center.distanceTo(e.latlng);
+                updateCircleInputs(center, radius);
+            }
+            setActiveDrawTool(null);
+        }
+    });
+  
+      // Add logging for debugging
+      map.on('load', () => {
+          console.log("Map load event fired");
+      });
+  
+      map.on('tileloadstart', () => {
+          console.log("Tile load started");
+      });
+  
+      map.on('tileload', () => {
+          console.log("Tile loaded");
+      });
+  
+      map.on('tileerror', (error) => {
+          console.error("Tile error:", error);
+      });
+  
+      console.log("Map setup complete.");
+      
+      // Force initial map update
+      setTimeout(refreshMap, 100);
+  
+      // Setup the observer
+      setupMapObserver();
+  }
+  
+  function refreshMap() {
+      if (map) {
+          console.log("Refreshing map...");
+          map.invalidateSize();
+          map.fitWorld();  // This will ensure the map fills the container
+      } else {
+          console.warn("Map not initialized yet");
+      }
+  }
+  
+  function setupMapObserver() {
+      const mapContainer = document.getElementById('mapContainer');
+      const geographicFieldset = document.getElementById('geographicFieldset');
+  
+      if (!mapContainer || !geographicFieldset) return;
+  
+      const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+              if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                  setTimeout(refreshMap, 100);
+              }
+          });
+      });
+  
+      observer.observe(geographicFieldset, { attributes: true, attributeFilter: ['style'] });
+  }
+  
+
+function setupMapObserver() {
+    const mapContainer = document.getElementById('mapContainer');
+    const geographicFieldset = document.getElementById('geographicFieldset');
+  
+    if (!mapContainer || !geographicFieldset) return;
+  
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+          setTimeout(refreshMap, 100);
+        }
+      });
+    });
+  
+    observer.observe(geographicFieldset, { attributes: true, attributeFilter: ['style'] });
+  }
+  function clearInputs() {
+    ['nelat', 'nelng', 'swlat', 'swlng', 'lat', 'lng', 'radius'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+}
+
+function updateBoundingBoxInputs(bounds) {
+    clearInputs();
+    document.getElementById('nelat').value = bounds.getNorthEast().lat.toFixed(6);
+    document.getElementById('nelng').value = bounds.getNorthEast().lng.toFixed(6);
+    document.getElementById('swlat').value = bounds.getSouthWest().lat.toFixed(6);
+    document.getElementById('swlng').value = bounds.getSouthWest().lng.toFixed(6);
+    document.getElementById('boundingBoxInputs').style.display = 'block';
+    document.getElementById('circleInputs').style.display = 'none';
+    document.getElementById('boundingBox').checked = true;
+    generateURL();
+}
+
+function updateCircleInputs(center, radius) {
+    clearInputs();
+    document.getElementById('lat').value = center.lat.toFixed(6);
+    document.getElementById('lng').value = center.lng.toFixed(6);
+    document.getElementById('radius').value = (radius / 1000).toFixed(2);
+    document.getElementById('boundingBoxInputs').style.display = 'none';
+    document.getElementById('circleInputs').style.display = 'block';
+    document.getElementById('circle').checked = true;
+    generateURL();
+}
+
+function updateMapFromInputs() {
+    if (map && searchLayer) {
+        map.removeLayer(searchLayer);
+    }
+    searchLayer = L.layerGroup().addTo(map);
+
+    if (document.getElementById('boundingBox').checked) {
+        const nelat = parseFloat(document.getElementById('nelat').value);
+        const nelng = parseFloat(document.getElementById('nelng').value);
+        const swlat = parseFloat(document.getElementById('swlat').value);
+        const swlng = parseFloat(document.getElementById('swlng').value);
+        
+        if (nelat && nelng && swlat && swlng) {
+            const rectangle = L.rectangle([[swlat, swlng], [nelat, nelng]], {color: "#ff7800", weight: 1}).addTo(searchLayer);
+            map.fitBounds(rectangle.getBounds());
+        }
+    } else if (document.getElementById('circle').checked) {
+        const lat = parseFloat(document.getElementById('lat').value);
+        const lng = parseFloat(document.getElementById('lng').value);
+        const radius = parseFloat(document.getElementById('radius').value) * 1000;
+        
+        if (lat && lng && radius) {
+            const circle = L.circle([lat, lng], {radius: radius, color: 'red', fillColor: '#f03', fillOpacity: 0.5}).addTo(searchLayer);
+            map.fitBounds(circle.getBounds());
+        }
+    }
+}
+
+document.getElementById('boundingBox').addEventListener('change', function() {
+    if (this.checked) {
+        document.getElementById('boundingBoxInputs').style.display = 'block';
+        document.getElementById('circleInputs').style.display = 'none';
+        updateMapFromInputs();
+    }
+});
+
+document.getElementById('circle').addEventListener('change', function() {
+    if (this.checked) {
+        document.getElementById('boundingBoxInputs').style.display = 'none';
+        document.getElementById('circleInputs').style.display = 'block';
+        updateMapFromInputs();
+    }
+});

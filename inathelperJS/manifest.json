@@ -37,6 +37,10 @@
       "id": "ofextension@gallformers.com"
     }
   },
+  "web_accessible_resources": [{
+    "resources": ["leaflet.js", "leaflet.css", "images/*"],
+    "matches": ["<all_urls>"]
+  }],
   "oauth2": {
   "client_id": "e2RUzw_g08SfNA_XeckoECYgPu9g0FDefi4wQDbYXNE",
   "scopes": [
