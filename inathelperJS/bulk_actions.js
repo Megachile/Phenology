@@ -164,13 +164,16 @@ function setupDateSelector(type) {
 
 
 function addField(type) {
-    const container = document.getElementById(`${type}Container`);
-    if (!container) {
-        console.error(`Container for type '${type}' not found.`);
-        return;
-    }
+    const container = document.getElementById('actionsContainer');
+    const fieldCount = container.querySelectorAll('.action-box').length;
+    const actionBox = document.createElement('div');
+    actionBox.className = 'action-box';
 
-    const fieldCount = container.querySelectorAll('.field-group').length;
+    const actionType = document.createElement('div');
+    actionType.className = 'action-type';
+    actionType.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+    actionBox.appendChild(actionType);
+
     const fieldGroup = document.createElement('div');
     fieldGroup.className = 'field-group';
 
@@ -235,7 +238,8 @@ function addField(type) {
     }
 
     console.log(`Adding field of type: ${type}`);
-    container.appendChild(fieldGroup);
+    actionBox.appendChild(fieldGroup);
+    container.appendChild(actionBox);
 
     if (type === 'annotation') {
         setupAnnotationDropdowns(fieldCount);
@@ -339,16 +343,21 @@ function setupAnnotationDropdowns(index) {
 }
 
 function removeField(event) {
-    event.target.closest('.field-group').remove();
+    const actionBox = event.target.closest('.action-box');
+    if (actionBox) {
+        actionBox.remove();
+    }
     generateURL();
 }
 
 function toggleNegation(event) {
-    const fieldGroup = event.target.closest('.field-group');
+    const actionBox = event.target.closest('.action-box');
     const isNegated = event.target.checked;
-    const negationNote = fieldGroup.querySelector('.negationNote');
+    const negationNote = actionBox.querySelector('.negationNote');
     
-    negationNote.style.display = isNegated ? 'inline' : 'none';
+    if (negationNote) {
+        negationNote.style.display = isNegated ? 'inline' : 'none';
+    }
     
     generateURL();
 }
@@ -392,8 +401,8 @@ function generateURL() {
     });
 
     function processInputs(type) {
-        const container = document.getElementById(`${type}Container`);
-        const inputGroups = container.querySelectorAll('.field-group');
+        const container = document.getElementById('actionsContainer');
+        const actionBoxes = container.querySelectorAll('.action-box');
         const ids = [];
         const withoutIds = [];
         const exactIds = [];
@@ -401,36 +410,38 @@ function generateURL() {
         const applyRulesIds = [];
         const notMatchingRulesIds = [];
     
-        inputGroups.forEach((group, index) => {
-            const input = group.querySelector(`#${type}${index}`);
-            const idInput = group.querySelector(`#${type}Id${index}`);
-            const negated = group.querySelector('.negationCheckbox').checked;
-            const exact = group.querySelector('.exactCheckbox')?.checked;
-            const applyRules = group.querySelector('.rulesCheckbox')?.checked;
+        actionBoxes.forEach((box, index) => {
+            if (box.querySelector('.action-type').textContent.toLowerCase() === type) {
+                const input = box.querySelector(`input[id^="${type}"]`);
+                const idInput = box.querySelector(`input[id^="${type}Id"]`);
+                const negated = box.querySelector('.negationCheckbox').checked;
+                const exact = box.querySelector('.exactCheckbox')?.checked;
+                const applyRules = box.querySelector('.rulesCheckbox')?.checked;
     
-            if (input && idInput && idInput.value) {
-                console.log(`${type} input ${index}:`, {
-                    value: input.value,
-                    id: idInput.value,
-                    negated: negated,
-                    exact: exact,
-                    applyRules: applyRules
-                });
+                if (input && idInput && idInput.value) {
+                    console.log(`${type} input ${index}:`, {
+                        value: input.value,
+                        id: idInput.value,
+                        negated: negated,
+                        exact: exact,
+                        applyRules: applyRules
+                    });
     
-                if (negated) {
-                    if (type === 'taxon' && exact) {
-                        withoutDirectIds.push(idInput.value);
-                    } else if (type === 'project' && applyRules) {
-                        notMatchingRulesIds.push(idInput.value);
+                    if (negated) {
+                        if (type === 'taxon' && exact) {
+                            withoutDirectIds.push(idInput.value);
+                        } else if (type === 'project' && applyRules) {
+                            notMatchingRulesIds.push(idInput.value);
+                        } else {
+                            withoutIds.push(idInput.value);
+                        }
+                    } else if (exact) {
+                        exactIds.push(idInput.value);
+                    } else if (applyRules) {
+                        applyRulesIds.push(idInput.value);
                     } else {
-                        withoutIds.push(idInput.value);
+                        ids.push(idInput.value);
                     }
-                } else if (exact) {
-                    exactIds.push(idInput.value);
-                } else if (applyRules) {
-                    applyRulesIds.push(idInput.value);
-                } else {
-                    ids.push(idInput.value);
                 }
             }
         });

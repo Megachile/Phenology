@@ -85,9 +85,6 @@ button:hover {
 #generatedUrl a:hover {
     text-decoration: underline;
 }
-.field-group {
-    position: relative;
-}
 .taxonSuggestions {
     position: relative;
     top: 100%;
@@ -240,3 +237,72 @@ button:hover {
     background-color: #4CAF50;
     color: white;
   }
+
+  #addButtonsContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+#addButtonsContainer button {
+    flex: 1;
+    min-width: 150px;
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+#addButtonsContainer button:hover {
+    background-color: #45a049;
+}
+
+#actionsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.action-box {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    background-color: #f9f9f9;
+}
+
+.action-box .action-type {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.field-group {
+    margin-bottom: 15px;
+}
+
+.field-group input[type="text"],
+.field-group select {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.field-group button {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.field-group button:hover {
+    background-color: #d32f2f;
+}
