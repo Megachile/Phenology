@@ -10,7 +10,13 @@
 <body>
     <fieldset>
         <legend>Select Observations for Bulk Actions</legend>
-        
+        <fieldset id="tooltip-toggle">
+          <label class="switch">
+              <input type="checkbox" id="tooltipToggle">
+              <span class="slider round"></span>
+          </label>
+          <span>Enable Tooltips</span>
+        </fieldset>
         <fieldset>
             <legend>Quality Grade</legend>
             <label><input type="checkbox" name="quality_grade" value="casual"> Casual</label>
@@ -26,61 +32,61 @@
         </fieldset>
 
         <div class="collapsible-container">
-            <button id="toggleCategories" class="collapse-toggle">Taxon Categories ▼</button>
-            <fieldset id="categoriesFieldset" class="collapsed">
-              <div class="categories-grid">
-                <div class="category-item">
-                  <input type="checkbox" id="category-Aves" name="categories" value="Aves">
-                  <label for="category-Aves">Birds</label>
-                </div>
-                <div class="category-item">
-                  <input type="checkbox" id="category-Amphibia" name="categories" value="Amphibia">
-                  <label for="category-Amphibia">Amphibians</label>
-                </div>
-                <div class="category-item">
-                  <input type="checkbox" id="category-Reptilia" name="categories" value="Reptilia">
-                  <label for="category-Reptilia">Reptiles</label>
-                </div>
-                <div class="category-item">
-                  <input type="checkbox" id="category-Mammalia" name="categories" value="Mammalia">
-                  <label for="category-Mammalia">Mammals</label>
-                </div>
-                <div class="category-item">
-                  <input type="checkbox" id="category-Actinopterygii" name="categories" value="Actinopterygii">
-                  <label for="category-Actinopterygii">Ray-finned Fishes</label>
-                </div>
-                <div class="category-item">
-                  <input type="checkbox" id="category-Mollusca" name="categories" value="Mollusca">
-                  <label for="category-Mollusca">Mollusks</label>
-                </div>
-                <div class="category-item">
-                  <input type="checkbox" id="category-Arachnida" name="categories" value="Arachnida">
-                  <label for="category-Arachnida">Arachnids</label>
-                </div>
-                <div class="category-item">
-                  <input type="checkbox" id="category-Insecta" name="categories" value="Insecta">
-                  <label for="category-Insecta">Insects</label>
-                </div>
-                <div class="category-item">
-                  <input type="checkbox" id="category-Plantae" name="categories" value="Plantae">
-                  <label for="category-Plantae">Plants</label>
-                </div>
-                <div class="category-item">
-                  <input type="checkbox" id="category-Fungi" name="categories" value="Fungi">
-                  <label for="category-Fungi">Fungi</label>
-                </div>
-                <div class="category-item">
-                  <input type="checkbox" id="category-Protozoa" name="categories" value="Protozoa">
-                  <label for="category-Protozoa">Protozoans</label>
-                </div>
-                <div class="category-item">
-                  <input type="checkbox" id="category-unknown" name="categories" value="unknown">
-                  <label for="category-unknown">Unknown</label>
-                </div>
+          <button id="toggleCategories" class="collapse-toggle">Taxon Categories ▼</button>
+          <fieldset id="categoriesFieldset" class="collapsed">
+            <div class="categories-grid">
+              <div class="category-item">
+                <input type="checkbox" id="category-Aves" name="categories" value="Aves">
+                <label for="category-Aves">Birds</label>
               </div>
-            </fieldset>
-          </div>
-
+              <div class="category-item">
+                <input type="checkbox" id="category-Amphibia" name="categories" value="Amphibia">
+                <label for="category-Amphibia">Amphibians</label>
+              </div>
+              <div class="category-item">
+                <input type="checkbox" id="category-Reptilia" name="categories" value="Reptilia">
+                <label for="category-Reptilia">Reptiles</label>
+              </div>
+              <div class="category-item">
+                <input type="checkbox" id="category-Mammalia" name="categories" value="Mammalia">
+                <label for="category-Mammalia">Mammals</label>
+              </div>
+              <div class="category-item">
+                <input type="checkbox" id="category-Actinopterygii" name="categories" value="Actinopterygii">
+                <label for="category-Actinopterygii">Ray-finned Fishes</label>
+              </div>
+              <div class="category-item">
+                <input type="checkbox" id="category-Mollusca" name="categories" value="Mollusca">
+                <label for="category-Mollusca">Mollusks</label>
+              </div>
+              <div class="category-item">
+                <input type="checkbox" id="category-Arachnida" name="categories" value="Arachnida">
+                <label for="category-Arachnida">Arachnids</label>
+              </div>
+              <div class="category-item">
+                <input type="checkbox" id="category-Insecta" name="categories" value="Insecta">
+                <label for="category-Insecta">Insects</label>
+              </div>
+              <div class="category-item">
+                <input type="checkbox" id="category-Plantae" name="categories" value="Plantae">
+                <label for="category-Plantae">Plants</label>
+              </div>
+              <div class="category-item">
+                <input type="checkbox" id="category-Fungi" name="categories" value="Fungi">
+                <label for="category-Fungi">Fungi</label>
+              </div>
+              <div class="category-item">
+                <input type="checkbox" id="category-Protozoa" name="categories" value="Protozoa">
+                <label for="category-Protozoa">Protozoans</label>
+              </div>
+              <div class="category-item">
+                <input type="checkbox" id="category-unknown" name="categories" value="unknown">
+                <label for="category-unknown" data-tooltip="Unknown (Includes Bacteria, Archaea, Viruses, and Life)">Unknown</label>
+            </div>
+            </div>
+          </fieldset>
+        </div>
+  
         <div class="collapsible-container">
           <button id="toggleSortingRanking" class="collapse-toggle">Sorting and Ranking ▼</button>
           <fieldset id="sortingRankingFieldset" class="collapsed">
@@ -196,7 +202,7 @@
             <button id="toggleAdditionalParams" class="collapse-toggle">Additional Search Parameters ▼</button>
             <fieldset id="additionalParams" class="collapsed">              
               <div>
-                <label for="listIdInput">List ID:</label>
+                <label for="listIdInput" data-tooltip="Restrict search to taxa in a specific iNaturalist list">List ID:</label>
                 <input type="text" id="listIdInput" placeholder="Enter List ID">
               </div>
           
@@ -206,12 +212,12 @@
               </div>
           
               <div>
-                <label for="accountAgeMin">Account Age (min weeks):</label>
+                <label for="accountAgeMin" data-tooltip="Include only observations from users with accounts created more than this many weeks ago">Account Age (min weeks)</label>
                 <input type="number" id="accountAgeMin" min="0">
               </div>
           
               <div>
-                <label for="accountAgeMax">Account Age (max weeks):</label>
+                <label for="accountAgeMax" data-tooltip="Include only observations from users with accounts created fewer than this many weeks ago">Account Age (max weeks)</label>
                 <input type="number" id="accountAgeMax" min="0">
               </div>
           
@@ -225,6 +231,7 @@
                   <label><input type="checkbox" name="photo_license" value="cc-by-nd"> CC-BY-ND</label>
                   <label><input type="checkbox" name="photo_license" value="cc-by-nc-sa"> CC-BY-NC-SA</label>
                   <label><input type="checkbox" name="photo_license" value="cc-by-nc-nd"> CC-BY-NC-ND</label>
+                  <label><input type="checkbox" id="allRightsReserved" name="photo_licensed" value="false"> All rights reserved</label>
                 </div>
               </div>
           
@@ -289,7 +296,7 @@
             </div>
 
             <div class="toggle-group">
-              <label>Threatened:</label>
+              <label for="threatened">Threatened</label>
               <input type="radio" id="threatened-any" name="threatened" value="any" checked>
               <label for="threatened-any">Any</label>
               <input type="radio" id="threatened-yes" name="threatened" value="true">
@@ -299,7 +306,7 @@
             </div>
             
             <div class="toggle-group">
-              <label>Introduced:</label>
+              <label for="introduced">Introduced</label>
               <input type="radio" id="introduced-any" name="introduced" value="any" checked>
               <label for="introduced-any">Any</label>
               <input type="radio" id="introduced-yes" name="introduced" value="true">
@@ -309,7 +316,7 @@
             </div>
 
             <div class="toggle-group">
-              <label>Native:</label>
+              <label for="native">Native</label>
               <input type="radio" id="native-any" name="native" value="any" checked>
               <label for="native-any">Any</label>
               <input type="radio" id="native-yes" name="native" value="true">
@@ -359,7 +366,7 @@
             </div>
 
             <div class="toggle-group">
-              <label>Georeferenced:</label>
+              <label for="geo" data-tooltip="Filter observations based on whether they have a public lat/long">Georeferenced</label>
               <input type="radio" id="geo-any" name="geo" value="any" checked>
               <label for="geo-any">Any</label>
               <input type="radio" id="geo-yes" name="geo" value="true">
@@ -369,7 +376,7 @@
             </div>
 
             <div class="toggle-group">
-              <label>Mappable:</label>
+              <label for="mappable" data-tooltip="Filter observations based on whether they have a public lat/long AND location accuracy under ~25 km">Mappable</label>
               <input type="radio" id="mappable-any" name="mappable" value="any" checked>
               <label for="mappable-any">Any</label>
               <input type="radio" id="mappable-yes" name="mappable" value="true">
@@ -427,11 +434,11 @@
           </div>
           </div>
             <div class="toggle-group">
-              <label>Location Accuracy:</label>
+              <label for="acc" data-tooltip="Filter observations based on whether they have location accuracy data">Location Accuracy</label>
               <input type="radio" name="accType" id="accAny" value="any" checked>
-              <label for="accAny">Any</label>
+              <label for="acc_above" data-tooltip="Show observations with location accuracy above this value in meters">Accuracy Above</label>
               <input type="radio" name="accType" id="accTrue" value="true">
-              <label for="accTrue">True</label>
+              <label for="acc_below" data-tooltip="Show observations with location accuracy below this value in meters">Accuracy Below</label>
               <input type="radio" name="accType" id="accFalse" value="false">
               <label for="accFalse">False</label>
             </div>
@@ -440,7 +447,7 @@
               <input type="number" id="accBelow" placeholder="Accuracy Below (m)">
             </div>
             <div class="toggle-group">
-              <label>Geoprivacy:</label>
+              <label for="geoprivacy" data-tooltip="Filter by observer-set location privacy">Geoprivacy</label>
               <input type="radio" name="geoprivacy" id="geoOpen" value="open">
               <label for="geoOpen">Open</label>
               <input type="radio" name="geoprivacy" id="geoObscured" value="obscured">
@@ -451,7 +458,7 @@
               <label for="geoObscuredPrivate">Obscured or Private</label>
             </div>
             <div class="toggle-group">
-              <label>Taxon Geoprivacy:</label>
+              <label for="taxon_geoprivacy" data-tooltip="Filter by automatically applied location privacy for sensitive species">Taxon Geoprivacy</label>
               <input type="radio" name="taxonGeoprivacy" id="taxonGeoOpen" value="open">
               <label for="taxonGeoOpen">Open</label>
               <input type="radio" name="taxonGeoprivacy" id="taxonGeoObscured" value="obscured">
@@ -551,16 +558,16 @@
         </div>    
 
         <div id="addButtonsContainer">
-          <button id="addTaxonButton">Add Taxon</button>
-          <button id="addIdTaxonButton">Add ID Taxon</button>
-          <button id="addUserButton">Add User</button>
-          <button id="addIdentifierButton">Add Identifier</button>
-          <button id="addProjectButton">Add Project</button>
-          <button id="addPlaceButton">Add Place</button>
-          <button id="addObservationFieldButton">Add Observation Field</button>
-          <button id="addAnnotationButton">Add Annotation</button>
+          <button id="addTaxonButton" data-tooltip="Filter by community ID taxon. Supports any number of taxa.">Add Taxon</button>
+          <button id="addIdTaxonButton" data-tooltip="Filter by active ID taxon (including descendants). Supports any number of taxa.">Add ID Taxon</button>
+          <button id="addUserButton" data-tooltip="Filter for obsevations uploaded by specific users. Supports any number of users.">Add User</button>
+          <button id="addIdentifierButton" data-tooltip="Filter for observations identified by specific users. Supports any number of users.">Add Identifier</button>
+          <button id="addProjectButton" data-tooltip="Filter for observations in specific projects. Only supports one project at a time unless qualifiers are selected.">Add Project</button>
+          <button id="addPlaceButton" data-tooltip="Filter by place. Supports any number of places.">Add Place</button>
+          <button id="addObservationFieldButton" data-tooltip="Filter for observations with values for specific observation fields">Add Observation Field</button>
+          <button id="addAnnotationButton" data-tooltip="Filter for observations with specific annotations">Add Annotation</button>
       </div>
-      
+      <label data-tooltip="If multiple ID Taxon criteria are added, match only observations with at least one identification for each specified taxon (includes descendants)"><input type="checkbox" id="idTaxonExclusive"> ID Taxa Exclusive</label>
       <div id="actionsContainer">
       </div>
             

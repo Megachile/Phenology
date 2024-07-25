@@ -1,5 +1,6 @@
 let map;
 let activeDrawTool = null;
+let tooltipsEnabled = false;
 document.addEventListener('DOMContentLoaded', function() {
     const generatedUrlDiv = document.getElementById('generatedUrl');
 
@@ -111,6 +112,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     setupToggleListeners();
     
+    const allRightsReserved = document.getElementById('allRightsReserved');
+    const otherLicenses = document.querySelectorAll('#photoLicenses input:not(#allRightsReserved)');
+
+    allRightsReserved.addEventListener('change', function() {
+        if (this.checked) {
+            otherLicenses.forEach(checkbox => {
+                checkbox.checked = false;
+                checkbox.disabled = true;
+            });
+        } else {
+            otherLicenses.forEach(checkbox => {
+                checkbox.disabled = false;
+            });
+        }
+    });
+
+    otherLicenses.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                allRightsReserved.checked = false;
+            }
+        });
+    });
+
 });
 
 function toggleGeoInputs() {
@@ -233,28 +258,28 @@ function addField(type) {
             <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
             <button class="removeFieldButton">Remove</button>
             <label><input type="checkbox" class="negationCheckbox"> Without</label>
-            <label><input type="checkbox" class="exactCheckbox"> Exact</label>
+            <label data-tooltip="Match/exclude only this exact taxon, not its descendants"><input type="checkbox" class="exactCheckbox"> Exact</label>
         `;
     } else if (type === 'idTaxon') {
         fieldGroup.innerHTML = `
-            <input type="text" id="${type}${fieldCount}" placeholder="Enter ID taxon">
+           <input type="text" id="${type}${fieldCount}" placeholder="Enter ID taxon">
             <input type="text" id="${type}Id${fieldCount}" placeholder="ID Taxon ID" readonly>
             <button class="removeFieldButton">Remove</button>
             <label><input type="checkbox" class="negationCheckbox"> Without</label>
-        `;
-    } else if (type === 'identifier') {
-        fieldGroup.innerHTML = `
-            <input type="text" id="${type}${fieldCount}" placeholder="Enter identifier">
-            <input type="text" id="${type}Id${fieldCount}" placeholder="Identifier ID" readonly>
-            <button class="removeFieldButton">Remove</button>
-            <label><input type="checkbox" class="negationCheckbox"> Without</label>
-        `;
+            `;
+        } else if (type === 'idTaxon') {
+            fieldGroup.innerHTML = `
+                <input type="text" id="${type}${fieldCount}" placeholder="Enter ID taxon">
+                <input type="text" id="${type}Id${fieldCount}" placeholder="ID Taxon ID" readonly>
+                <button class="removeFieldButton">Remove</button>
+                <label><input type="checkbox" class="negationCheckbox"> Without</label>
+            `;
     } else if (type === 'project') {
         fieldGroup.innerHTML = `
             <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
             <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
             <button class="removeFieldButton">Remove</button>
-            <label><input type="checkbox" class="negationCheckbox"> Without</label>
+            <label data-tooltip="If selected with Follows Project Rules, filters for observations that violate the rules"><input type="checkbox" class="negationCheckbox"> Without</label>
             <label><input type="checkbox" class="rulesCheckbox"> Follows Project Rules</label>
         `;
     } else if (type === 'annotation') {
@@ -452,6 +477,10 @@ function generateURL() {
 
     function processInputs(type) {
         const container = document.getElementById('actionsContainer');
+        if (!container) {
+            console.error('Actions container not found');
+            return { ids: [], withoutIds: [], exactIds: [], withoutDirectIds: [], applyRulesIds: [], notMatchingRulesIds: [] };
+        }
         const actionBoxes = container.querySelectorAll('.action-box');
         const ids = [];
         const withoutIds = [];
@@ -461,14 +490,23 @@ function generateURL() {
         const notMatchingRulesIds = [];
     
         actionBoxes.forEach((box, index) => {
-            if (box.querySelector('.action-type').textContent.toLowerCase() === type) {
+            const actionType = box.querySelector('.action-type');
+            if (!actionType) {
+                console.error(`Action type not found in box ${index}`);
+                return;
+            }
+            if (actionType.textContent.toLowerCase() === type.toLowerCase()) {
                 const input = box.querySelector(`input[id^="${type}"]`);
                 const idInput = box.querySelector(`input[id^="${type}Id"]`);
-                const negated = box.querySelector('.negationCheckbox').checked;
-                const exact = box.querySelector('.exactCheckbox')?.checked;
-                const applyRules = box.querySelector('.rulesCheckbox')?.checked;
+                const negationCheckbox = box.querySelector('.negationCheckbox');
+                const exactCheckbox = box.querySelector('.exactCheckbox');
+                const rulesCheckbox = box.querySelector('.rulesCheckbox');
     
                 if (input && idInput && idInput.value) {
+                    const negated = negationCheckbox ? negationCheckbox.checked : false;
+                    const exact = exactCheckbox ? exactCheckbox.checked : false;
+                    const applyRules = rulesCheckbox ? rulesCheckbox.checked : false;
+    
                     console.log(`${type} input ${index}:`, {
                         value: input.value,
                         id: idInput.value,
@@ -506,7 +544,9 @@ function generateURL() {
         if (ids.length > 0) {
             switch(type) {
                 case 'idTaxon':
-                    params.push(`ident_taxon_id_exclusive=${encodeURIComponent(ids.join(','))}`);
+                    const isExclusive = document.getElementById('idTaxonExclusive').checked;
+                    const encodedIds = ids.map(id => encodeURIComponent(id)).join(',');
+                    params.push(`ident_taxon_id${isExclusive ? '_exclusive' : ''}=${encodedIds}`);
                     break;
                 case 'identifier':
                     params.push(`ident_user_id=${encodeURIComponent(ids.join(','))}`);
@@ -569,8 +609,6 @@ function generateURL() {
     // dates
     addDateParams('observed', params);
     addDateParams('added', params);
-
-
 
 
     // Observation Field
@@ -647,9 +685,13 @@ function generateURL() {
     if (accountAgeMax) params.push(`user_before=${accountAgeMax}w`);
 
     // Photo Licenses
-    const photoLicenses = Array.from(document.querySelectorAll('#photoLicenses input:checked'))
+    const photoLicenses = Array.from(document.querySelectorAll('#photoLicenses input:checked:not(#allRightsReserved)'))
         .map(input => input.value);
-    if (photoLicenses.length > 0) {
+    const allRightsReserved = document.getElementById('allRightsReserved').checked;
+
+    if (allRightsReserved) {
+        params.push('photo_licensed=false');
+    } else if (photoLicenses.length > 0) {
         params.push(`photo_license=${photoLicenses.join(',')}`);
     }
 
@@ -1131,3 +1173,90 @@ document.querySelectorAll('#observationSources input[type="checkbox"]').forEach(
       generateURL();
     });
   });
+
+  let tooltipEl = null;
+  let tooltipTimeout = null;
+  
+  function setupTooltips() {
+    setupTooltipToggle(); // Call this new function
+    document.body.addEventListener('mouseover', handleMouseOver);
+    document.body.addEventListener('mouseout', handleMouseOut);
+}
+  
+  function handleMouseOver(e) {
+    if (tooltipsEnabled && e.target.dataset.tooltip) {
+        clearTimeout(tooltipTimeout);
+        showTooltip(e.target);
+    }
+}
+  
+  function handleMouseOut(e) {
+    if (e.target.dataset.tooltip) {
+      tooltipTimeout = setTimeout(() => {
+        hideTooltip();
+      }, 100); // Small delay to prevent flickering
+    }
+  }
+  
+  function showTooltip(target) {
+    if (!tooltipEl) {
+      tooltipEl = document.createElement('div');
+      tooltipEl.className = 'tooltip';
+      document.body.appendChild(tooltipEl);
+    }
+  
+    tooltipEl.textContent = target.dataset.tooltip;
+    positionTooltip(target);
+    tooltipEl.style.opacity = '1';
+    tooltipEl.style.visibility = 'visible';
+  }
+  
+  function hideTooltip() {
+    if (tooltipEl) {
+      tooltipEl.style.opacity = '0';
+      tooltipEl.style.visibility = 'hidden';
+    }
+  }
+  
+  function positionTooltip(target) {
+    const rect = target.getBoundingClientRect();
+    const tooltipRect = tooltipEl.getBoundingClientRect();
+    
+    let top = rect.top + window.scrollY - tooltipRect.height - 10;
+    let left = rect.left + (rect.width / 2);
+  
+    // Adjust if tooltip would go off the top of the screen
+    if (top < window.scrollY) {
+      top = rect.bottom + window.scrollY + 10;
+    }
+  
+    tooltipEl.style.top = `${top}px`;
+    tooltipEl.style.left = `${left}px`;
+    tooltipEl.style.transform = 'translateX(-50%)';
+  }
+  
+  function setupTooltipToggle() {
+    const toggleSwitch = document.getElementById('tooltipToggle');
+    
+    toggleSwitch.addEventListener('change', function() {
+        tooltipsEnabled = this.checked;
+        if (!tooltipsEnabled) {
+            hideTooltip(); // Hide any visible tooltip
+        }
+    });
+
+    // Keyboard shortcut (Ctrl + Shift + T)
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+            toggleSwitch.checked = !toggleSwitch.checked;
+            tooltipsEnabled = toggleSwitch.checked;
+            if (!tooltipsEnabled) {
+                hideTooltip(); // Hide any visible tooltip
+            }
+        }
+    });
+}
+
+  document.addEventListener('DOMContentLoaded', setupTooltips);
+
+  
