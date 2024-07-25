@@ -1245,16 +1245,6 @@ document.querySelectorAll('#observationSources input[type="checkbox"]').forEach(
         }
     });
 
-    // Keyboard shortcut (Ctrl + Shift + T)
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.shiftKey && e.key === 'T') {
-            toggleSwitch.checked = !toggleSwitch.checked;
-            tooltipsEnabled = toggleSwitch.checked;
-            if (!tooltipsEnabled) {
-                hideTooltip(); // Hide any visible tooltip
-            }
-        }
-    });
 }
 
   document.addEventListener('DOMContentLoaded', setupTooltips);
