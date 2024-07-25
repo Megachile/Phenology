@@ -571,6 +571,8 @@ function generateURL() {
     addDateParams('added', params);
 
 
+
+
     // Observation Field
     const ofInputs = document.querySelectorAll('#observationFieldContainer .field-group');
     ofInputs.forEach((group, index) => {
@@ -689,6 +691,14 @@ function generateURL() {
                             .map(checkbox => checkbox.value);
     if (categories.length > 0) {
         params.push(`iconic_taxa=${categories.join(',')}`);
+    }
+
+    // Observation Sources
+        const observationSources = Array.from(document.querySelectorAll('#observationSources input:checked:not([value="any"])'))
+        .map(checkbox => checkbox.value);
+    
+    if (observationSources.length > 0) {
+        params.push(`oauth_application_id=${observationSources.join(',')}`);
     }
 
     // Add geographic parameters
@@ -1102,3 +1112,22 @@ document.getElementById('circle').addEventListener('change', function() {
         updateMapFromInputs();
     }
 });
+
+// Add event listeners to the observation sources checkboxes
+document.querySelectorAll('#observationSources input[type="checkbox"]').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      if (this.value === 'any' && this.checked) {
+        // If "Any" is checked, uncheck all other options
+        document.querySelectorAll('#observationSources input:not([value="any"])').forEach(cb => {
+          cb.checked = false;
+        });
+      } else if (this.checked) {
+        // If any other option is checked, uncheck "Any"
+        document.querySelector('#observationSources input[value="any"]').checked = false;
+      } else if (!document.querySelectorAll('#observationSources input:checked:not([value="any"])').length) {
+        // If no other options are checked, check "Any"
+        document.querySelector('#observationSources input[value="any"]').checked = true;
+      }
+      generateURL();
+    });
+  });
