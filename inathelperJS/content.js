@@ -276,6 +276,8 @@ function checkForConfigUpdates() {
                 showUpdateNotification();
                 lastKnownUpdate = result.lastConfigUpdate;
             }
+/*             console.log('Checking for config updates. Current lastKnownUpdate:', lastKnownUpdate);
+            console.log('Storage lastConfigUpdate:', result.lastConfigUpdate); */
         }
         // If lastConfigUpdate doesn't exist, do nothing
     });
@@ -1523,22 +1525,29 @@ function toggleRefresh() {
 }
 
 function createDynamicButtons() {
+    console.log('createDynamicButtons called');
     browserAPI.storage.sync.get(['customButtons', 'buttonOrder'], function(data) {
         if (data.customButtons && data.customButtons.length > 0) {
+            console.log('Retrieved buttonOrder from storage:', data.buttonOrder);
+            console.log('Retrieved customButtons from storage:', data.customButtons);
             customShortcuts = [];
             buttonContainer.innerHTML = ''; // Clear existing buttons
 
             const orderedButtons = data.buttonOrder || data.customButtons.map(config => config.id);
 
-            orderedButtons.forEach(buttonId => {
+            orderedButtons.forEach((buttonId, index) => {
+                console.log(`Processing button ${index + 1}/${orderedButtons.length}: ID ${buttonId}`);
                 const config = data.customButtons.find(c => c.id === buttonId);
                 if (config && !config.configurationDisabled) {
                     createButton(config);
+                } else {
+                    console.log(`Button ${buttonId} skipped: ${config ? 'Disabled' : 'Not found'}`);
                 }
             });
 
             initializeDragAndDrop();
         }
+        console.log('All buttons created. Total buttons:', buttonContainer.children.length);
     });
 }
 
@@ -1583,6 +1592,15 @@ function debugButtonCreation(config) {
 
 function createButton(config) {
     debugButtonCreation(config);
+
+    function hasNonASCII(str) {
+        return /[^\u0000-\u007f]/.test(str);
+    }
+    
+    console.log('Button name contains non-ASCII:', hasNonASCII(config.name));
+    if (config.shortcut && config.shortcut.key) {
+        console.log('Shortcut key contains non-ASCII:', hasNonASCII(config.shortcut.key));
+    }
 
     let button = document.createElement('button');
     button.classList.add('button-ph');
@@ -1758,8 +1776,10 @@ function saveButtonOrder() {
 }
 
 function loadButtonOrder() {
+    console.log('Loading button order');
     browserAPI.storage.sync.get('buttonOrder', (data) => {
         if (data.buttonOrder) {
+            console.log('Stored button order:', data.buttonOrder);
             const container = document.getElementById('custom-extension-container');
             data.buttonOrder.forEach(buttonId => {
                 const button = container.querySelector(`[data-button-id="${buttonId}"]`);

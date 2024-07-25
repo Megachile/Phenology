@@ -401,7 +401,88 @@ function duplicateConfiguration(configId) {
     }
 }
 
+function mergeConfigurations(importedData) {
+    console.log('Starting merge process');
+    console.log('Existing buttons:', customButtons);
+    console.log('Imported buttons:', importedData.customButtons);
 
+    const newButtons = importedData.customButtons || [];
+    const conflicts = [];
+
+    newButtons.forEach(newButton => {
+        console.log('Processing button:', newButton.name);
+        
+        const existingButton = customButtons.find(b => b.name === newButton.name);
+        if (existingButton) {
+            console.log('Name conflict found:', existingButton.name);
+            conflicts.push({existing: existingButton, imported: newButton});
+        } else {
+            const shortcutConflict = newButton.shortcut && newButton.shortcut.key ? 
+                customButtons.find(b => 
+                    b.shortcut && 
+                    b.shortcut.key === newButton.shortcut.key &&
+                    b.shortcut.ctrlKey === newButton.shortcut.ctrlKey &&
+                    b.shortcut.shiftKey === newButton.shortcut.shiftKey &&
+                    b.shortcut.altKey === newButton.shortcut.altKey
+                ) : null;
+            
+            if (shortcutConflict) {
+                console.log('Shortcut conflict found:', newButton.shortcut);
+                conflicts.push({existing: shortcutConflict, imported: newButton, type: 'shortcut'});
+            } else {
+                console.log('No conflicts, adding button');
+                customButtons.push(newButton);
+            }
+        }
+    });
+
+    console.log('Conflicts found:', conflicts);
+
+    // Get current button order
+    browserAPI.storage.sync.get('buttonOrder', function(data) {
+        let buttonOrder = data.buttonOrder || [];
+        console.log('Current button order before update:', buttonOrder);
+
+        const newButtonIds = newButtons.map(button => button.id);
+        const updatedButtonOrder = [...new Set([...buttonOrder, ...newButtonIds])];
+        console.log('Updated button order:', updatedButtonOrder);
+
+        const saveAndNotify = () => {
+            browserAPI.storage.sync.set({
+                customButtons: customButtons,
+                observationFieldMap: {...observationFieldMap, ...(importedData.observationFieldMap || {})},
+                lastConfigUpdate: Date.now(),
+                buttonOrder: updatedButtonOrder
+            }, function() {
+                console.log('Configurations merged and lastConfigUpdate set');
+                console.log('Final customButtons:', customButtons);
+                
+                // Check storage usage
+                browserAPI.storage.sync.getBytesInUse(null, function(bytesInUse) {
+                    console.log('Storage bytes in use:', bytesInUse);
+                    console.log('Storage quota:', browserAPI.storage.sync.QUOTA_BYTES);
+                    const percentageUsed = (bytesInUse / browserAPI.storage.sync.QUOTA_BYTES) * 100;
+                    console.log('Storage usage: ' + percentageUsed.toFixed(2) + '%');
+                });
+                
+                // Notify background script to reload content scripts
+                browserAPI.runtime.sendMessage({action: "configUpdated"});
+
+                // Delay the reload and alert slightly to ensure storage is updated
+                setTimeout(() => {
+                    loadConfigurations();
+                    alert('Import completed successfully.');
+                }, 100);
+            });
+        };
+
+        if (conflicts.length > 0) {
+            resolveConflicts(conflicts, saveAndNotify);
+        } else {
+            saveAndNotify();
+        }
+    });
+}
 
 function addActionToForm(action = null) {
     const actionDiv = document.createElement('div');
@@ -778,6 +859,8 @@ function saveAndReloadConfigurations(updateTimestamp = false) {
         console.log('Configuration updated');
         loadConfigurations();
     });
+    console.log('Saving configurations:', customButtons);
+    console.log('Setting lastConfigUpdate:', Date.now());
 }
 
 function formatShortcut(shortcut) {
@@ -981,12 +1064,14 @@ function exportConfigurations() {
 }
 
 function importConfigurations(event) {
+    console.log('Starting import process');
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
-                const importedData = JSON.parse(e.target.result);
+                const importedData = JSON.parse(e.target.result);                
+                console.log('Imported data:', importedData);
                 mergeConfigurations(importedData);
             } catch (error) {
                 alert('Error parsing the imported file. Please make sure it\'s a valid JSON file.');
@@ -994,63 +1079,6 @@ function importConfigurations(event) {
             }
         };
         reader.readAsText(file);
-    }
-}
-
-function mergeConfigurations(importedData) {
-    console.log('Starting merge process');
-    console.log('Existing buttons:', customButtons);
-    console.log('Imported buttons:', importedData.customButtons);
-
-    const newButtons = importedData.customButtons || [];
-    const conflicts = [];
-
-    newButtons.forEach(newButton => {
-        console.log('Processing button:', newButton.name);
-        
-        const existingButton = customButtons.find(b => b.name === newButton.name);
-        if (existingButton) {
-            console.log('Name conflict found:', existingButton.name);
-            conflicts.push({existing: existingButton, imported: newButton});
-        } else {
-            const shortcutConflict = newButton.shortcut && newButton.shortcut.key ? 
-                customButtons.find(b => 
-                    b.shortcut && 
-                    b.shortcut.key === newButton.shortcut.key &&
-                    b.shortcut.ctrlKey === newButton.shortcut.ctrlKey &&
-                    b.shortcut.shiftKey === newButton.shortcut.shiftKey &&
-                    b.shortcut.altKey === newButton.shortcut.altKey
-                ) : null;
-            
-            if (shortcutConflict) {
-                console.log('Shortcut conflict found:', newButton.shortcut);
-                conflicts.push({existing: shortcutConflict, imported: newButton, type: 'shortcut'});
-            } else {
-                console.log('No conflicts, adding button');
-                customButtons.push(newButton);
-            }
-        }
-    });
-
-    console.log('Conflicts found:', conflicts);
-
-    const saveAndNotify = () => {
-        browserAPI.storage.sync.set({
-            customButtons: customButtons,
-            observationFieldMap: {...observationFieldMap, ...(importedData.observationFieldMap || {})},
-            lastConfigUpdate: Date.now()
-        }, function() {
-            console.log('Configurations merged and lastConfigUpdate set');
-            console.log('Final customButtons:', customButtons);
-            loadConfigurations();
-            alert('Import completed successfully.');
-        });
-    };
-
-    if (conflicts.length > 0) {
-        resolveConflicts(conflicts, saveAndNotify);
-    } else {
-        saveAndNotify();
     }
 }
 
