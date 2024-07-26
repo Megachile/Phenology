@@ -317,17 +317,12 @@ function setupTaxonAutocomplete(inputElement, idElement) {
 
 function updateFieldValueInput(field, container) {
     console.log('Updating field value input for:', field);
-    const existingInput = container.querySelector('.fieldValue');
-    let input = existingInput || document.createElement('input');
     
-    // Remove all existing event listeners and classes
-    const newInput = input.cloneNode(false);
-    if (existingInput) {
-        existingInput.parentNode.replaceChild(newInput, existingInput);
-    }
-    input = newInput;
+    // Always clear the container
+    container.innerHTML = '';
+    
+    let input;
 
-    input.className = 'fieldValue';
     console.log('Field datatype:', field.datatype);
 
     switch (field.datatype) {
@@ -335,42 +330,39 @@ function updateFieldValueInput(field, container) {
         case 'date':
         case 'datetime':
         case 'time':
+            input = document.createElement('input');
             input.type = field.datatype;
             break;
         case 'numeric':
+            input = document.createElement('input');
             input.type = 'number';
             break;
         case 'boolean':
-            const select = document.createElement('select');
-            select.className = 'fieldValue';
+            input = document.createElement('select');
             ['', 'Yes', 'No'].forEach(option => {
                 const opt = document.createElement('option');
                 opt.value = option;
                 opt.textContent = option;
-                select.appendChild(opt);
+                input.appendChild(opt);
             });
-            input = select;
             break;
         case 'taxon':
+            input = document.createElement('input');
             input.type = 'text';
-            input.className += ' taxonInput';
+            input.className = 'taxonInput';
             input.placeholder = 'Enter species name';
             console.log('Setting up taxon autocomplete for taxon input');
             setupTaxonAutocomplete(input);
             break;
         default:
+            input = document.createElement('input');
             input.type = 'text';
     }
 
+    input.className = 'fieldValue';
     input.placeholder = 'Field Value';
     
-    if (!existingInput) {
-        console.log('Creating new input element');
-        container.innerHTML = '';
-        container.appendChild(input);
-    } else {
-        console.log('Updating existing input element');
-    }
+    container.appendChild(input);
 
     // Handle allowed values
     if (field.allowed_values && field.datatype !== 'taxon') {
@@ -392,7 +384,6 @@ function updateFieldValueInput(field, container) {
     console.log('Field value input updated');
     return input;
 }
-
 
 function setupObservationFieldAutocomplete(nameInput, idInput) {
     setupAutocompleteDropdown(nameInput, lookupObservationField, (result) => {
