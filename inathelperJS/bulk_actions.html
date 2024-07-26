@@ -208,8 +208,16 @@
           
               <div>
                 <label for="descriptionTagInput">Description/Tag Search:</label>
-                <input type="text" id="descriptionTagInput" placeholder="Enter search terms">
-              </div>
+                <input type="text" id="descriptionTagInput" placeholder="Enter search term">
+                <div>
+                    <label>Search on:</label>
+                    <label><input type="radio" name="searchOn" value="all" checked> All</label>
+                    <label><input type="radio" name="searchOn" value="description"> Description</label>
+                    <label><input type="radio" name="searchOn" value="tags"> Tags</label>
+                    <label><input type="radio" name="searchOn" value="names"> Active ID Taxon Names</label>
+                    <label><input type="radio" name="searchOn" value="place"> Place Description</label>
+                </div>
+            </div>
           
               <div>
                 <label for="accountAgeMin" data-tooltip="Include only observations from users with accounts created more than this many weeks ago">Account Age (min weeks)</label>

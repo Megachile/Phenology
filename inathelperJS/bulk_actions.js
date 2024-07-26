@@ -52,32 +52,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
 
-  setupCollapsible(toggleFiltersButton, filtersFieldset);
-  setupCollapsible(toggleAdditionalParamsButton, additionalParamsFieldset);
-  setupCollapsible(toggleCategories, categoriesFieldset);
-  setupCollapsible(toggleSortingRanking, sortingRankingFieldset);
-  setupCollapsible(document.getElementById('toggleGeographic'), document.getElementById('geographicFieldset'));
-  setupMap();
-  setupMapObserver();
+    setupCollapsible(toggleFiltersButton, filtersFieldset);
+    setupCollapsible(toggleAdditionalParamsButton, additionalParamsFieldset);
+    setupCollapsible(toggleCategories, categoriesFieldset);
+    setupCollapsible(toggleSortingRanking, sortingRankingFieldset);
+    setupCollapsible(document.getElementById('toggleGeographic'), document.getElementById('geographicFieldset'));
+    setupMap();
+    setupMapObserver();
 
-   const newInputs = [
-    'listIdInput', 'descriptionTagInput', 'accountAgeMin', 'accountAgeMax',
-    'noPhotosToggle', 'noSoundsToggle', 'hasIdentificationsToggle'
-  ];
+    const newInputs = [
+        'listIdInput', 'descriptionTagInput', 'accountAgeMin', 'accountAgeMax',
+        'noPhotosToggle', 'noSoundsToggle', 'hasIdentificationsToggle'
+    ];
 
-  newInputs.forEach(inputId => {
-    const element = document.getElementById(inputId);
-    if (element) {
-      element.addEventListener('change', generateURL);
-    }
-  });
+    newInputs.forEach(inputId => {
+        const element = document.getElementById(inputId);
+        if (element) {
+        element.addEventListener('change', generateURL);
+        }
+    });
 
-  // Add event listeners for license checkboxes
-  const licenseCheckboxes = document.querySelectorAll('#photoLicenses input, #soundLicenses input');
-  licenseCheckboxes.forEach(checkbox => {
-    checkbox.addEventListener('change', generateURL);
-  });
-
+    // Add event listeners for license checkboxes
+    const licenseCheckboxes = document.querySelectorAll('#photoLicenses input, #soundLicenses input');
+    licenseCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', generateURL);
+    });
+  
+      // Add event listeners for the search_on radio buttons
+      document.querySelectorAll('input[name="searchOn"]').forEach(radio => {
+        radio.addEventListener('change', generateURL);
+    });
     document.querySelectorAll('input[name="geoSearchType"]').forEach(radio => {
         radio.addEventListener('change', toggleGeoInputs);
     });
@@ -96,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
         generatedUrlDiv.innerHTML = '';
         generatedUrlDiv.appendChild(link);
     });
-    
+
     const geoInputs = [
         'nelat', 'nelng', 'swlat', 'swlng', 'lat', 'lng', 'radius',
         'accAbove', 'accBelow'
@@ -687,6 +691,11 @@ function generateURL() {
     const descriptionTag = document.getElementById('descriptionTagInput').value.trim();
     if (descriptionTag) {
         params.push(`q=${encodeURIComponent(descriptionTag)}`);
+        
+        const searchOn = document.querySelector('input[name="searchOn"]:checked').value;
+        if (searchOn !== 'all') {
+            params.push(`search_on=${searchOn}`);
+        }
     }
 
     // Account Age
