@@ -89,15 +89,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('generateUrlButton').addEventListener('click', function(e) {
         e.preventDefault();
         const url = generateURL();
-        const encodedUrl = encodeURI(url); // Properly encode the URL
         const link = document.createElement('a');
-        link.href = encodedUrl;
+        link.href = url;  // Use the url directly, without additional encoding
         link.target = '_blank';
-        link.textContent = url; // Use raw URL as text content to avoid HTML entity issues
-        generatedUrlDiv.innerHTML = ''; // Clear previous content
-        generatedUrlDiv.appendChild(link); // Append new link
+        link.textContent = url;
+        generatedUrlDiv.innerHTML = '';
+        generatedUrlDiv.appendChild(link);
     });
-
+    
     const geoInputs = [
         'nelat', 'nelng', 'swlat', 'swlng', 'lat', 'lng', 'radius',
         'accAbove', 'accBelow'
@@ -299,6 +298,8 @@ function addField(type) {
         fieldGroup.innerHTML = `
             <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
             <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
+            <div class="fieldValueContainer"></div>
+            <div class="fieldDescription"></div>
             <button class="removeFieldButton">Remove</button>
             <label><input type="checkbox" class="negationCheckbox"> Without</label>
             <span class="negationNote" style="display:none; color: #888; font-style: italic;">Selects obs. without this field. Specific value exclusion not supported.</span>   
@@ -331,6 +332,12 @@ function addField(type) {
                 fieldGroup.querySelector(`#${type}Id${fieldCount}`).value = result.id;
             }
         );
+    } else if (type === 'observationField') {
+        const nameInput = fieldGroup.querySelector(`#${type}${fieldCount}`);
+        const idInput = fieldGroup.querySelector(`#${type}Id${fieldCount}`);
+        const valueContainer = fieldGroup.querySelector('.fieldValueContainer');
+        const descriptionElement = fieldGroup.querySelector('.fieldDescription');
+        setupFieldAutocomplete(nameInput, idInput, valueContainer, descriptionElement);
     } else {
         setupAutocomplete(type, fieldCount);
     }
@@ -444,6 +451,13 @@ function clearFieldFromUrl(fieldName) {
         input.dataset.id = '';
     }
     generateURL();
+}
+
+function safeEncode(str) {
+    // First, decode the string in case it's already encoded
+    let decodedStr = decodeURIComponent(str);
+    // Then, encode it properly
+    return encodeURIComponent(decodedStr);
 }
 
 function generateURL() {
@@ -610,29 +624,26 @@ function generateURL() {
     addDateParams('observed', params);
     addDateParams('added', params);
 
-
     // Observation Field
-    const ofInputs = document.querySelectorAll('#observationFieldContainer .field-group');
-    ofInputs.forEach((group, index) => {
-        const fieldNameInput = group.querySelector('.fieldName');
-        const fieldValueInput = group.querySelector('.fieldValue');
-        const negated = group.querySelector('.negationCheckbox').checked;
-        
-        if (fieldNameInput && fieldValueInput) {
-            const fieldName = fieldNameInput.value;
-            let fieldValue = fieldValueInput.value;
+    const ofInputs = document.querySelectorAll('#actionsContainer .action-box');
+    ofInputs.forEach((box) => {
+        const actionType = box.querySelector('.action-type');
+        if (actionType && actionType.textContent.toLowerCase() === 'observationfield') {
+            const fieldNameInput = box.querySelector(`input[id^="observationField"]`);
+            const fieldValueInput = box.querySelector('.fieldValue');
+            const negated = box.querySelector('.negationCheckbox').checked;
             
-            console.log(`Observation Field ${index}:`, { fieldName, fieldValue, negated });
-            
-            if (fieldName) {
+            if (fieldNameInput && fieldNameInput.value) {
+                const fieldName = safeEncode(fieldNameInput.value);
+                const fieldValue = fieldValueInput ? safeEncode(fieldValueInput.value) : '';
+                
                 if (negated) {
-                    params.push(`without_field=${encodeURIComponent(fieldName)}`);
+                    params.push(`without_field=${fieldName}`);
                 } else if (fieldValue) {
-                    params.push(`field:${encodeURIComponent(fieldName)}=${encodeURIComponent(fieldValue)}`);
+                    params.push(`field:${fieldName}=${fieldValue}`);
                 } else {
-                    params.push(`field:${encodeURIComponent(fieldName)}=`);
+                    params.push(`field:${fieldName}`);
                 }
-                console.log('Added Observation Field:', params[params.length - 1]);
             }
         }
     });
@@ -788,24 +799,23 @@ function generateURL() {
     params.push(`taxon_geoprivacy=${taxonGeoprivacy.value}`);
   }
     
+  const rawUrl = url + params.join('&');
+  console.log('Raw generated URL:', rawUrl);
 
-    const rawUrl = url + params.join('&');
-    console.log('Raw generated URL:', rawUrl);
+  // Check for any unexpected encodings
+  const encodedUrl = encodeURI(rawUrl);
+  console.log('Encoded URL:', encodedUrl);
 
-    // Check for any unexpected encodings
-    const encodedUrl = encodeURI(rawUrl);
-    console.log('Encoded URL:', encodedUrl);
+  if (rawUrl !== encodedUrl) {
+      console.warn('URL encoding changed some characters. Differences:');
+      for (let i = 0; i < rawUrl.length; i++) {
+          if (rawUrl[i] !== encodedUrl[i]) {
+              console.warn(`Position ${i}: '${rawUrl[i]}' became '${encodedUrl[i]}'`);
+          }
+      }
+  }
 
-    if (rawUrl !== encodedUrl) {
-        console.warn('URL encoding changed some characters. Differences:');
-        for (let i = 0; i < rawUrl.length; i++) {
-            if (rawUrl[i] !== encodedUrl[i]) {
-                console.warn(`Position ${i}: '${rawUrl[i]}' became '${encodedUrl[i]}'`);
-            }
-        }
-    }
-
-    return rawUrl;
+  return rawUrl;
 }
 
 function setupUserAutocomplete(input, idInput) {
