@@ -653,31 +653,34 @@ function generateURL() {
     });
 
     // Annotation
-    const annotationInputs = document.querySelectorAll('#annotationContainer .field-group');
-    annotationInputs.forEach((group, index) => {
-        const fieldSelect = group.querySelector('.annotationField');
-        const valueSelect = group.querySelector('.annotationValue');
-        const negated = group.querySelector('.negationCheckbox').checked;
-        
-        if (fieldSelect.value) {
-            if (negated) {
-                if (valueSelect.value) {
-                    // Without a specific annotation value
-                    params.push(`term_id=${encodeURIComponent(fieldSelect.value)}`);
-                    params.push(`without_term_value_id=${encodeURIComponent(valueSelect.value)}`);
+    const annotationInputs = document.querySelectorAll('#actionsContainer .action-box');
+    annotationInputs.forEach((box) => {
+        const actionType = box.querySelector('.action-type');
+        if (actionType && actionType.textContent.toLowerCase() === 'annotation') {
+            const fieldSelect = box.querySelector('.annotationField');
+            const valueSelect = box.querySelector('.annotationValue');
+            const negated = box.querySelector('.negationCheckbox').checked;
+            
+            if (fieldSelect && fieldSelect.value) {
+                if (negated) {
+                    if (valueSelect && valueSelect.value) {
+                        // Without a specific annotation value
+                        params.push(`term_id=${encodeURIComponent(fieldSelect.value)}`);
+                        params.push(`without_term_value_id=${encodeURIComponent(valueSelect.value)}`);
+                    } else {
+                        // Without annotation (no value)
+                        params.push(`without_term_id=${encodeURIComponent(fieldSelect.value)}`);
+                    }
                 } else {
-                    // Without annotation (no value)
-                    params.push(`without_term_id=${encodeURIComponent(fieldSelect.value)}`);
+                    // With Annotation
+                    params.push(`term_id=${encodeURIComponent(fieldSelect.value)}`);
+                    if (valueSelect && valueSelect.value) {
+                        // With annotation and specific value
+                        params.push(`term_value_id=${encodeURIComponent(valueSelect.value)}`);
+                    }
                 }
-            } else {
-                // With Annotation
-                params.push(`term_id=${encodeURIComponent(fieldSelect.value)}`);
-                if (valueSelect.value) {
-                    // With annotation and specific value
-                    params.push(`term_value_id=${encodeURIComponent(valueSelect.value)}`);
-                }
+                console.log('Added Annotation:', params[params.length - 1]);
             }
-            console.log('Added Annotation:', params[params.length - 1]);
         }
     });
 
