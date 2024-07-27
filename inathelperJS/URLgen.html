@@ -581,8 +581,17 @@
             
         <button id="generateUrlButton">Generate iNaturalist URL</button>
     </fieldset>
-    
-    <div id="generatedUrl"></div>
+
+  <div id="urlOutputs">
+      <div id="plainUrlOutput">
+        <textarea id="plainUrlText" rows="3" spellcheck="false"></textarea>
+        <button id="copyUrlButton" title="Copy to clipboard">📋</button>
+      </div>
+      <div id="buttonOutputs">
+          <a id="identifyButton" target="_blank" class="url-button">Identify</a>
+          <a id="exploreButton" target="_blank" class="url-button">Explore</a>
+      </div>
+  </div>
 
     <script src="shared_api.js"></script>
     <script src="URLgen.js"></script>

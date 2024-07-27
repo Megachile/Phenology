@@ -69,22 +69,6 @@ button:hover {
     background-color: #f0f0f0;
 }
 
-#generatedUrl {
-    margin-top: 20px;
-    padding: 10px;
-    background-color: #e7f3fe;
-    border: 1px solid #b6d4fe;
-    border-radius: 4px;
-}
-
-#generatedUrl a {
-    color: #0056b3;
-    text-decoration: none;
-}
-
-#generatedUrl a:hover {
-    text-decoration: underline;
-}
 .taxonSuggestions {
     position: relative;
     top: 100%;
@@ -460,4 +444,57 @@ input:checked + .slider:before {
 
 .slider.round:before {
   border-radius: 50%;
+}
+#urlOutputs {
+  margin-top: 20px;
+  display: none;
+}
+
+#plainUrlText {
+  width: 100%;
+  padding: 5px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+#plainUrlOutput {
+  margin-bottom: 10px;
+  position: relative;
+}
+
+#copyUrlButton {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+#copyUrlButton:hover {
+  background-color: #e0e0e0;
+}
+.url-button {
+  display: block;
+  width: 100%;
+  padding: 15px 0;
+  margin-bottom: 10px;
+  background-color: #4CAF50;
+  color: white;
+  text-decoration: none;
+  text-align: center;
+  font-size: 18px;
+  border: none;
+  cursor: pointer;
+}
+
+#identifyButton {
+  background-color: #008CBA;
+}
+
+#exploreButton {
+  background-color: #4CAF50;
 }

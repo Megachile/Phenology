@@ -2,8 +2,6 @@ let map;
 let activeDrawTool = null;
 let tooltipsEnabled = false;
 document.addEventListener('DOMContentLoaded', function() {
-    const generatedUrlDiv = document.getElementById('generatedUrl');
-
     const addTaxonButton = document.getElementById('addTaxonButton');
     const addUserButton = document.getElementById('addUserButton');
     const addProjectButton = document.getElementById('addProjectButton');
@@ -814,20 +812,25 @@ function generateURL() {
   const rawUrl = url + params.join('&');
   console.log('Raw generated URL:', rawUrl);
 
-  // Check for any unexpected encodings
-  const encodedUrl = encodeURI(rawUrl);
-  console.log('Encoded URL:', encodedUrl);
+  // Extract only the query string
+  const queryString = rawUrl.split('?')[1] || '';
 
-  if (rawUrl !== encodedUrl) {
-      console.warn('URL encoding changed some characters. Differences:');
-      for (let i = 0; i < rawUrl.length; i++) {
-          if (rawUrl[i] !== encodedUrl[i]) {
-              console.warn(`Position ${i}: '${rawUrl[i]}' became '${encodedUrl[i]}'`);
-          }
-      }
-  }
+  // Update the plain text URL output
+  const plainUrlText = document.getElementById('plainUrlText');
+  plainUrlText.value = queryString;
 
-  return rawUrl;
+  // Update the Explore button
+  const exploreButton = document.getElementById('exploreButton');
+  exploreButton.href = 'https://www.inaturalist.org/observations?' + queryString;
+
+  // Update the Identify button
+  const identifyButton = document.getElementById('identifyButton');
+  identifyButton.href = rawUrl;
+
+  // Show the URL outputs
+  document.getElementById('urlOutputs').style.display = 'block';
+
+  return queryString;
 }
 
 function setupUserAutocomplete(input, idInput) {
@@ -1271,4 +1274,9 @@ document.querySelectorAll('#observationSources input[type="checkbox"]').forEach(
 
   document.addEventListener('DOMContentLoaded', setupTooltips);
 
-  
+  document.getElementById('copyUrlButton').addEventListener('click', function() {
+    const plainUrlText = document.getElementById('plainUrlText');
+    plainUrlText.select();
+    document.execCommand('copy');
+    alert('URL copied to clipboard!');
+});
