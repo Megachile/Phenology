@@ -138,18 +138,7 @@ function toggleShortcutList() {
     }
 }
 
-const debounce = (func, wait) => {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  };
-  
+ 
   const debouncedStartObservationCheck = debounce(startObservationCheck, 100);
   const debouncedStopAndClear = debounce(() => {
     stopObservationCheck();
@@ -1995,12 +1984,6 @@ function invertSelection() {
     updateAllSelections();
 }
 
-function applyBulkAction() {
-    console.log('Applying bulk action');
-    console.log('Selected observations:', selectedObservations);
-    alert(`Selected ${selectedObservations.size} observations.\nObservation IDs: ${Array.from(selectedObservations).join(', ')}`);
-}
-
 document.body.addEventListener('click', (e) => {
     if (bulkActionModeEnabled) {
         const obs = e.target.closest('.ObservationsGridItem');
@@ -2011,3 +1994,276 @@ document.body.addEventListener('click', (e) => {
         }
     }
 });
+
+function createActionSelectionModal(selectedObservations) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 10001;
+    `;
+
+    const title = document.createElement('h2');
+    title.textContent = `Select Action for ${selectedObservations.size} Observations`;
+    modal.appendChild(title);
+
+    const actionSelect = document.createElement('select');
+    actionSelect.style.marginBottom = '10px';
+    modal.appendChild(actionSelect);
+
+    // Populate action select
+    browserAPI.storage.sync.get('customButtons', function(data) {
+        const customButtons = data.customButtons || [];
+        customButtons.forEach(button => {
+            if (!button.configurationDisabled) {
+                const option = document.createElement('option');
+                option.value = button.id;
+                option.textContent = button.name;
+                actionSelect.appendChild(option);
+            }
+        });
+    });
+
+    const applyButton = document.createElement('button');
+    applyButton.textContent = 'Apply Action';
+    applyButton.onclick = () => {
+        const selectedActionId = actionSelect.value;
+        applyBulkActionWithConfirmation(selectedActionId, selectedObservations);
+        document.body.removeChild(modal);
+    };
+    modal.appendChild(applyButton);
+
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.onclick = () => document.body.removeChild(modal);
+    modal.appendChild(cancelButton);
+
+    document.body.appendChild(modal);
+}
+
+function applyBulkActionWithConfirmation(actionId, selectedObservations) {
+    browserAPI.storage.sync.get('customButtons', function(data) {
+        const customButtons = data.customButtons || [];
+        const selectedAction = customButtons.find(button => button.id === actionId);
+        if (selectedAction) {
+            const confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${selectedObservations.size} observations?`;
+            if (confirm(confirmMessage)) {
+                applyBulkAction(selectedAction, selectedObservations);
+            }
+        } else {
+            alert('Selected action not found.');
+        }
+    });
+}
+
+function applyBulkAction() {
+    console.log('Applying bulk action');
+    browserAPI.storage.sync.get('customButtons', function(data) {
+        const customButtons = data.customButtons || [];
+        const availableActions = customButtons.filter(button => !button.configurationDisabled);
+        
+        if (availableActions.length === 0) {
+            alert('No available actions found. Please configure some actions first.');
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 10001;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+        `;
+
+        const title = document.createElement('h2');
+        title.textContent = `Select Action for ${selectedObservations.size} Observations`;
+        modal.appendChild(title);
+
+        const actionSelect = document.createElement('select');
+        actionSelect.style.marginBottom = '10px';
+        availableActions.forEach(button => {
+            const option = document.createElement('option');
+            option.value = button.id;
+            option.textContent = button.name;
+            actionSelect.appendChild(option);
+        });
+        modal.appendChild(actionSelect);
+
+        const applyButton = document.createElement('button');
+        applyButton.textContent = 'Apply Action';
+        applyButton.onclick = () => {
+            const selectedActionId = actionSelect.value;
+            const selectedAction = availableActions.find(button => button.id === selectedActionId);
+            if (selectedAction) {
+                const actionsList = selectedAction.actions.map(actionItem => {
+                    switch (actionItem.type) {
+                        case 'observationField':
+                            return `Add observation field: ${actionItem.fieldName} with value: ${actionItem.fieldValue}`;
+                            case 'annotation':
+                                const attributeId = parseInt(actionItem.annotationField);
+                                const valueId = parseInt(actionItem.annotationValue);
+                                let attributeLabel = 'Unknown';
+                                let valueLabel = 'Unknown';
+    
+                                for (const [key, value] of Object.entries(controlledTerms)) {
+                                    if (value.id === attributeId) {
+                                        attributeLabel = key;
+                                        for (const [vKey, vId] of Object.entries(value.values)) {
+                                            if (vId === valueId) {
+                                                valueLabel = vKey;
+                                                break;
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+    
+                                return `Add annotation: ${attributeLabel} with value: ${valueLabel}`;
+                        case 'addToProject':
+                            return `Add to project: ${actionItem.projectName}`;
+                        case 'addComment':
+                            return `Add comment: ${actionItem.commentBody.substring(0, 50)}...`;
+                        case 'addTaxonId':
+                            return `Add taxon ID: ${actionItem.taxonName}`;
+                        case 'qualityMetric':
+                            return `Set quality metric: ${getQualityMetricName(actionItem.metric)} to ${actionItem.vote}`;
+                        case 'copyObservationField':
+                            return `Copy observation field from ${actionItem.sourceFieldName} to ${actionItem.targetFieldName}`;
+                        default:
+                            return `Unknown action type: ${actionItem.type}`;
+                    }
+                });
+
+                const confirmMessage = `Are you sure you want to apply the following actions to ${selectedObservations.size} observations?\n\n${actionsList.join('\n')}`;
+                if (confirm(confirmMessage)) {
+                    generateDryRunFile(selectedAction, Array.from(selectedObservations));
+                }
+            } else {
+                alert('Selected action not found.');
+            }
+            document.body.removeChild(modal);
+        };
+        modal.appendChild(applyButton);
+
+        const cancelButton = document.createElement('button');
+        cancelButton.textContent = 'Cancel';
+        cancelButton.onclick = () => document.body.removeChild(modal);
+        modal.appendChild(cancelButton);
+
+        document.body.appendChild(modal);
+    });
+}
+
+function getQualityMetricName(metric) {
+    const metricNames = {
+        'needs_id': 'Needs ID',
+        'date': 'Date',
+        'location': 'Location',
+        'wild': 'Wild',
+        'evidence': 'Evidence',
+        'recent': 'Recent',
+        'subject': 'Subject'
+    };
+    return metricNames[metric] || metric;
+}
+
+function generateDryRunFile(action, observationIds) {
+    let content = `Dry Run for Action: ${action.name}\n`;
+    content += `Observations: ${observationIds.join(', ')}\n\n`;
+
+    observationIds.forEach(observationId => {
+        content += `For Observation ID ${observationId}:\n`;
+        action.actions.forEach(actionItem => {
+            switch (actionItem.type) {
+                case 'observationField':
+                    content += `POST /observation_field_values\n`;
+                    content += `Body: {"observation_field_value": {"observation_id": ${observationId}, "observation_field_id": ${actionItem.fieldId}, "value": "${actionItem.fieldValue}"}}\n`;
+                    content += `Description: Add observation field "${actionItem.fieldName}" with value "${actionItem.fieldValue}"\n\n`;
+                    break;
+                    case 'annotation':
+                    const attributeId = parseInt(actionItem.annotationField);
+                    const valueId = parseInt(actionItem.annotationValue);
+                    let attributeLabel = 'Unknown';
+                    let valueLabel = 'Unknown';
+
+                    for (const [key, value] of Object.entries(controlledTerms)) {
+                        if (value.id === attributeId) {
+                            attributeLabel = key;
+                            for (const [vKey, vId] of Object.entries(value.values)) {
+                                if (vId === valueId) {
+                                    valueLabel = vKey;
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+
+                    content += `POST /annotations\n`;
+                    content += `Body: {"annotation": {"resource_type": "Observation", "resource_id": ${observationId}, "controlled_attribute_id": ${actionItem.annotationField}, "controlled_value_id": ${actionItem.annotationValue}}}\n`;
+                    content += `Description: Add annotation "${attributeLabel}" with value "${valueLabel}"\n\n`;
+                    break;          
+                    case 'addToProject':
+                    content += `POST /project_observations\n`;
+                    content += `Body: {"project_observation": {"observation_id": ${observationId}, "project_id": ${actionItem.projectId}}}\n`;
+                    content += `Description: Add to project "${actionItem.projectName}"\n\n`;
+                    break;
+                case 'addComment':
+                    content += `POST /comments\n`;
+                    content += `Body: {"comment": {"parent_type": "Observation", "parent_id": ${observationId}, "body": "${actionItem.commentBody}"}}\n`;
+                    content += `Description: Add comment: "${actionItem.commentBody.substring(0, 50)}..."\n\n`;
+                    break;
+                case 'addTaxonId':
+                    content += `POST /identifications\n`;
+                    content += `Body: {"identification": {"observation_id": ${observationId}, "taxon_id": ${actionItem.taxonId}, "body": "${actionItem.comment}"}}\n`;
+                    content += `Description: Add taxon ID for "${actionItem.taxonName}"\n\n`;
+                    break;
+                case 'qualityMetric':
+                    if (actionItem.metric === 'needs_id') {
+                        content += actionItem.vote === 'remove' 
+                            ? `DELETE /votes/unvote/observation/${observationId}?scope=needs_id\n`
+                            : `POST /votes/vote/observation/${observationId}\n`;
+                        content += `Body: {"vote": "${actionItem.vote === 'agree' ? 'yes' : 'no'}", "scope": "needs_id"}\n`;
+                    } else {
+                        content += actionItem.vote === 'remove'
+                            ? `DELETE /observations/${observationId}/quality/${actionItem.metric}\n`
+                            : `POST /observations/${observationId}/quality/${actionItem.metric}\n`;
+                        if (actionItem.vote === 'disagree') {
+                            content += `Body: {"agree": "false"}\n`;
+                        }
+                    }
+                    content += `Description: Set quality metric "${getQualityMetricName(actionItem.metric)}" to ${actionItem.vote}\n\n`;
+                    break;
+                case 'copyObservationField':
+                    content += `GET /observations/${observationId}\n`;
+                    content += `Then: POST /observation_field_values\n`;
+                    content += `Body: {"observation_field_value": {"observation_id": ${observationId}, "observation_field_id": ${actionItem.targetFieldId}, "value": "<value from source field ${actionItem.sourceFieldId}>"}}\n`;
+                    content += `Description: Copy observation field from "${actionItem.sourceFieldName}" to "${actionItem.targetFieldName}"\n\n`;
+                    break;
+            }
+        });
+        content += '\n';
+    });
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bulk_action_dry_run.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+}

@@ -24,7 +24,7 @@
   "exclude_matches": [
       "https://www.inaturalist.org/observations/upload*"
     ],
-      "js": ["content.js"],
+      "js": ["shared_api.js","content.js"],
       "run_at": "document_end"
     }
 ],
