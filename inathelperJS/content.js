@@ -13,6 +13,23 @@ let currentObservationId = null;
 let checkInterval = null;
 let observationTabsContainer = null;
 let hasMoved = false;
+let debugMode = false; 
+let bulkActionModeEnabled = false;
+let selectedObservations = new Set();
+
+function debugLog(message) {
+    if (debugMode) {
+        console.log(message);
+    }
+}
+
+function enableDebugMode() {
+    debugMode = true;
+}
+
+function disableDebugMode() {
+    debugMode = false;
+}
 
 const qualityMetrics = [
     { value: 'needs_id', label: 'Can the Community Taxon still be confirmed or improved?' },
@@ -145,27 +162,26 @@ const debounce = (func, wait) => {
   }, 100);
   
   const observer = new MutationObserver((mutations) => {
-    let modalFound = false;
-    for (let mutation of mutations) {
-      if (mutation.type === 'childList') {
-        const modal = document.querySelector('.ObservationModal.FullScreenModal');
-        if (modal) {
-          modalFound = true;
-          break;
-        }
-      }
-    }
-  
-    if (modalFound) {
-      debouncedStartObservationCheck();
+    const modal = document.querySelector('.ObservationModal.FullScreenModal');
+    const enableButton = document.getElementById('enable-bulk-mode-button');
+    const bulkContainer = document.getElementById('bulk-action-container');
+
+    if (modal) {
+        if (enableButton) enableButton.style.display = 'none';
     } else {
-      debouncedStopAndClear();
+        if (enableButton && !bulkActionModeEnabled) enableButton.style.display = 'block';
     }
-  
-  });
+
+    if (modal) {
+        debouncedStartObservationCheck();
+    } else {
+        debouncedStopAndClear();
+    }
+});
+
 
 function createShortcutList() {
-    console.log('Creating shortcut list');
+    debugLog('Creating shortcut list');
     const container = document.createElement('div');
     container.id = 'shortcut-list-container';
     container.style.cssText = `
@@ -212,7 +228,7 @@ function createShortcutList() {
         });
         container.appendChild(list);
         document.body.appendChild(container);
-        console.log('Shortcut list created and appended to body');
+        debugLog('Shortcut list created and appended to body');
     });
 }
 
@@ -252,12 +268,12 @@ function handleAllShortcuts(event) {
             event.ctrlKey === shortcut.ctrlKey &&
             event.shiftKey === shortcut.shiftKey &&
             event.altKey === shortcut.altKey) {
-            console.log('Custom shortcut matched:', shortcut.name);
+            debugLog('Custom shortcut matched:', shortcut.name);
             if (shortcut.button && shortcut.button.isConnected) {
-                console.log('Clicking button:', shortcut.button.innerText);
+                debugLog('Clicking button:', shortcut.button.innerText);
                 shortcut.button.click();
             } else {
-                console.log('Button not found or not connected to DOM for shortcut:', shortcut.name);
+                debugLog('Button not found or not connected to DOM for shortcut:', shortcut.name);
             }
         }
     });
@@ -276,8 +292,8 @@ function checkForConfigUpdates() {
                 showUpdateNotification();
                 lastKnownUpdate = result.lastConfigUpdate;
             }
-/*             console.log('Checking for config updates. Current lastKnownUpdate:', lastKnownUpdate);
-            console.log('Storage lastConfigUpdate:', result.lastConfigUpdate); */
+/*             debugLog('Checking for config updates. Current lastKnownUpdate:', lastKnownUpdate);
+            debugLog('Storage lastConfigUpdate:', result.lastConfigUpdate); */
         }
         // If lastConfigUpdate doesn't exist, do nothing
     });
@@ -326,8 +342,9 @@ function cycleButtonPosition() {
     currentPositionIndex = (currentPositionIndex + 1) % positions.length;
     buttonPosition = positions[currentPositionIndex];
     updatePositions();
+    updateBulkButtonPosition();
     browserAPI.storage.sync.set({buttonPosition: buttonPosition});
-  }
+}
 
 
 browserAPI.storage.sync.get('buttonPosition', function(data) {
@@ -378,6 +395,34 @@ function updatePositions() {
                 idDisplay.style.bottom = '10px';
                 idDisplay.style.left = '10px';
             }
+            break;
+    }
+    updateBulkButtonPosition();
+}
+
+function updateBulkButtonPosition() {
+    console.log('Updating bulk button position');
+    const bulkButtonContainer = document.getElementById('bulk-action-container');
+    if (!bulkButtonContainer) return;
+
+    bulkButtonContainer.style.top = bulkButtonContainer.style.left = bulkButtonContainer.style.bottom = bulkButtonContainer.style.right = 'auto';
+    
+    switch (buttonPosition) {
+        case 'top-left':
+            bulkButtonContainer.style.top = '10px';
+            bulkButtonContainer.style.right = '10px';
+            break;
+        case 'top-right':
+            bulkButtonContainer.style.top = '10px';
+            bulkButtonContainer.style.left = '10px';
+            break;
+        case 'bottom-left':
+            bulkButtonContainer.style.bottom = '10px';
+            bulkButtonContainer.style.right = '10px';
+            break;
+        case 'bottom-right':
+            bulkButtonContainer.style.bottom = '10px';
+            bulkButtonContainer.style.left = '10px';
             break;
     }
 }
@@ -481,21 +526,8 @@ function extractObservationIdFromUrl() {
     return null;
 }
 
-function updateObservationId() {
-    console.log('updateObservationId called');
-    const urlObservationId = extractObservationIdFromUrl();
-    if (urlObservationId) {
-        currentObservationId = urlObservationId;
-        console.log('Current Observation ID (from URL):', currentObservationId);
-        createOrUpdateIdDisplay(currentObservationId);
-    } else {
-        console.log('No ID from URL, falling back to extractObservationId');
-        extractObservationId(); // Your existing function for the identify page
-    }
-}
-
 function setupObservationTabsObserver() {
-    console.log('Setting up observation tabs observer');
+    debugLog('Setting up observation tabs observer');
     observationTabsContainer = document.querySelector('.ObservationsPane');
     if (!observationTabsContainer) {
         console.log('Observation tabs container not found, retrying in 1 second...');
@@ -503,12 +535,12 @@ function setupObservationTabsObserver() {
         return;
     }
 
-    console.log('Observation tabs container found');
+    debugLog('Observation tabs container found');
     const observer = new MutationObserver((mutations) => {
         for (let mutation of mutations) {
             if (mutation.type === 'attributes' && mutation.attributeName === 'data-id') {
                 const newId = observationTabsContainer.getAttribute('data-id');
-                console.log('New data-id detected:', newId);
+                debugLog('New data-id detected:', newId);
                 if (newId && newId !== currentObservationId) {
                     currentObservationId = newId;
                     console.log('Current Observation ID (from tab change):', currentObservationId);
@@ -523,55 +555,17 @@ function setupObservationTabsObserver() {
     console.log('Observer set up successfully');
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOMContentLoaded event fired");
-    if (window.location.href.includes('/observations/identify')) {
-        console.log("On identify page");
-        extractObservationId();
-    } else if (window.location.pathname.match(/^\/observations\/\d+/)) {
-        console.log("On individual observation page");
-        const observationId = window.location.pathname.split('/').pop();
-        console.log("Observation ID from URL:", observationId);
-        currentObservationId = observationId;
-        createOrUpdateIdDisplay(observationId);
-    }
-    checkForConfigUpdates();
-    initializeDragAndDrop();
-    loadButtonOrder();
-});
-
-// Handle URL changes
-window.addEventListener('popstate', () => {
-    console.log('popstate event fired');
-    updateObservationId();
-});
-
-// Overriding pushState and replaceState
-const originalPushState = history.pushState;
-history.pushState = function() {
-    console.log('pushState called');
-    originalPushState.apply(this, arguments);
-    updateObservationId();
-};
-
-const originalReplaceState = history.replaceState;
-history.replaceState = function() {
-    console.log('replaceState called');
-    originalReplaceState.apply(this, arguments);
-    updateObservationId();
-};
-
 function logModalStructure() {
     const modal = document.querySelector('.ObservationModal.FullScreenModal');
     if (modal) {
         const header = modal.querySelector('.obs-modal-header');
         if (header) {
-            console.log('Header structure:', header.innerHTML);
+            debugLog('Header structure:', header.innerHTML);
         } else {
-            console.log('Header not found in modal');
+            debugLog('Header not found in modal');
         }
     } else {
-        console.log('Modal not found');
+        debugLog('Modal not found');
     }
 }
 
@@ -1147,6 +1141,39 @@ style.textContent = `
   #custom-extension-input:focus + .tooltip {
       display: block;
   }
+ .bulk-action-button {
+        background-color: #4CAF50;
+        border: none;
+        color: white;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 4px;
+        padding: 10px 20px;
+    }
+    .ObservationsGridItem.selected {
+        box-shadow: 0 0 0 4px #4CAF50;
+    }
+    #enable-bulk-mode-button {
+        position: fixed;
+        z-index: 10000;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    #enable-bulk-mode-button:before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        border: 2px solid white;
+        border-radius: 6px;
+        z-index: -1;
+    }
+
 `;
 document.head.appendChild(style);
 
@@ -1178,10 +1205,34 @@ function createOrUpdateIdDisplay(id) {
 }
 
 window.addEventListener('load', () => {
+    console.log('Window load event fired');
     extractObservationId();
+    if (window.location.href.includes('/observations/identify')) {
+        console.log('On identify page, creating bulk action buttons');
+        createBulkActionButtons();
+        
+        // Add this check
+        setTimeout(() => {
+            const enableButton = document.getElementById('enable-bulk-mode-button');
+            if (enableButton) {
+                console.log('Enable button exists after timeout');
+                console.log('Enable button display:', getComputedStyle(enableButton).display);
+                console.log('Enable button position:', enableButton.style.cssText);
+            } else {
+                console.log('Enable button not found after timeout');
+            }
+        }, 1000);
+    } else if (window.location.pathname.match(/^\/observations\/\d+/)) {
+        console.log('On individual observation page');
+        const observationId = window.location.pathname.split('/').pop();
+        console.log('Observation ID from URL:', observationId);
+        currentObservationId = observationId;
+        createOrUpdateIdDisplay(observationId);
+    }
     if (!currentObservationId) {
         createOrUpdateIdDisplay('None');
     }
+    createDynamicButtons();
 });
 
 
@@ -1352,7 +1403,7 @@ function refreshObservation() {
         for (let selector of selectors) {
             grid = document.querySelector(selector);
             if (grid) {
-                console.log('Grid found with selector:', selector);
+                debugLog('Grid found with selector:', selector);
                 break;
             }
         }
@@ -1370,12 +1421,12 @@ function refreshObservation() {
             id: grid.id,
             rect: grid.getBoundingClientRect()
         };
-        console.log('Grid info:', gridInfo);
+        debugLog('Grid info:', gridInfo);
 
         const observationLink = findObservationLink(grid, currentObservationId);
         
         if (observationLink) {
-            console.log('Clicking observation link');
+            debugLog('Clicking observation link');
             try {
                 observationLink.click();
             } catch (error) {
@@ -1389,7 +1440,7 @@ function refreshObservation() {
                 modalCheckAttempts++;
                 const modal = document.querySelector('.ObservationModal');
                 if (modal) {
-                    console.log('ObservationModal found after', modalCheckAttempts, 'attempts');
+                    debugLog('ObservationModal found after', modalCheckAttempts, 'attempts');
                     clearInterval(modalCheckInterval);
                     resolve();
                 } else if (modalCheckAttempts >= 20) { // 2 seconds (100ms * 20)
@@ -1406,20 +1457,20 @@ function refreshObservation() {
 }
 
 function findObservationLink(gridElement, observationId) {
-    console.log('Searching for observation link with ID:', observationId);
+    debugLog('Searching for observation link with ID:', observationId);
     
     const directLink = gridElement.querySelector(`a[href="/observations/${observationId}"]`);
     if (directLink) {
-        console.log('Direct link found');
+        debugLog('Direct link found');
         return directLink;
     }
     
     const allLinks = gridElement.querySelectorAll('a[href^="/observations/"]');
-    console.log('Total observation links found:', allLinks.length);
+    debugLog('Total observation links found:', allLinks.length);
     
     for (let link of allLinks) {
         if (link.href.endsWith(observationId)) {
-            console.log('Matching link found:', link.href);
+            debugLog('Matching link found:', link.href);
             return link;
         }
     }
@@ -1430,16 +1481,16 @@ function findObservationLink(gridElement, observationId) {
 }
 
 function logPageStructure() {
-    console.log('Body classes:', document.body.className);
-    console.log('Identify element:', document.getElementById('Identify')?.outerHTML);
+    debugLog('Body classes:', document.body.className);
+    debugLog('Identify element:', document.getElementById('Identify')?.outerHTML);
     const mainContent = document.querySelector('main');
-    console.log('Main content classes:', mainContent?.className);
-    console.log('Main content child elements:', Array.from(mainContent?.children || []).map(el => ({
+    debugLog('Main content classes:', mainContent?.className);
+    debugLog('Main content child elements:', Array.from(mainContent?.children || []).map(el => ({
         tagName: el.tagName,
         id: el.id,
         className: el.className
     })));
-    console.log('All grid-like elements:', Array.from(document.querySelectorAll('[class*="grid" i], [class*="list" i]')).map(el => ({
+    debugLog('All grid-like elements:', Array.from(document.querySelectorAll('[class*="grid" i], [class*="list" i]')).map(el => ({
         tagName: el.tagName,
         id: el.id,
         className: el.className
@@ -1447,9 +1498,9 @@ function logPageStructure() {
 }
 
 function logLinkDetails(links) {
-    console.log('Detailed link information:');
+    debugLog('Detailed link information:');
     Array.from(links).forEach((link, index) => {
-        console.log(`Link ${index}:`, {
+        debugLog(`Link ${index}:`, {
             href: link.href,
             textContent: link.textContent,
             className: link.className,
@@ -1528,32 +1579,32 @@ function createDynamicButtons() {
     console.log('createDynamicButtons called');
     browserAPI.storage.sync.get(['customButtons', 'buttonOrder'], function(data) {
         if (data.customButtons && data.customButtons.length > 0) {
-            console.log('Retrieved buttonOrder from storage:', data.buttonOrder);
-            console.log('Retrieved customButtons from storage:', data.customButtons);
+            debugLog('Retrieved buttonOrder from storage:', data.buttonOrder);
+            debugLog('Retrieved customButtons from storage:', data.customButtons);
             customShortcuts = [];
             buttonContainer.innerHTML = ''; // Clear existing buttons
 
             const orderedButtons = data.buttonOrder || data.customButtons.map(config => config.id);
 
             orderedButtons.forEach((buttonId, index) => {
-                console.log(`Processing button ${index + 1}/${orderedButtons.length}: ID ${buttonId}`);
+                debugLog(`Processing button ${index + 1}/${orderedButtons.length}: ID ${buttonId}`);
                 const config = data.customButtons.find(c => c.id === buttonId);
                 if (config && !config.configurationDisabled) {
                     createButton(config);
                 } else {
-                    console.log(`Button ${buttonId} skipped: ${config ? 'Disabled' : 'Not found'}`);
+                    debugLog(`Button ${buttonId} skipped: ${config ? 'Disabled' : 'Not found'}`);
                 }
             });
 
             initializeDragAndDrop();
         }
-        console.log('All buttons created. Total buttons:', buttonContainer.children.length);
+        debugLog('All buttons created. Total buttons:', buttonContainer.children.length);
     });
 }
 
 function debugButtonCreation(config) {
-    console.log("Debug: Button Creation Start for", config.name);
-    console.log("Button Config:", JSON.stringify(config));
+    debugLog("Debug: Button Creation Start for", config.name);
+    debugLog("Button Config:", JSON.stringify(config));
 
     try {
         // Create a test button
@@ -1562,32 +1613,32 @@ function debugButtonCreation(config) {
         testButton.setAttribute('data-shortcut', formatShortcut(config.shortcut));
         
         // Log button properties
-        console.log("Button Text:", testButton.textContent);
-        console.log("Button Shortcut:", testButton.getAttribute('data-shortcut'));
+        debugLog("Button Text:", testButton.textContent);
+        debugLog("Button Shortcut:", testButton.getAttribute('data-shortcut'));
         
         // Check if the button is valid
-        console.log("Is button valid HTML:", testButton.outerHTML.length > 0);
+        debugLog("Is button valid HTML:", testButton.outerHTML.length > 0);
         
         // Test button visibility
         document.body.appendChild(testButton);
         const isVisible = window.getComputedStyle(testButton).display !== 'none';
-        console.log("Is button visible:", isVisible);
+        debugLog("Is button visible:", isVisible);
         document.body.removeChild(testButton);
 
         // Log character codes
-        console.log("Name character codes:", Array.from(config.name || "").map(c => c.charCodeAt(0)));
-        console.log("Shortcut character codes:", Array.from(formatShortcut(config.shortcut) || "").map(c => c.charCodeAt(0)));
+        debugLog("Name character codes:", Array.from(config.name || "").map(c => c.charCodeAt(0)));
+        debugLog("Shortcut character codes:", Array.from(formatShortcut(config.shortcut) || "").map(c => c.charCodeAt(0)));
 
         // Check for potential problematic characters
         const problematicChars = /[~!@#$%^&*()]/;
-        console.log("Contains problematic chars in name:", problematicChars.test(config.name || ""));
-        console.log("Contains problematic chars in shortcut:", problematicChars.test(formatShortcut(config.shortcut) || ""));
+        debugLog("Contains problematic chars in name:", problematicChars.test(config.name || ""));
+        debugLog("Contains problematic chars in shortcut:", problematicChars.test(formatShortcut(config.shortcut) || ""));
 
     } catch (error) {
         console.error("Error in button creation:", error);
     }
 
-    console.log("Debug: Button Creation End for", config.name);
+    debugLog("Debug: Button Creation End for", config.name);
 }
 
 function createButton(config) {
@@ -1597,9 +1648,9 @@ function createButton(config) {
         return /[^\u0000-\u007f]/.test(str);
     }
     
-    console.log('Button name contains non-ASCII:', hasNonASCII(config.name));
+    debugLog('Button name contains non-ASCII:', hasNonASCII(config.name));
     if (config.shortcut && config.shortcut.key) {
-        console.log('Shortcut key contains non-ASCII:', hasNonASCII(config.shortcut.key));
+        debugLog('Shortcut key contains non-ASCII:', hasNonASCII(config.shortcut.key));
     }
 
     let button = document.createElement('button');
@@ -1644,7 +1695,7 @@ function createButton(config) {
         });
     }
 
-    console.log("Button created and added to DOM:", button.outerHTML);
+    debugLog("Button created and added to DOM:", button.outerHTML);
 }
 
 function formatShortcut(shortcut) {
@@ -1660,7 +1711,7 @@ function formatShortcut(shortcut) {
 
 window.addEventListener('error', function(event) {
     if (event.error && event.error.message && event.error.message.includes('Extension context invalidated')) {
-        console.log('Extension context invalidated. This is likely due to the extension being reloaded.');
+        debugLog('Extension context invalidated. This is likely due to the extension being reloaded.');
         event.preventDefault(); // Prevent the error from being thrown
     }
 });
@@ -1771,15 +1822,15 @@ function saveButtonOrder() {
     const buttons = document.querySelectorAll('.button-ph');
     const order = Array.from(buttons).map(button => button.dataset.buttonId);
     browserAPI.storage.sync.set({ buttonOrder: order }, function() {
-        //console.log('Button order saved:', order);
+        //debugLog('Button order saved:', order);
     });
 }
 
 function loadButtonOrder() {
-    console.log('Loading button order');
+    debugLog('Loading button order');
     browserAPI.storage.sync.get('buttonOrder', (data) => {
         if (data.buttonOrder) {
-            console.log('Stored button order:', data.buttonOrder);
+            debugLog('Stored button order:', data.buttonOrder);
             const container = document.getElementById('custom-extension-container');
             data.buttonOrder.forEach(buttonId => {
                 const button = container.querySelector(`[data-button-id="${buttonId}"]`);
@@ -1791,3 +1842,172 @@ function loadButtonOrder() {
 
 createDynamicButtons();
 
+function createBulkActionButtons() {
+    console.log('Creating bulk action buttons');
+    const bulkButtonContainer = document.createElement('div');
+    bulkButtonContainer.id = 'bulk-action-container';
+    bulkButtonContainer.style.position = 'fixed';
+    bulkButtonContainer.style.zIndex = '10000';
+    bulkButtonContainer.style.backgroundColor = 'white';
+    bulkButtonContainer.style.padding = '10px';
+    bulkButtonContainer.style.border = '1px solid black';
+    bulkButtonContainer.style.display = 'none';
+
+    const selectAllButton = createBulkActionButton('Select All', selectAllObservations);
+    const invertSelectionButton = createBulkActionButton('Invert Selection', invertSelection);
+    const applyActionButton = createBulkActionButton('Apply Action', applyBulkAction);
+    const disableBulkModeButton = createBulkActionButton('Disable Bulk Mode', disableBulkActionMode);
+
+    bulkButtonContainer.appendChild(selectAllButton);
+    bulkButtonContainer.appendChild(invertSelectionButton);
+    bulkButtonContainer.appendChild(applyActionButton);
+    bulkButtonContainer.appendChild(disableBulkModeButton);
+
+    document.body.appendChild(bulkButtonContainer);
+
+    // Create the "Enable Bulk Action Mode" button
+    const enableBulkModeButton = document.createElement('button');
+    enableBulkModeButton.textContent = 'Enable Bulk Action Mode';
+    enableBulkModeButton.id = 'enable-bulk-mode-button';
+    enableBulkModeButton.classList.add('bulk-action-button');
+    enableBulkModeButton.addEventListener('click', enableBulkActionMode);
+    document.body.appendChild(enableBulkModeButton);
+
+    console.log('Bulk action buttons created. Enable button:', enableBulkModeButton);
+    console.log('Enable button display style:', getComputedStyle(enableBulkModeButton).display);
+
+    updateBulkButtonPosition();
+}
+
+function createBulkActionButton(text, onClickFunction) {
+    const button = document.createElement('button');
+    button.textContent = text;
+    button.classList.add('bulk-action-button');
+    button.style.margin = '5px';
+    button.style.padding = '5px 10px';
+    button.addEventListener('click', onClickFunction);
+    return button;
+}
+
+
+function enableBulkActionMode() {
+    bulkActionModeEnabled = true;
+    document.getElementById('bulk-action-container').style.display = 'block';
+    document.getElementById('enable-bulk-mode-button').style.display = 'none';
+    // Restore previously selected observations
+    getObservationElements().forEach(obs => {
+        const observationId = obs.querySelector('a[href^="/observations/"]')?.href.split('/').pop();
+        if (observationId && selectedObservations.has(observationId)) {
+            obs.classList.add('selected');
+        }
+    });
+    updateAllSelections();
+}
+
+function disableBulkActionMode() {
+    bulkActionModeEnabled = false;
+    document.getElementById('bulk-action-container').style.display = 'none';
+    document.getElementById('enable-bulk-mode-button').style.display = 'block';
+    // Remove visual selection but keep the IDs in selectedObservations
+    getObservationElements().forEach(obs => obs.classList.remove('selected'));
+}
+
+function updateBulkButtonPosition() {
+    console.log('Updating bulk button position');
+    const bulkButtonContainer = document.getElementById('bulk-action-container');
+    const enableBulkModeButton = document.getElementById('enable-bulk-mode-button');
+    if (!bulkButtonContainer || !enableBulkModeButton) {
+        console.log('Bulk button container or enable button not found');
+        return;
+    }
+
+    console.log('Current button position:', buttonPosition);
+
+    const setPosition = (element) => {
+        element.style.top = element.style.left = element.style.bottom = element.style.right = 'auto';
+        switch (buttonPosition) {
+            case 'top-left':
+                element.style.bottom = '10px';
+                element.style.right = '10px';
+                break;
+            case 'top-right':
+                element.style.bottom = '10px';
+                element.style.left = '10px';
+                break;
+            case 'bottom-right':
+                element.style.top = '10px';
+                element.style.left = '10px';
+                break;
+            case 'bottom-left':
+                element.style.top = '10px';
+                element.style.right = '10px';
+                break;
+        }
+        console.log(`Set position for ${element.id}:`, element.style.cssText);
+    };
+
+    setPosition(bulkButtonContainer);
+    setPosition(enableBulkModeButton);
+
+    console.log('Enable button display after positioning:', getComputedStyle(enableBulkModeButton).display);
+}
+
+function getObservationElements() {
+    return document.querySelectorAll('.ObservationsGridItem');
+}
+
+function toggleSelection(element) {
+    if (bulkActionModeEnabled) {
+        const observationId = element.querySelector('a[href^="/observations/"]')?.href.split('/').pop();
+        if (observationId) {
+            if (element.classList.toggle('selected')) {
+                selectedObservations.add(observationId);
+            } else {
+                selectedObservations.delete(observationId);
+            }
+            console.log('Updated selections:', selectedObservations);
+        }
+    }
+}
+
+function updateAllSelections() {
+    selectedObservations.clear();
+    getObservationElements().forEach(obs => {
+        if (obs.classList.contains('selected')) {
+            const observationId = obs.querySelector('a[href^="/observations/"]')?.href.split('/').pop();
+            if (observationId) {
+                selectedObservations.add(observationId);
+            }
+        }
+    });
+    console.log('Updated all selections:', selectedObservations);
+}
+
+function selectAllObservations() {
+    console.log('Selecting all observations');
+    getObservationElements().forEach(obs => obs.classList.add('selected'));
+    updateAllSelections();
+}
+
+function invertSelection() {
+    console.log('Inverting selection');
+    getObservationElements().forEach(obs => obs.classList.toggle('selected'));
+    updateAllSelections();
+}
+
+function applyBulkAction() {
+    console.log('Applying bulk action');
+    console.log('Selected observations:', selectedObservations);
+    alert(`Selected ${selectedObservations.size} observations.\nObservation IDs: ${Array.from(selectedObservations).join(', ')}`);
+}
+
+document.body.addEventListener('click', (e) => {
+    if (bulkActionModeEnabled) {
+        const obs = e.target.closest('.ObservationsGridItem');
+        if (obs) {
+            toggleSelection(obs);
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+});
