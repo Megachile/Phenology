@@ -1045,8 +1045,27 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('importButton').addEventListener('click', () => {
         document.getElementById('importInput').click();
     });
+    document.getElementById('showUndoRecordsButton').addEventListener('click', showUndoRecordsModal);
 
 });
+
+function showUndoRecordsModal() {
+    getUndoRecords(function(undoRecords) {
+        console.log('Retrieved undo records:', undoRecords);
+        if (undoRecords.length === 0) {
+            alert('No undo records available.');
+            return;
+        }
+
+        const modal = createUndoRecordsModal(undoRecords, function(record) {
+            // For the options page, we might want to just mark the record as undone
+            // without actually performing the undo action
+            markRecordAsUndone(record.id);
+        });
+
+        document.body.appendChild(modal);
+    });
+}
 
 
 function exportConfigurations() {
@@ -1140,3 +1159,47 @@ function resolveConflicts(conflicts, callback) {
     resolveConflicts(conflicts, callback);
 }
 
+function loadUndoRecords() {
+    const container = document.getElementById('undoRecordsContainer');
+    container.innerHTML = ''; // Clear existing content
+
+    browserAPI.storage.local.get('undoRecords', function(result) {
+        const undoRecords = result.undoRecords || [];
+        if (undoRecords.length === 0) {
+            container.textContent = 'No undo records available.';
+            return;
+        }
+
+        undoRecords.forEach(record => {
+            const recordDiv = document.createElement('div');
+            recordDiv.className = 'undo-record';
+            
+            const actionInfo = document.createElement('p');
+            actionInfo.textContent = `${record.action} - ${new Date(record.timestamp).toLocaleString()}`;
+            recordDiv.appendChild(actionInfo);
+            
+            const observationIds = Object.keys(record.observations);
+            const observationUrl = generateObservationURL(observationIds);
+            
+            const linkParagraph = document.createElement('a');
+            linkParagraph.href = observationUrl;
+            linkParagraph.textContent = 'View affected observations';
+            linkParagraph.target = '_blank';
+            recordDiv.appendChild(linkParagraph);
+            
+            const removeButton = document.createElement('button');
+            removeButton.textContent = 'Remove Record';
+            removeButton.onclick = function() {
+                removeUndoRecord(record.id, function() {
+                    recordDiv.remove();
+                });
+            };
+            recordDiv.appendChild(removeButton);
+            
+            container.appendChild(recordDiv);
+        });
+    });
+}
+
+// Call this function when the options page loads
+document.addEventListener('DOMContentLoaded', loadUndoRecords);

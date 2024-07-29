@@ -401,3 +401,266 @@ function setupObservationFieldAutocomplete(nameInput, idInput) {
         }
     });
 }
+
+
+function generateObservationURL(observationIds) {
+    const baseURL = 'https://www.inaturalist.org/observations/identify?quality_grade=casual,needs_id,research&reviewed=any&verifiable=any&place_id=any';
+    return `${baseURL}&per_page=${observationIds.length}&id=${observationIds.join(',')}`;
+}
+
+function removeUndoRecord(id, callback) {
+    browserAPI.storage.local.get('undoRecords', function(result) {
+        let undoRecords = result.undoRecords || [];
+        undoRecords = undoRecords.filter(record => record.id !== id);
+        browserAPI.storage.local.set({undoRecords: undoRecords}, function() {
+            console.log('Undo record removed');
+            callback();
+        });
+    });
+}
+
+function createUndoRecordsModal(undoRecords, onUndoClick) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10002;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        width: 80%;
+        max-width: 600px;
+        max-height: 80%;
+        overflow-y: auto;
+        position: relative;
+    `;
+
+    const closeButton = document.createElement('button');
+    closeButton.textContent = '\u2715'; // Unicode "times" symbol
+    closeButton.style.cssText = `
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 16px;
+        background: #f0f0f0;
+        border: 1px solid #ccc;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #333;
+        padding: 0;
+        line-height: 1;
+    `;
+    closeButton.onclick = () => document.body.removeChild(modal);
+    modalContent.appendChild(closeButton);
+
+    const title = document.createElement('h2');
+    title.textContent = 'Undo Records';
+    title.style.marginTop = '0';
+    modalContent.appendChild(title);
+
+    undoRecords.forEach(record => {
+        const recordDiv = document.createElement('div');
+        recordDiv.style.cssText = `
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            ${record.undone ? 'text-decoration: line-through;' : ''}
+        `;
+
+        const actionInfo = document.createElement('p');
+        actionInfo.textContent = `${record.action} - ${new Date(record.timestamp).toLocaleString()}`;
+        actionInfo.style.margin = '0 0 10px 0';
+        recordDiv.appendChild(actionInfo);
+
+        const observationIds = Object.keys(record.observations);
+        const observationUrl = generateObservationURL(observationIds);
+
+        const linkParagraph = document.createElement('a');
+        linkParagraph.href = observationUrl;
+        linkParagraph.textContent = `View ${record.affectedObservationsCount} affected observation${record.affectedObservationsCount !== 1 ? 's' : ''}`;
+        linkParagraph.target = '_blank';
+        linkParagraph.style.display = 'block';
+        linkParagraph.style.marginBottom = '10px';
+        recordDiv.appendChild(linkParagraph);
+
+        const undoButton = document.createElement('button');
+        undoButton.textContent = record.undone ? 'Undone' : 'Undo';
+        undoButton.disabled = record.undone;
+        undoButton.onclick = function() {
+            performUndoActions(record)
+                .then((success) => {
+                    if (success) {
+                        markRecordAsUndone(record.id);
+                        undoButton.textContent = 'Undone';
+                        undoButton.disabled = true;
+                        recordDiv.style.textDecoration = 'line-through';
+                    } else {
+                        alert('Some undo actions failed. Please check the console for details.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error in performUndoActions:', error);
+                    alert(`Error performing undo actions: ${error.message}`);
+                });
+        };
+        recordDiv.appendChild(undoButton);
+
+        modalContent.appendChild(recordDiv);
+    });
+
+    modal.appendChild(modalContent);
+    return modal;
+}
+
+function getUndoRecords(callback) {
+    browserAPI.storage.local.get('undoRecords', function(result) {
+        const records = result.undoRecords || [];
+        // Sort records by timestamp, newest first
+        records.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        console.log('Sorted undo records:', records);
+        callback(records);
+    });
+}
+
+async function performUndoActions(undoRecord) {
+    console.log('Performing undo actions for record:', undoRecord);
+    let allActionsSuccessful = true;
+    const results = [];
+
+    for (const [observationId, observationData] of Object.entries(undoRecord.observations)) {
+        for (const undoAction of observationData.undoActions) { 
+            try {
+                const result = await performSingleUndoAction(observationId, undoAction);
+                console.log('Undo action result:', result);
+                if (result.success) {
+                    results.push({ observationId, action: result.action, fieldId: result.fieldId });
+                } else {
+                    allActionsSuccessful = false;
+                    console.error('Undo action failed:', undoAction, 'Result:', result);
+                }
+            } catch (error) {
+                console.error('Error performing undo action:', undoAction, 'Error:', error);
+                allActionsSuccessful = false;
+            }
+        }
+    }
+
+    return { success: allActionsSuccessful, results };
+}
+
+function markRecordAsUndone(recordId) {
+    browserAPI.storage.local.get('undoRecords', function(result) {
+        let undoRecords = result.undoRecords || [];
+        const recordIndex = undoRecords.findIndex(r => r.id === recordId);
+        if (recordIndex !== -1) {
+            undoRecords[recordIndex].undone = true;
+            browserAPI.storage.local.set({undoRecords: undoRecords}, function() {
+                console.log('Undo record marked as undone');
+            });
+        }
+    });
+}
+
+async function performSingleUndoAction(observationId, undoAction) {
+    console.log('Performing undo action:', undoAction, 'for observation:', observationId);
+    switch (undoAction.type) {
+        case 'updateAnnotation':
+            if (undoAction.originalValue) {
+                return makeAPIRequest('/annotations', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        annotation: {
+                            resource_type: "Observation",
+                            resource_id: observationId,
+                            controlled_attribute_id: undoAction.attributeId,
+                            controlled_value_id: undoAction.originalValue
+                        }
+                    })
+                });
+            } else {
+                return makeAPIRequest(`/votes/unvote/annotation/${undoAction.attributeId}`, {
+                    method: 'DELETE',
+                    body: JSON.stringify({ observation_id: observationId })
+                });
+            }
+            case 'updateObservationField':
+                // First, get the current state of the observation
+                const observationResponse = await makeAPIRequest(`/observations/${observationId}`);
+                console.log('Current observation state:', observationResponse.results[0]);
+                
+                const ofv = observationResponse.results[0].ofvs.find(ofv => ofv.field_id === parseInt(undoAction.fieldId));
+                
+                if (ofv) {
+                    console.log('Found existing OFV:', ofv);
+                    
+                    // Attempt to delete the field value
+                    const deleteResult = await makeAPIRequest(`/observation_field_values/${ofv.id}`, {
+                        method: 'DELETE'
+                    });
+                    console.log('Delete result:', deleteResult);
+                    
+                    // Check if the field value was actually deleted
+                    const checkResponse = await makeAPIRequest(`/observations/${observationId}`);
+                    const checkOfv = checkResponse.results[0].ofvs.find(ofv => ofv.field_id === parseInt(undoAction.fieldId));
+                    
+                    if (checkOfv) {
+                        console.error('Field value still exists after deletion attempt');
+                        return { success: false, error: 'Field value not deleted' };
+                    } else {
+                        console.log('Field value successfully deleted');
+                        return { success: true, action: 'deleted', fieldId: undoAction.fieldId };
+                    }                                        
+                } else if (undoAction.originalValue) {
+                    // If there was an original value, restore it
+                    console.log('Restoring original value:', undoAction.originalValue);
+                    return makeAPIRequest('/observation_field_values', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            observation_field_value: {
+                                observation_id: observationId,
+                                observation_field_id: undoAction.fieldId,
+                                value: undoAction.originalValue
+                            }
+                        })
+                    });
+                } else {
+                    console.warn(`Observation field value not found for field ID ${undoAction.fieldId} on observation ${observationId}`);
+                    return { success: true, message: 'No action needed' };
+                }
+        case 'removeFromProject':
+            return makeAPIRequest(`/project_observations`, {
+                method: 'DELETE',
+                body: JSON.stringify({ observation_id: observationId, project_id: undoAction.projectId })
+            });
+        case 'removeComment':
+            return makeAPIRequest(`/comments/${undoAction.commentId}`, { method: 'DELETE' });
+        case 'removeIdentification':
+            return makeAPIRequest(`/identifications/${undoAction.identificationId}`, { method: 'DELETE' });
+        case 'removeQualityMetric':
+            if (undoAction.metric === 'needs_id') {
+                return makeAPIRequest(`/votes/unvote/observation/${observationId}?scope=needs_id`, { method: 'DELETE' });
+            } else {
+                return makeAPIRequest(`/observations/${observationId}/quality/${undoAction.metric}`, { method: 'DELETE' });
+            }
+        default:
+            console.warn(`Unknown undo action type: ${undoAction.type}`);
+            return Promise.resolve({ success: false, error: 'Unknown undo action type' });
+    }
+}

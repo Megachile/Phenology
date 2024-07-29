@@ -604,13 +604,12 @@ buttonDiv.appendChild(buttonContainer);
 document.body.appendChild(buttonDiv);
 
 async function addObservationField(observationId, fieldId, value, button = null) {
-    return ensureCorrectObservationId().then(async id => {
-        if (!id) {
-            console.log('No current observation ID available. Please select an observation first.');
-            return { success: false, error: 'No current observation ID' };
+        if (!observationId) {
+        console.log('No observation ID provided. Please select an observation first.');
+        return { success: false, error: 'No observation ID provided' };
         }
 
-        const jwt = await getJWT();
+       const jwt = await getJWT();
         if (!jwt) {
             console.error('No JWT found');
             return { success: false, error: 'No JWT found' };
@@ -652,7 +651,6 @@ async function addObservationField(observationId, fieldId, value, button = null)
                 return { success: false, error: error.message };
             }
         }
-    });
 }
 
 async function addAnnotation(observationId, attributeId, valueId) {
@@ -1162,7 +1160,26 @@ style.textContent = `
         border-radius: 6px;
         z-index: -1;
     }
+ .modal-link {
+            word-break: break-all;
+            color: blue;
+            text-decoration: underline;
+            cursor: pointer;
+        }
 
+        .modal-button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .modal-button:hover {
+            background-color: #45a049;
+        }
 `;
 document.head.appendChild(style);
 
@@ -1299,42 +1316,20 @@ function clearObservationId() {
     console.log('Observation ID cleared');
 }
 
-function performActions(actions) {
-    const lockedObservationId = currentObservationId;
-    if (!lockedObservationId) {
+async function performActions(actions) {
+    let observationId = await ensureCorrectObservationId();
+    if (!observationId) {
         alert('Please open an observation before using this button.');
         return Promise.resolve();
     }
-
+    
+    const lockedObservationId = observationId;
     const isIdentifyPage = window.location.pathname.includes('/identify');
     const isObservationPage = window.location.pathname.match(/^\/observations\/\d+/);
     let needsPageUpdate = true;
 
     return actions.reduce((promise, action) => {
-        return promise.then(() => {
-            switch (action.type) {
-                case 'observationField':
-                    return addObservationField(lockedObservationId, action.fieldId, action.fieldValue);
-                case 'annotation':
-                    return addAnnotation(lockedObservationId, action.annotationField, action.annotationValue);
-                case 'addToProject':
-                    return addObservationToProject(lockedObservationId, action.projectId);
-                case 'addComment':
-                    return addComment(lockedObservationId, action.commentBody);
-                case 'addTaxonId':
-                    return addTaxonId(lockedObservationId, action.taxonId, action.comment);
-                case 'qualityMetric':
-                    if (isIdentifyPage || action.metric === 'needs_id') {
-                        return handleQualityMetricAPI(lockedObservationId, action.metric, action.vote);
-                    } else {
-                        needsPageUpdate = false; // Don't update page for non-needs_id quality actions on observation page
-                        return handleQualityMetric(lockedObservationId, action.metric, action.vote);
-                    }
-                case 'copyObservationField':
-                    return copyObservationField(lockedObservationId, action.sourceFieldId, action.targetFieldId);
-           
-            }
-        });
+        return promise.then(() => performSingleAction(action, lockedObservationId, isIdentifyPage));
     }, Promise.resolve())
     .then(() => {
         if (isIdentifyPage) {
@@ -1344,14 +1339,55 @@ function performActions(actions) {
             });
         } else if (isObservationPage && needsPageUpdate) {
             console.log('Updating observation page');
-            return updateObservationPage(currentObservationId).catch(error => {
+            return updateObservationPage(lockedObservationId).catch(error => {
                 console.error('Error in updateObservationPage:', error);
             });
         }
     })
     .catch(error => {
         console.error('Error in performActions:', error);
+        alert(`Error performing actions: ${error.message}`);
     });
+}
+
+async function performSingleAction(action, observationId, isIdentifyPage) {
+    switch (action.type) {
+        case 'observationField':
+            return addObservationField(observationId, action.fieldId, action.fieldValue);
+        case 'annotation':
+            return addAnnotation(observationId, action.annotationField, action.annotationValue);
+        case 'addToProject':
+            return addObservationToProject(observationId, action.projectId);
+        case 'addComment':
+            const commentResult = await addComment(observationId, action.commentBody);
+            return { ...commentResult, commentId: commentResult.data.id };
+        case 'addTaxonId':
+            const idResult = await addTaxonId(observationId, action.taxonId, action.comment);
+            return { ...idResult, identificationId: idResult.data.id };
+        case 'qualityMetric':
+            return handleQualityMetricAPI(observationId, action.metric, action.vote);
+        default:
+            console.warn(`Unknown action type: ${action.type}`);
+            return Promise.resolve();
+    }
+}
+
+function generateUndoRecord(preliminaryUndoRecord, results) {
+    let finalUndoRecord = {...preliminaryUndoRecord};
+    finalUndoRecord.observations = {};
+
+    results.forEach(result => {
+        if (result.success) {
+            const observationId = result.observationId;
+            if (preliminaryUndoRecord.observations[observationId]) {
+                finalUndoRecord.observations[observationId] = preliminaryUndoRecord.observations[observationId];
+            }
+        }
+    });
+
+    finalUndoRecord.affectedObservationsCount = Object.keys(finalUndoRecord.observations).length;
+
+    return finalUndoRecord;
 }
 
 function refreshObservation() {
@@ -1847,10 +1883,14 @@ function createBulkActionButtons() {
     const applyActionButton = createBulkActionButton('Apply Action', applyBulkAction);
     const disableBulkModeButton = createBulkActionButton('Disable Bulk Mode', disableBulkActionMode);
 
+    // Add this line to create the undo records button
+    const showUndoRecordsButton = createBulkActionButton('Show Undo Records', showUndoRecordsModal);
+
     bulkButtonContainer.appendChild(selectAllButton);
     bulkButtonContainer.appendChild(invertSelectionButton);
     bulkButtonContainer.appendChild(applyActionButton);
     bulkButtonContainer.appendChild(disableBulkModeButton);
+    bulkButtonContainer.appendChild(showUndoRecordsButton); // Add this line
 
     document.body.appendChild(bulkButtonContainer);
 
@@ -1862,9 +1902,7 @@ function createBulkActionButtons() {
     enableBulkModeButton.addEventListener('click', enableBulkActionMode);
     document.body.appendChild(enableBulkModeButton);
 
-    console.log('Bulk action buttons created. Enable button:', enableBulkModeButton);
-    console.log('Enable button display style:', getComputedStyle(enableBulkModeButton).display);
-
+    console.log('Bulk action buttons created');
     updateBulkButtonPosition();
 }
 
@@ -2062,110 +2100,361 @@ function applyBulkActionWithConfirmation(actionId, selectedObservations) {
     });
 }
 
-function applyBulkAction() {
+async function applyBulkAction() {
     console.log('Applying bulk action');
-    browserAPI.storage.sync.get('customButtons', function(data) {
-        const customButtons = data.customButtons || [];
-        const availableActions = customButtons.filter(button => !button.configurationDisabled);
-        
-        if (availableActions.length === 0) {
-            alert('No available actions found. Please configure some actions first.');
-            return;
-        }
+    const customButtons = await new Promise(resolve => browserAPI.storage.sync.get('customButtons', resolve));
+    const availableActions = (customButtons.customButtons || []).filter(button => !button.configurationDisabled);
 
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            z-index: 10001;
-            max-width: 80%;
-            max-height: 80%;
-            overflow-y: auto;
-        `;
+    if (availableActions.length === 0) {
+        alert('No available actions found. Please configure some actions first.');
+        return;
+    }
 
-        const title = document.createElement('h2');
-        title.textContent = `Select Action for ${selectedObservations.size} Observations`;
-        modal.appendChild(title);
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 10001;
+        max-width: 80%;
+        max-height: 80%;
+        overflow-y: auto;
+    `;
 
-        const actionSelect = document.createElement('select');
-        actionSelect.style.marginBottom = '10px';
-        availableActions.forEach(button => {
-            const option = document.createElement('option');
-            option.value = button.id;
-            option.textContent = button.name;
-            actionSelect.appendChild(option);
-        });
-        modal.appendChild(actionSelect);
+    const title = document.createElement('h2');
+    title.textContent = `Select Action for ${selectedObservations.size} Observations`;
+    modal.appendChild(title);
 
-        const applyButton = document.createElement('button');
-        applyButton.textContent = 'Apply Action';
-        applyButton.onclick = () => {
-            const selectedActionId = actionSelect.value;
-            const selectedAction = availableActions.find(button => button.id === selectedActionId);
-            if (selectedAction) {
-                const actionsList = selectedAction.actions.map(actionItem => {
-                    switch (actionItem.type) {
-                        case 'observationField':
-                            return `Add observation field: ${actionItem.fieldName} with value: ${actionItem.fieldValue}`;
-                            case 'annotation':
-                                const attributeId = parseInt(actionItem.annotationField);
-                                const valueId = parseInt(actionItem.annotationValue);
-                                let attributeLabel = 'Unknown';
-                                let valueLabel = 'Unknown';
-    
-                                for (const [key, value] of Object.entries(controlledTerms)) {
-                                    if (value.id === attributeId) {
-                                        attributeLabel = key;
-                                        for (const [vKey, vId] of Object.entries(value.values)) {
-                                            if (vId === valueId) {
-                                                valueLabel = vKey;
-                                                break;
-                                            }
-                                        }
-                                        break;
-                                    }
-                                }
-    
-                                return `Add annotation: ${attributeLabel} with value: ${valueLabel}`;
-                        case 'addToProject':
-                            return `Add to project: ${actionItem.projectName}`;
-                        case 'addComment':
-                            return `Add comment: ${actionItem.commentBody.substring(0, 50)}...`;
-                        case 'addTaxonId':
-                            return `Add taxon ID: ${actionItem.taxonName}`;
-                        case 'qualityMetric':
-                            return `Set quality metric: ${getQualityMetricName(actionItem.metric)} to ${actionItem.vote}`;
-                        case 'copyObservationField':
-                            return `Copy observation field from ${actionItem.sourceFieldName} to ${actionItem.targetFieldName}`;
-                        default:
-                            return `Unknown action type: ${actionItem.type}`;
-                    }
-                });
-
-                const confirmMessage = `Are you sure you want to apply the following actions to ${selectedObservations.size} observations?\n\n${actionsList.join('\n')}`;
-                if (confirm(confirmMessage)) {
-                    generateDryRunFile(selectedAction, Array.from(selectedObservations));
-                }
-            } else {
-                alert('Selected action not found.');
-            }
-            document.body.removeChild(modal);
-        };
-        modal.appendChild(applyButton);
-
-        const cancelButton = document.createElement('button');
-        cancelButton.textContent = 'Cancel';
-        cancelButton.onclick = () => document.body.removeChild(modal);
-        modal.appendChild(cancelButton);
-
-        document.body.appendChild(modal);
+    const actionSelect = document.createElement('select');
+    actionSelect.style.marginBottom = '10px';
+    availableActions.forEach(button => {
+        const option = document.createElement('option');
+        option.value = button.id;
+        option.textContent = button.name;
+        actionSelect.appendChild(option);
     });
+    modal.appendChild(actionSelect);
+
+    const applyButton = document.createElement('button');
+    applyButton.textContent = 'Apply Action';
+    applyButton.onclick = async () => {
+        const selectedActionId = actionSelect.value;
+        const selectedAction = availableActions.find(button => button.id === selectedActionId);
+        if (selectedAction) {
+            const observationIds = Array.from(selectedObservations);
+            const confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${observationIds.length} observations?`;
+            if (confirm(confirmMessage)) {
+                console.log('Confirm clicked, generating preActionStates');
+                const preActionStates = await generatePreActionStates(observationIds);
+                console.log('PreActionStates generated:', preActionStates);
+                
+                const preliminaryUndoRecord = generatePreliminaryUndoRecord(selectedAction, observationIds, preActionStates);
+                
+                const results = [];
+                let skippedObservations = [];
+
+                for (const observationId of observationIds) {
+                    for (const action of selectedAction.actions) {
+                        try {
+                            if (action.type === 'observationField') {
+                                const existingValue = getExistingObservationFieldValue(preActionStates[observationId], action.fieldId);
+                                console.log(`Observation ${observationId}: Existing value: "${existingValue}", Desired value: "${action.fieldValue}"`);
+                                
+                                if (existingValue !== null) {
+                                    if (existingValue === action.fieldValue) {
+                                        console.log(`Observation ${observationId}: Existing value matches desired value - silently skipping`);
+                                    } else {
+                                        console.log(`Observation ${observationId}: Existing value differs from desired value - skipping and adding to skipped list`);
+                                        skippedObservations.push(observationId);
+                                    }
+                                    continue; // Skip to the next action
+                                }
+                            }
+                            
+                            console.log(`Performing action ${action.type} for observation ${observationId}`);
+                            const result = await performSingleAction(action, observationId, true);
+                            console.log(`Action result:`, result);
+                            results.push({ observationId, action: action.type, success: result.success });
+                        } catch (error) {
+                            console.error(`Failed to perform action ${action.type} for observation ${observationId}:`, error);
+                            results.push({ observationId, action: action.type, success: false, error: error.toString() });
+                        }
+                    }
+                }
+                
+                const successCount = results.filter(r => r.success).length;
+                const totalActions = results.length;
+                const skippedCount = skippedObservations.length;
+                
+                if (skippedCount > 0) {
+                    const skippedURL = generateObservationURL(skippedObservations);
+                    console.log('Generated URL for skipped observations:', skippedURL);
+                    createSkippedActionsModal(skippedCount, skippedURL);
+                } else {
+                    console.log('No skipped actions to report');
+                    alert(`Bulk action applied: ${successCount} out of ${totalActions} actions completed successfully.`);
+                }
+                
+                // Generate undo record only for successful actions
+                const successfulResults = results.filter(r => r.success);
+                const undoRecord = generateUndoRecord(preliminaryUndoRecord, successfulResults);
+                if (undoRecord.affectedObservationsCount > 0) {
+                    await storeUndoRecord(undoRecord);
+                    console.log('Undo record stored:', undoRecord);
+                } else {
+                    console.log('No actions to undo, undo record not stored');
+                }
+
+                console.log('Bulk action results:', results);
+            }
+        } else {
+            alert('Selected action not found.');
+        }
+        document.body.removeChild(modal);
+    };
+    modal.appendChild(applyButton);
+
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.onclick = () => document.body.removeChild(modal);
+    modal.appendChild(cancelButton);
+
+    document.body.appendChild(modal);
+}
+
+function getExistingObservationFieldValue(observationState, fieldId) {
+    console.log('Checking existing value for field:', fieldId, 'in state:', observationState);
+    if (observationState && observationState.ofvs) {
+        const field = observationState.ofvs.find(f => f.field_id.toString() === fieldId);
+        console.log('Found field:', field);
+        return field ? field.value : null;
+    }
+    console.log('No existing value found');
+    return null;
+}
+
+function storeUndoRecord(undoRecord) {
+    return new Promise((resolve, reject) => {
+        browserAPI.storage.local.get('undoRecords', function(result) {
+            let undoRecords = result.undoRecords || [];
+            undoRecords.push(undoRecord);
+            browserAPI.storage.local.set({undoRecords: undoRecords}, function() {
+                console.log('Undo record stored:', undoRecord);
+                console.log('Total undo records:', undoRecords.length);
+                // Notify other tabs about the new undo record
+                browserAPI.runtime.sendMessage({action: "undoRecordAdded", record: undoRecord});
+                resolve();
+            });
+        });
+    });
+}
+
+function downloadTextFile(content, filename) {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+async function generatePreActionStates(observationIds) {
+    const preActionStates = {};
+    for (const id of observationIds) {
+        try {
+            const response = await fetch(`https://api.inaturalist.org/v1/observations/${id}`);
+            const data = await response.json();
+            preActionStates[id] = data.results[0];  // Store the entire observation object
+        } catch (error) {
+            console.error(`Failed to fetch pre-action state for observation ${id}:`, error);
+        }
+    }
+    return preActionStates;
+}
+
+function generateUniqueId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function generatePreliminaryUndoRecord(action, observationIds, preActionStates) {
+    let undoRecord = {
+        id: generateUniqueId(),
+        timestamp: new Date().toISOString(),
+        action: action.name,
+        observations: {}
+    };
+
+    observationIds.forEach(observationId => {
+        undoRecord.observations[observationId] = {
+            undoActions: []
+        };
+
+        action.actions.forEach(actionItem => {
+            let undoAction;
+            switch (actionItem.type) {
+                case 'observationField':
+                    undoAction = {
+                        type: 'updateObservationField',
+                        fieldId: actionItem.fieldId,
+                        originalValue: preActionStates[observationId].ofvs.find(ofv => ofv.field_id === parseInt(actionItem.fieldId))?.value
+                    };
+                    break;
+                case 'annotation':
+                    undoRecord.observations[observationId].undoActions.push({
+                        type: 'updateAnnotation',
+                        attributeId: actionItem.annotationField,
+                        originalValue: preActionStates[observationId].annotations.find(a => a.controlled_attribute_id === parseInt(actionItem.annotationField))?.controlled_value_id
+                    });
+                    break;
+                case 'addToProject':
+                    undoRecord.observations[observationId].undoActions.push({
+                        type: 'removeFromProject',
+                        projectId: actionItem.projectId
+                    });
+                    break;
+                case 'addComment':
+                    undoRecord.observations[observationId].undoActions.push({
+                        type: 'removeComment',
+                        commentBody: actionItem.commentBody
+                    });
+                    break;
+                case 'addTaxonId':
+                    undoRecord.observations[observationId].undoActions.push({
+                        type: 'removeIdentification',
+                        taxonId: actionItem.taxonId
+                    });
+                    break;
+                case 'qualityMetric':
+                    undoRecord.observations[observationId].undoActions.push({
+                        type: 'removeQualityMetric',
+                        metric: actionItem.metric,
+                        vote: actionItem.vote
+                    });
+                    break;
+                case 'copyObservationField':
+                    undoRecord.observations[observationId].undoActions.push({
+                        type: 'updateObservationField',
+                        fieldId: actionItem.targetFieldId,
+                        originalValue: preActionStates[observationId].ofvs.find(ofv => ofv.field_id === parseInt(actionItem.targetFieldId))?.value
+                    });
+                    break;
+            }
+            if (undoAction) {
+                undoRecord.observations[observationId].undoActions.push(undoAction);
+            }
+        });
+    });
+
+    return undoRecord;
+}
+
+
+function updateUndoRecord(undoRecord, actionResults) {
+    for (const [observationId, results] of Object.entries(actionResults)) {
+        undoRecord.observations[observationId].undoActions.forEach(undoAction => {
+            if (undoAction.type === 'removeComment') {
+                undoAction.commentId = results.addedCommentId;
+            } else if (undoAction.type === 'removeIdentification') {
+                undoAction.identificationId = results.addedIdentificationId;
+            }
+        });
+    }
+    return undoRecord;
+}
+
+function generateUndoSummary(undoRecord) {
+    let summary = `Undo Record for action: ${undoRecord.action}\n\n`;
+    
+    for (const [observationId, observationData] of Object.entries(undoRecord.observations)) {
+        summary += `Observation ${observationId}:\n`;
+        observationData.undoActions.forEach(undoAction => {
+            switch (undoAction.type) {
+                case 'updateAnnotation':
+                    summary += `  - Revert annotation ${undoAction.attributeId} to ${undoAction.originalValue || 'None'}\n`;
+                    break;
+                case 'updateObservationField':
+                    summary += `  - Revert observation field ${undoAction.fieldId} to ${undoAction.originalValue || 'None'}\n`;
+                    break;
+                case 'removeFromProject':
+                    summary += `  - Remove from project ${undoAction.projectId}\n`;
+                    break;
+                case 'removeComment':
+                    summary += `  - Remove added comment (ID: ${undoAction.commentId || 'Unknown'})\n`;
+                    break;
+                case 'removeIdentification':
+                    summary += `  - Remove added identification (ID: ${undoAction.identificationId || 'Unknown'})\n`;
+                    break;
+                case 'removeQualityMetric':
+                    summary += `  - Remove quality metric ${undoAction.metric}\n`;
+                    break;
+            }
+        });
+        summary += '\n';
+    }
+    
+    return summary;
+}
+
+
+function downloadUndoRecord(undoRecord) {
+    const content = JSON.stringify(undoRecord, null, 2);
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'undo_record.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+
+function generateUndoApiCalls(undoRecord) {
+    let apiCalls = [];
+
+    for (const [observationId, observationData] of Object.entries(undoRecord.observations)) {
+        observationData.undoActions.forEach(undoAction => {
+            switch (undoAction.type) {
+                case 'updateAnnotation':
+                    if (undoAction.originalValue) {
+                        apiCalls.push(`POST /annotations\nBody: {"annotation": {"resource_type": "Observation", "resource_id": ${observationId}, "controlled_attribute_id": ${undoAction.attributeId}, "controlled_value_id": ${undoAction.originalValue}}}`);
+                    } else {
+                        apiCalls.push(`DELETE /annotations?observation_id=${observationId}&controlled_attribute_id=${undoAction.attributeId}`);
+                    }
+                    break;
+                case 'updateObservationField':
+                    if (undoAction.originalValue) {
+                        apiCalls.push(`POST /observation_field_values\nBody: {"observation_field_value": {"observation_id": ${observationId}, "observation_field_id": ${undoAction.fieldId}, "value": "${undoAction.originalValue}"}}`);
+                    } else {
+                        apiCalls.push(`DELETE /observation_field_values/${undoAction.fieldId}?observation_id=${observationId}`);
+                    }
+                    break;
+                case 'removeFromProject':
+                    apiCalls.push(`DELETE /project_observations?observation_id=${observationId}&project_id=${undoAction.projectId}`);
+                    break;
+                case 'removeComment':
+                    apiCalls.push(`DELETE /comments/:id (ID to be determined after action execution)`);
+                    break;
+                case 'removeIdentification':
+                    apiCalls.push(`DELETE /identifications/:id (ID to be determined after action execution)`);
+                    break;
+                case 'removeQualityMetric':
+                    if (undoAction.metric === 'needs_id') {
+                        apiCalls.push(`DELETE /votes/unvote/observation/${observationId}?scope=needs_id`);
+                    } else {
+                        apiCalls.push(`DELETE /observations/${observationId}/quality/${undoAction.metric}`);
+                    }
+                    break;
+            }
+        });
+    }
+
+    return apiCalls;
 }
 
 function getQualityMetricName(metric) {
@@ -2266,4 +2555,70 @@ function generateDryRunFile(action, observationIds) {
     a.download = 'bulk_action_dry_run.txt';
     a.click();
     URL.revokeObjectURL(url);
+}
+
+function showUndoRecordsModal() {
+    getUndoRecords(function(undoRecords) {
+        console.log('Retrieved undo records:', undoRecords);
+        if (undoRecords.length === 0) {
+            alert('No undo records available.');
+            return;
+        }
+
+        const modal = createUndoRecordsModal(undoRecords, function(record) {
+            performUndoActions(record)
+                .then(() => {
+                    removeUndoRecord(record.id, function() {
+                        document.body.removeChild(modal);
+                        showUndoRecordsModal(); // Refresh the modal
+                    });
+                })
+                .catch(error => {
+                    alert(`Error performing undo actions: ${error.message}`);
+                });
+        });
+
+        document.body.appendChild(modal);
+    });
+}
+
+function createSkippedActionsModal(skippedCount, skippedURL) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        max-width: 80%;
+        max-height: 80%;
+        overflow-y: auto;
+    `;
+
+    modalContent.innerHTML = `
+        <h2>Bulk Action Results</h2>
+        <p>${skippedCount} actions were skipped due to existing values.</p>
+        <p>View skipped observations: <a class="modal-link" href="${skippedURL}" target="_blank">${skippedURL}</a></p>
+        <button id="closeModal" class="modal-button">Close</button>
+    `;
+
+    modal.appendChild(modalContent);
+
+    document.body.appendChild(modal);
+
+    document.getElementById('closeModal').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
 }
