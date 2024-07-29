@@ -2090,7 +2090,7 @@ function applyBulkActionWithConfirmation(actionId, selectedObservations) {
         const customButtons = data.customButtons || [];
         const selectedAction = customButtons.find(button => button.id === actionId);
         if (selectedAction) {
-            const confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${selectedObservations.size} observations?`;
+            const confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${selectedObservations.size} observations? Note: iNaturalist policy requires that you have individually inspected every observation before you apply this action.`;
             if (confirm(confirmMessage)) {
                 applyBulkAction(selectedAction, selectedObservations);
             }
