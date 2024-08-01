@@ -505,13 +505,15 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
         undoButton.disabled = record.undone;
         undoButton.onclick = function() {
             performUndoActions(record)
-                .then((success) => {
-                    if (success) {
+                .then((result) => {
+                    if (result.success) {
                         markRecordAsUndone(record.id);
                         undoButton.textContent = 'Undone';
                         undoButton.disabled = true;
                         recordDiv.style.textDecoration = 'line-through';
+                        console.log('All undo actions completed successfully:', result.results);
                     } else {
+                        console.error('Some undo actions failed:', result.results);
                         alert('Some undo actions failed. Please check the console for details.');
                     }
                 })
@@ -550,21 +552,22 @@ async function performUndoActions(undoRecord) {
                 const result = await performSingleUndoAction(observationId, undoAction);
                 console.log('Undo action result:', result);
                 if (result.success) {
-                    results.push({ observationId, action: result.action, fieldId: result.fieldId });
+                    results.push({ observationId, action: result.action, message: result.message });
                 } else {
                     allActionsSuccessful = false;
                     console.error('Undo action failed:', undoAction, 'Result:', result);
+                    results.push({ observationId, action: undoAction.type, error: result.error });
                 }
             } catch (error) {
                 console.error('Error performing undo action:', undoAction, 'Error:', error);
                 allActionsSuccessful = false;
+                results.push({ observationId, action: undoAction.type, error: error.toString() });
             }
         }
     }
 
     return { success: allActionsSuccessful, results };
 }
-
 function markRecordAsUndone(recordId) {
     browserAPI.storage.local.get('undoRecords', function(result) {
         let undoRecords = result.undoRecords || [];
@@ -581,13 +584,25 @@ function markRecordAsUndone(recordId) {
 async function performSingleUndoAction(observationId, undoAction) {
     console.log('Performing undo action:', undoAction, 'for observation:', observationId);
     switch (undoAction.type) {
-            case 'removeAnnotation':
-                if (undoAction.uuid) {
-                    return makeAPIRequest(`/annotations/${undoAction.uuid}`, { method: 'DELETE' });
-                } else {
-                    console.error('Annotation UUID not found for undo action');
-                    return { success: false, error: 'Annotation UUID not found' };
+        case 'removeAnnotation':
+            if (undoAction.uuid) {
+                try {
+                    const response = await makeAPIRequest(`/annotations/${undoAction.uuid}`, { method: 'DELETE' });
+                    console.log('Annotation deletion response:', response);
+                    // iNaturalist might return a 204 No Content for successful deletion
+                    return { success: true, action: 'removeAnnotation', message: 'Annotation removed successfully' };
+                } catch (error) {
+                    console.error('Error removing annotation:', error);
+                    // If the error is 404 Not Found, the annotation might have already been deleted
+                    if (error.status === 404) {
+                        return { success: true, action: 'removeAnnotation', message: 'Annotation already removed or not found' };
+                    }
+                    return { success: false, error: error.toString() };
                 }
+            } else {
+                console.error('Annotation UUID not found for undo action');
+                return { success: false, error: 'Annotation UUID not found' };
+            }
             case 'updateObservationField':
                 // First, get the current state of the observation
                 const observationResponse = await makeAPIRequest(`/observations/${observationId}`);
