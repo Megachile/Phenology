@@ -2105,6 +2105,25 @@ async function applyBulkAction() {
         max-height: 80%;
         overflow-y: auto;
     `;
+    
+    const progressBar = document.createElement('div');
+    progressBar.style.cssText = `
+        width: 100%;
+        height: 20px;
+        background-color: #f0f0f0;
+        border-radius: 10px;
+        margin-top: 10px;
+        overflow: hidden;
+    `;
+    const progressFill = document.createElement('div');
+    progressFill.style.cssText = `
+        width: 0%;
+        height: 100%;
+        background-color: #4CAF50;
+        transition: width 0.3s ease;
+    `;
+    progressBar.appendChild(progressFill);
+    modal.appendChild(progressBar);
 
     const title = document.createElement('h2');
     title.id = 'action-selection-title';
@@ -2142,6 +2161,12 @@ async function applyBulkAction() {
             const observationIds = Array.from(selectedObservations);
             const confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${observationIds.length} observations?`;
             if (confirm(confirmMessage)) {
+                const observationIds = Array.from(selectedObservations);
+                const totalObservations = observationIds.length;
+                let processedObservations = 0;
+
+                progressFill.style.width = '0%';
+
                 console.log('Confirm clicked, generating preActionStates');
                 const preActionStates = await generatePreActionStates(observationIds);
                 console.log('PreActionStates generated:', preActionStates);
@@ -2158,7 +2183,6 @@ async function applyBulkAction() {
                                 let fieldId = action.fieldId;
                                 let fieldValue = action.fieldValue;
                 
-                                // Handle copy action
                                 if (action.type === 'copyObservationField') {
                                     fieldId = action.targetFieldId;
                                     fieldValue = getExistingObservationFieldValue(preActionStates[observationId], action.sourceFieldId);
@@ -2187,7 +2211,6 @@ async function applyBulkAction() {
                             console.log(`Action result:`, result);
                             if (result.success) {
                                 if (action.type === 'annotation' && result.annotationUUID) {
-                                    // Find the corresponding undo action and set the UUID
                                     const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
                                         ua => ua.type === 'removeAnnotation' && 
                                             ua.attributeId === action.annotationField && 
@@ -2207,6 +2230,11 @@ async function applyBulkAction() {
                             results.push({ observationId, action: action.type, success: false, error: error.toString() });
                         }
                     }
+
+                    // Update progress after each observation, even if it was skipped
+                    processedObservations++;
+                    const progress = (processedObservations / totalObservations) * 100;
+                    progressFill.style.width = `${progress}%`;
                 }
                 
                 const successCount = results.filter(r => r.success).length;
