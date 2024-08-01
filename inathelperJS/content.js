@@ -2682,7 +2682,7 @@ function createSkippedActionsModal(skippedCount, skippedURL) {
 
     modalContent.innerHTML = `
         <h2>Bulk Action Results</h2>
-        <p>${skippedCount} actions were skipped due to existing values.</p>
+        <p>${skippedCount} actions were skipped due to existing values or user permissions.</p>
         <p>View skipped observations: <a class="modal-link" href="${skippedURL}" target="_blank">${skippedURL}</a></p>
         <button id="closeModal" class="modal-button">Close</button>
     `;
