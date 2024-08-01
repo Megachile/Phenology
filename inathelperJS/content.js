@@ -686,11 +686,11 @@ async function addAnnotation(observationId, attributeId, valueId) {
         });
         const responseData = await response.json();
         if (responseData.errors) {
-            console.log('Annotation not added (may already exist):', responseData.errors);
-            return { success: false, message: 'Annotation may already exist', data: responseData };
+            console.log('Annotation not added:', responseData.errors);
+            return { success: false, message: 'Annotation not added', data: responseData };
         } else {
             console.log('Annotation added successfully:', responseData);
-            return { success: true, data: responseData };
+            return { success: true, data: responseData, uuid: responseData.uuid };
         }
     } catch (error) {
         console.error('Error adding annotation:', error);
@@ -1366,7 +1366,8 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
             }
             return addObservationField(observationId, action.targetFieldId, sourceValue);    
         case 'annotation':
-            return addAnnotation(observationId, action.annotationField, action.annotationValue);
+            const annotationResult = await addAnnotation(observationId, action.annotationField, action.annotationValue);
+            return { ...annotationResult, annotationUUID: annotationResult.uuid };
         case 'addToProject':
             return addObservationToProject(observationId, action.projectId);
         case 'addComment':
@@ -2223,12 +2224,24 @@ async function applyBulkAction() {
                             console.log(`Performing action ${action.type} for observation ${observationId}`);
                             const result = await performSingleAction(action, observationId, true);
                             console.log(`Action result:`, result);
-                            if (!result.success) {
+                            if (result.success) {
+                                if (action.type === 'annotation' && result.annotationUUID) {
+                                    // Find the corresponding undo action and set the UUID
+                                    const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
+                                        ua => ua.type === 'removeAnnotation' && 
+                                            ua.attributeId === action.annotationField && 
+                                            ua.valueId === action.annotationValue
+                                    );
+                                    if (undoAction) {
+                                        undoAction.uuid = result.annotationUUID;
+                                    }
+                                }
+                            } else {
                                 console.error(`Action failed for observation ${observationId}:`, result.error);
                                 skippedObservations.push(observationId);
                             }
-                            results.push({ observationId, action: action.type, success: result.success, error: result.error })
-                            } catch (error) {
+                            results.push({ observationId, action: action.type, success: result.success, error: result.error });
+                        } catch (error) {
                             console.error(`Failed to perform action ${action.type} for observation ${observationId}:`, error);
                             results.push({ observationId, action: action.type, success: false, error: error.toString() });
                         }
@@ -2354,11 +2367,12 @@ function generatePreliminaryUndoRecord(action, observationIds, preActionStates) 
                     };
                     break;
                 case 'annotation':
-                    undoRecord.observations[observationId].undoActions.push({
-                        type: 'updateAnnotation',
+                    undoAction = {
+                        type: 'removeAnnotation',
                         attributeId: actionItem.annotationField,
-                        originalValue: preActionStates[observationId].annotations.find(a => a.controlled_attribute_id === parseInt(actionItem.annotationField))?.controlled_value_id
-                    });
+                        valueId: actionItem.annotationValue,
+                        uuid: null // This will be filled in after the action is performed
+                    };
                     break;
                 case 'addToProject':
                     undoRecord.observations[observationId].undoActions.push({

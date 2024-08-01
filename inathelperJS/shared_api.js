@@ -581,25 +581,13 @@ function markRecordAsUndone(recordId) {
 async function performSingleUndoAction(observationId, undoAction) {
     console.log('Performing undo action:', undoAction, 'for observation:', observationId);
     switch (undoAction.type) {
-        case 'updateAnnotation':
-            if (undoAction.originalValue) {
-                return makeAPIRequest('/annotations', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        annotation: {
-                            resource_type: "Observation",
-                            resource_id: observationId,
-                            controlled_attribute_id: undoAction.attributeId,
-                            controlled_value_id: undoAction.originalValue
-                        }
-                    })
-                });
-            } else {
-                return makeAPIRequest(`/votes/unvote/annotation/${undoAction.attributeId}`, {
-                    method: 'DELETE',
-                    body: JSON.stringify({ observation_id: observationId })
-                });
-            }
+            case 'removeAnnotation':
+                if (undoAction.uuid) {
+                    return makeAPIRequest(`/annotations/${undoAction.uuid}`, { method: 'DELETE' });
+                } else {
+                    console.error('Annotation UUID not found for undo action');
+                    return { success: false, error: 'Annotation UUID not found' };
+                }
             case 'updateObservationField':
                 // First, get the current state of the observation
                 const observationResponse = await makeAPIRequest(`/observations/${observationId}`);
