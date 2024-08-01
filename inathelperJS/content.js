@@ -777,7 +777,7 @@ async function addComment(observationId, commentBody) {
             return { success: false, message: 'Comment not added', data: responseData };
         } else {
             console.log('Comment added successfully:', responseData);
-            return { success: true, data: responseData };
+            return { success: true, data: responseData, uuid: responseData.uuid };
         }
     } catch (error) {
         console.error('Error adding comment:', error);
@@ -1372,7 +1372,7 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
             return addObservationToProject(observationId, action.projectId);
         case 'addComment':
             const commentResult = await addComment(observationId, action.commentBody);
-            return { ...commentResult, commentId: commentResult.data.id };
+            return { ...commentResult, commentUUID: commentResult.uuid };
         case 'addTaxonId':
             const idResult = await addTaxonId(observationId, action.taxonId, action.comment);
             return { ...idResult, identificationId: idResult.data.id };
@@ -1407,12 +1407,14 @@ function generateUndoRecord(preliminaryUndoRecord, results) {
             const observationId = result.observationId;
             if (preliminaryUndoRecord.observations[observationId]) {
                 finalUndoRecord.observations[observationId] = preliminaryUndoRecord.observations[observationId];
+                console.log(`Undo record for observation ${observationId}:`, finalUndoRecord.observations[observationId]);
             }
         }
     });
 
     finalUndoRecord.affectedObservationsCount = Object.keys(finalUndoRecord.observations).length;
-
+    console.log('Final undo record:', finalUndoRecord);
+    
     return finalUndoRecord;
 }
 
@@ -2221,7 +2223,15 @@ async function applyBulkAction() {
                             const result = await performSingleAction(action, observationId, true);
                             console.log(`Action result:`, result);
                             if (result.success) {
-                                if (action.type === 'annotation' && result.annotationUUID) {
+                                if (action.type === 'addComment' && result.commentUUID) {
+                                    const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
+                                        ua => ua.type === 'removeComment' && ua.commentBody === action.commentBody
+                                    );
+                                    if (undoAction) {
+                                        undoAction.commentUUID = result.commentUUID;
+                                        console.log(`Updated undo action with comment UUID: ${result.commentUUID}`);
+                                    }
+                                } else if (action.type === 'annotation' && result.annotationUUID) {
                                     const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
                                         ua => ua.type === 'removeAnnotation' && 
                                             ua.attributeId === action.annotationField && 
@@ -2405,10 +2415,11 @@ function generatePreliminaryUndoRecord(action, observationIds, preActionStates) 
                     });
                     break;
                 case 'addComment':
-                    undoRecord.observations[observationId].undoActions.push({
+                    undoAction = {
                         type: 'removeComment',
-                        commentBody: actionItem.commentBody
-                    });
+                        commentBody: actionItem.commentBody,
+                        commentUUID: null // This will be filled in after the action is performed
+                    };
                     break;
                 case 'addTaxonId':
                     undoRecord.observations[observationId].undoActions.push({

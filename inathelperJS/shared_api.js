@@ -546,11 +546,12 @@ function getUndoRecords(callback) {
 }
 
 async function performUndoActions(undoRecord) {
-    console.log('Performing undo actions for record:', undoRecord);
+    console.log('Performing undo actions for record:', JSON.stringify(undoRecord, null, 2));
     let allActionsSuccessful = true;
     const results = [];
 
     for (const [observationId, observationData] of Object.entries(undoRecord.observations)) {
+        console.log(`Processing undo actions for observation ${observationId}:`, observationData);
         for (const undoAction of observationData.undoActions) { 
             try {
                 const result = await performSingleUndoAction(observationId, undoAction);
@@ -657,7 +658,23 @@ async function performSingleUndoAction(observationId, undoAction) {
                 body: JSON.stringify({ observation_id: observationId, project_id: undoAction.projectId })
             });
         case 'removeComment':
-            return makeAPIRequest(`/comments/${undoAction.commentId}`, { method: 'DELETE' });
+            console.log('Attempting to remove comment:', undoAction);
+            if (undoAction.commentUUID) {
+                try {
+                    const response = await makeAPIRequest(`/comments/${undoAction.commentUUID}`, { method: 'DELETE' });
+                    console.log('Comment deletion response:', response);
+                    return { success: true, action: 'removeComment', message: 'Comment removed successfully' };
+                } catch (error) {
+                    console.error('Error removing comment:', error);
+                    if (error.response && error.response.status === 404) {
+                        return { success: true, action: 'removeComment', message: 'Comment already removed or not found' };
+                    }
+                    return { success: false, error: error.toString() };
+                }
+            } else {
+                console.error('Comment UUID not found for undo action:', undoAction);
+                return { success: false, error: 'Comment UUID not found' };
+            }
         case 'removeIdentification':
             return makeAPIRequest(`/identifications/${undoAction.identificationId}`, { method: 'DELETE' });
         case 'removeQualityMetric':
