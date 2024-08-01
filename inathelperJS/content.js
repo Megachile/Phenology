@@ -1320,40 +1320,51 @@ async function performActions(actions) {
     let observationId = await ensureCorrectObservationId();
     if (!observationId) {
         alert('Please open an observation before using this button.');
-        return Promise.resolve();
+        return [];
     }
     
     const lockedObservationId = observationId;
     const isIdentifyPage = window.location.pathname.includes('/identify');
     const isObservationPage = window.location.pathname.match(/^\/observations\/\d+/);
     let needsPageUpdate = true;
+    const results = [];
 
-    return actions.reduce((promise, action) => {
-        return promise.then(() => performSingleAction(action, lockedObservationId, isIdentifyPage));
-    }, Promise.resolve())
-    .then(() => {
+    try {
+        for (const action of actions) {
+            const result = await performSingleAction(action, lockedObservationId, isIdentifyPage);
+            results.push(result);
+        }
+
         if (isIdentifyPage) {
             console.log('Attempting to refresh observation');
-            return refreshObservation().catch(error => {
+            await refreshObservation().catch(error => {
                 console.error('Error in refreshObservation:', error);
             });
         } else if (isObservationPage && needsPageUpdate) {
             console.log('Updating observation page');
-            return updateObservationPage(lockedObservationId).catch(error => {
+            await updateObservationPage(lockedObservationId).catch(error => {
                 console.error('Error in updateObservationPage:', error);
             });
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error in performActions:', error);
         alert(`Error performing actions: ${error.message}`);
-    });
+    }
+
+    return results;
 }
 
 async function performSingleAction(action, observationId, isIdentifyPage) {
     switch (action.type) {
         case 'observationField':
             return addObservationField(observationId, action.fieldId, action.fieldValue);
+        case 'copyObservationField':
+            const sourceValue = await getObservationFieldValue(observationId, action.sourceFieldId);
+            if (sourceValue === null) {
+                console.error(`Failed to copy field: source value is null for observation ${observationId}, field ${action.sourceFieldId}`);
+                return { success: false, error: 'Source field value is null' };
+            }
+            return addObservationField(observationId, action.targetFieldId, sourceValue);    
         case 'annotation':
             return addAnnotation(observationId, action.annotationField, action.annotationValue);
         case 'addToProject':
@@ -1369,6 +1380,20 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
         default:
             console.warn(`Unknown action type: ${action.type}`);
             return Promise.resolve();
+    }
+}
+
+async function getObservationFieldValue(observationId, fieldId) {
+    try {
+        const response = await makeAPIRequest(`/observations/${observationId}`);
+        if (response.results && response.results[0]) {
+            const ofv = response.results[0].ofvs.find(ofv => ofv.field_id === parseInt(fieldId));
+            return ofv ? ofv.value : null;
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error fetching observation field value: ${error}`);
+        return null;
     }
 }
 
@@ -1696,8 +1721,14 @@ function createButton(config) {
         if (!hasMoved) {  // Only trigger click if not dragging
             animateButton(this);
             performActions(config.actions)
-                .then(() => {
-                    animateButtonResult(this, true);
+                .then((results) => {
+                    // Ensure results is always an array
+                    const resultsArray = Array.isArray(results) ? results : [results];
+                    const allSuccessful = resultsArray.every(r => r.success);
+                    animateButtonResult(this, allSuccessful);
+                    if (!allSuccessful) {
+                        console.error('Some actions failed:', resultsArray.filter(r => !r.success));
+                    }
                 })
                 .catch(error => {
                     console.error('Error performing actions:', error);
@@ -2161,12 +2192,25 @@ async function applyBulkAction() {
                 for (const observationId of observationIds) {
                     for (const action of selectedAction.actions) {
                         try {
-                            if (action.type === 'observationField') {
-                                const existingValue = getExistingObservationFieldValue(preActionStates[observationId], action.fieldId);
-                                console.log(`Observation ${observationId}: Existing value: "${existingValue}", Desired value: "${action.fieldValue}"`);
+                            if (action.type === 'observationField' || action.type === 'copyObservationField') {
+                                let fieldId = action.fieldId;
+                                let fieldValue = action.fieldValue;
+                
+                                // Handle copy action
+                                if (action.type === 'copyObservationField') {
+                                    fieldId = action.targetFieldId;
+                                    fieldValue = getExistingObservationFieldValue(preActionStates[observationId], action.sourceFieldId);
+                                    if (fieldValue === null) {
+                                        console.log(`Observation ${observationId}: Source field ${action.sourceFieldId} does not exist or is empty - skipping`);
+                                        continue;
+                                    }
+                                }
+                
+                                const existingValue = getExistingObservationFieldValue(preActionStates[observationId], fieldId);
+                                console.log(`Observation ${observationId}: Existing value: "${existingValue}", Desired value: "${fieldValue}"`);
                                 
                                 if (existingValue !== null) {
-                                    if (existingValue === action.fieldValue) {
+                                    if (existingValue === fieldValue) {
                                         console.log(`Observation ${observationId}: Existing value matches desired value - silently skipping`);
                                     } else {
                                         console.log(`Observation ${observationId}: Existing value differs from desired value - skipping and adding to skipped list`);
@@ -2179,8 +2223,12 @@ async function applyBulkAction() {
                             console.log(`Performing action ${action.type} for observation ${observationId}`);
                             const result = await performSingleAction(action, observationId, true);
                             console.log(`Action result:`, result);
-                            results.push({ observationId, action: action.type, success: result.success });
-                        } catch (error) {
+                            if (!result.success) {
+                                console.error(`Action failed for observation ${observationId}:`, result.error);
+                                skippedObservations.push(observationId);
+                            }
+                            results.push({ observationId, action: action.type, success: result.success, error: result.error })
+                            } catch (error) {
                             console.error(`Failed to perform action ${action.type} for observation ${observationId}:`, error);
                             results.push({ observationId, action: action.type, success: false, error: error.toString() });
                         }
