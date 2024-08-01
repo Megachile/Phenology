@@ -2065,58 +2065,6 @@ document.body.addEventListener('click', (e) => {
     }
 });
 
-function createActionSelectionModal(selectedObservations) {
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background-color: white;
-        padding: 20px;
-        border-radius: 5px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        z-index: 10001;
-    `;
-
-    const title = document.createElement('h2');
-    title.textContent = `Select Action for ${selectedObservations.size} Observations`;
-    modal.appendChild(title);
-
-    const actionSelect = document.createElement('select');
-    actionSelect.style.marginBottom = '10px';
-    modal.appendChild(actionSelect);
-
-    // Populate action select
-    browserAPI.storage.sync.get('customButtons', function(data) {
-        const customButtons = data.customButtons || [];
-        customButtons.forEach(button => {
-            if (!button.configurationDisabled) {
-                const option = document.createElement('option');
-                option.value = button.id;
-                option.textContent = button.name;
-                actionSelect.appendChild(option);
-            }
-        });
-    });
-
-    const applyButton = document.createElement('button');
-    applyButton.textContent = 'Apply Action';
-    applyButton.onclick = () => {
-        const selectedActionId = actionSelect.value;
-        applyBulkActionWithConfirmation(selectedActionId, selectedObservations);
-        document.body.removeChild(modal);
-    };
-    modal.appendChild(applyButton);
-
-    const cancelButton = document.createElement('button');
-    cancelButton.textContent = 'Cancel';
-    cancelButton.onclick = () => document.body.removeChild(modal);
-    modal.appendChild(cancelButton);
-
-    document.body.appendChild(modal);
-}
-
 function applyBulkActionWithConfirmation(actionId, selectedObservations) {
     browserAPI.storage.sync.get('customButtons', function(data) {
         const customButtons = data.customButtons || [];
@@ -2159,11 +2107,20 @@ async function applyBulkAction() {
     `;
 
     const title = document.createElement('h2');
-    title.textContent = `Select Action for ${selectedObservations.size} Observations`;
+    title.id = 'action-selection-title';
     modal.appendChild(title);
 
     const actionSelect = document.createElement('select');
     actionSelect.style.marginBottom = '10px';
+    
+    // Add default "Select an action" option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = "";
+    defaultOption.textContent = "Select an action";
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    actionSelect.appendChild(defaultOption);
+
     availableActions.forEach(button => {
         const option = document.createElement('option');
         option.value = button.id;
@@ -2175,6 +2132,10 @@ async function applyBulkAction() {
     const applyButton = document.createElement('button');
     applyButton.textContent = 'Apply Action';
     applyButton.onclick = async () => {
+        if (!actionSelect.value) {
+            alert('Please select an action before applying.');
+            return;
+        }
         const selectedActionId = actionSelect.value;
         const selectedAction = availableActions.find(button => button.id === selectedActionId);
         if (selectedAction) {
@@ -2286,6 +2247,28 @@ async function applyBulkAction() {
     modal.appendChild(cancelButton);
 
     document.body.appendChild(modal);
+
+    // Function to update the title with the current number of selected observations
+    function updateTitle() {
+        const titleElement = document.getElementById('action-selection-title');
+        if (titleElement) {
+            titleElement.textContent = `Select Action for ${selectedObservations.size} Observations`;
+        }
+    }
+
+    // Initial title update
+    updateTitle();
+
+    // Set up a MutationObserver to watch for changes in the selected observations
+    const observer = new MutationObserver(updateTitle);
+    observer.observe(document.body, { 
+        subtree: true, 
+        attributes: true, 
+        attributeFilter: ['class']
+    });
+
+    // Clean up the observer when the modal is closed
+    cancelButton.addEventListener('click', () => observer.disconnect());
 }
 
 function getExistingObservationFieldValue(observationState, fieldId) {
