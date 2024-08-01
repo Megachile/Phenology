@@ -2125,6 +2125,17 @@ async function applyBulkAction() {
     progressBar.appendChild(progressFill);
     modal.appendChild(progressBar);
 
+    function updateProgressBar(progress) {
+        return new Promise(resolve => {
+            requestAnimationFrame(() => {
+                progressFill.style.width = `${progress}%`;
+                // Force a reflow to ensure the browser renders the update
+                void progressFill.offsetWidth;
+                requestAnimationFrame(resolve);
+            });
+        });
+    }   
+
     const title = document.createElement('h2');
     title.id = 'action-selection-title';
     modal.appendChild(title);
@@ -2234,9 +2245,10 @@ async function applyBulkAction() {
                     // Update progress after each observation, even if it was skipped
                     processedObservations++;
                     const progress = (processedObservations / totalObservations) * 100;
-                    progressFill.style.width = `${progress}%`;
+                    await updateProgressBar(progress);
                 }
-                
+                await updateProgressBar(100);
+                await new Promise(resolve => setTimeout(resolve, 300));
                 const successCount = results.filter(r => r.success).length;
                 const totalActions = results.length;
                 const skippedCount = skippedObservations.length;
@@ -2309,6 +2321,7 @@ function getExistingObservationFieldValue(observationState, fieldId) {
     console.log('No existing value found');
     return null;
 }
+
 
 function storeUndoRecord(undoRecord) {
     return new Promise((resolve, reject) => {
