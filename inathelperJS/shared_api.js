@@ -315,7 +315,7 @@ function setupTaxonAutocomplete(inputElement, idElement) {
 }
 
 
-function updateFieldValueInput(field, container) {
+function updateFieldValueInput(field, container, existingValue = null) {
     console.log('Updating field value input for:', field);
     
     // Always clear the container
@@ -362,6 +362,10 @@ function updateFieldValueInput(field, container) {
     input.className = 'fieldValue';
     input.placeholder = 'Field Value';
     
+    if (existingValue !== null) {
+        input.value = existingValue;
+    }    
+
     container.appendChild(input);
 
     // Handle allowed values

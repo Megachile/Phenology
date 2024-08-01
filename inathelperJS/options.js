@@ -626,16 +626,17 @@ function addActionToForm(action = null) {
             case 'observationField':
                 fieldNameInput.value = action.fieldName || '';
                 fieldIdInput.value = action.fieldId;
-                fieldValueInput.value = action.displayValue || action.fieldValue;
-                if (action.taxonId) {
-                    fieldValueInput.dataset.taxonId = action.taxonId;
-                }
                 lookupObservationField(action.fieldName).then(results => {
                     const field = results.find(f => f.id.toString() === action.fieldId);
                     if (field) {
-                        const updatedFieldValueInput = updateFieldValueInput(field, fieldValueContainer);
+                        let displayValue = action.fieldValue;
+                        if (field.datatype === 'taxon' && action.displayValue) {
+                            displayValue = action.displayValue; // Use the display value for taxon fields
+                        }
+                        const updatedFieldValueInput = updateFieldValueInput(field, fieldValueContainer, displayValue);
                         if (field.datatype === 'taxon') {
                             setupTaxonAutocompleteForInput(updatedFieldValueInput);
+                            updatedFieldValueInput.dataset.taxonId = action.fieldValue; // Store the taxon ID
                         }
                     }
                 });
