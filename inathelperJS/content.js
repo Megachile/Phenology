@@ -2568,9 +2568,6 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
             undoActions: []
         };
 
-        const currentQualityMetrics = await getCurrentQualityMetricState(observationId);
-        console.log(`Current quality metrics for observation ${observationId}:`, currentQualityMetrics);
-
         for (const actionItem of action.actions) {
             let undoAction;
             switch (actionItem.type) {
@@ -2695,49 +2692,6 @@ function downloadUndoRecord(undoRecord) {
     a.download = 'undo_record.json';
     a.click();
     URL.revokeObjectURL(url);
-}
-
-function generateUndoApiCalls(undoRecord) {
-    let apiCalls = [];
-
-    for (const [observationId, observationData] of Object.entries(undoRecord.observations)) {
-        observationData.undoActions.forEach(undoAction => {
-            switch (undoAction.type) {
-                case 'updateAnnotation':
-                    if (undoAction.originalValue) {
-                        apiCalls.push(`POST /annotations\nBody: {"annotation": {"resource_type": "Observation", "resource_id": ${observationId}, "controlled_attribute_id": ${undoAction.attributeId}, "controlled_value_id": ${undoAction.originalValue}}}`);
-                    } else {
-                        apiCalls.push(`DELETE /annotations?observation_id=${observationId}&controlled_attribute_id=${undoAction.attributeId}`);
-                    }
-                    break;
-                case 'updateObservationField':
-                    if (undoAction.originalValue) {
-                        apiCalls.push(`POST /observation_field_values\nBody: {"observation_field_value": {"observation_id": ${observationId}, "observation_field_id": ${undoAction.fieldId}, "value": "${undoAction.originalValue}"}}`);
-                    } else {
-                        apiCalls.push(`DELETE /observation_field_values/${undoAction.fieldId}?observation_id=${observationId}`);
-                    }
-                    break;
-                case 'removeFromProject':
-                    apiCalls.push(`DELETE /project_observations/${undoAction.projectObservationId}`);
-                    break;
-                case 'removeComment':
-                    apiCalls.push(`DELETE /comments/:id (ID to be determined after action execution)`);
-                    break;
-                case 'removeIdentification':
-                    apiCalls.push(`DELETE /identifications/:id (ID to be determined after action execution)`);
-                    break;
-                case 'removeQualityMetric':
-                    if (undoAction.metric === 'needs_id') {
-                        apiCalls.push(`DELETE /votes/unvote/observation/${observationId}?scope=needs_id`);
-                    } else {
-                        apiCalls.push(`DELETE /observations/${observationId}/quality/${undoAction.metric}`);
-                    }
-                    break;
-            }
-        });
-    }
-
-    return apiCalls;
 }
 
 function getQualityMetricName(metric) {

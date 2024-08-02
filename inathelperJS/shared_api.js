@@ -653,9 +653,23 @@ async function performSingleUndoAction(observationId, undoAction) {
                     return { success: true, message: 'No action needed' };
                 }
         case 'removeFromProject':
-            return makeAPIRequest(`/project_observations/${undoAction.projectObservationId}`, {
-                method: 'DELETE'
-            });
+            try {
+                const response = await makeAPIRequest(`/projects/${undoAction.projectId}/remove?observation_id=${observationId}`, {
+                    method: 'DELETE'
+                });
+                
+                // Check if the response contains the expected data
+                if (response && response.id && response.project_id && response.observation_id) {
+                    console.log(`Successfully removed observation ${observationId} from project ${undoAction.projectId}`);
+                    return { success: true, data: response };
+                } else {
+                    console.error('Unexpected response format:', response);
+                    return { success: false, error: 'Unexpected response format' };
+                }
+            } catch (error) {
+                console.error('Error removing observation from project:', error);
+                return { success: false, error: error.toString() };
+            }
         case 'removeComment':
             console.log('Attempting to remove comment:', undoAction);
             if (undoAction.commentUUID) {
