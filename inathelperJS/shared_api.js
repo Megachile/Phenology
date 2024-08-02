@@ -503,11 +503,6 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
         // Add disclaimers
         const disclaimers = [];
                 
-        // Check for taxon identification actions
-        if (Object.values(record.observations).some(obs => obs.undoActions.some(action => action.type === 'removeIdentification'))) {
-            disclaimers.push("Warning: Undoing this action will remove the added identification but won't restore any prior identifications.");
-        }
-
         // Check for DQI removal actions
         if (Object.values(record.observations).some(obs => obs.undoActions.some(action => action.type === 'qualityMetric' && action.vote === 'remove'))) {
             disclaimers.push("Note: Removed DQI votes cannot be restored due to API limitations.");
@@ -729,15 +724,26 @@ async function performSingleUndoAction(observationId, undoAction) {
         case 'removeIdentification':
             if (undoAction.identificationUUID) {
                 try {
-                    const response = await makeAPIRequest(`/identifications/${undoAction.identificationUUID}`, { method: 'DELETE' });
-                    console.log('Identification deletion response:', response);
-                    return { success: true, action: 'removeIdentification', message: 'Identification removed successfully' };
-                } catch (error) {
-                    console.error('Error removing identification:', error);
-                    if (error.message && error.message.includes('HTTP error! status: 404')) {
-                        console.log('Identification not found (404). It may have been already deleted.');
-                        return { success: true, action: 'removeIdentification', message: 'Identification already removed or not found' };
+                    console.log('Removing identification:', undoAction.identificationUUID);
+                    await makeAPIRequest(`/identifications/${undoAction.identificationUUID}`, { method: 'DELETE' });
+                    console.log('Identification successfully deleted');
+        
+                    if (undoAction.previousIdentificationUUID) {
+                        console.log('Restoring previous identification:', undoAction.previousIdentificationUUID);
+                        await makeAPIRequest(`/identifications/${undoAction.previousIdentificationUUID}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({ current: true })
+                        });
+                        console.log('Previous identification restored');
                     }
+        
+                    return { 
+                        success: true, 
+                        action: 'removeIdentification', 
+                        message: 'Identification removed and previous restored if available'
+                    };
+                } catch (error) {
+                    console.error('Error in removeIdentification action:', error);
                     return { success: false, error: error.toString() };
                 }
             } else {
@@ -811,7 +817,7 @@ async function makeAPIRequest(endpoint, options = {}) {
     const jwt = await getJWT();
     if (!jwt) {
         console.error('No JWT available');
-        return null;
+        throw new Error('No JWT available');
     }
 
     const headers = {
@@ -819,22 +825,38 @@ async function makeAPIRequest(endpoint, options = {}) {
         'Authorization': `Bearer ${jwt}`
     };
 
+    let fullUrl = `${API_URL}${endpoint}`;
+    if (options.method === 'DELETE') {
+        fullUrl += '?delete=true';
+    }
+
+    console.log(`Making ${options.method || 'GET'} request to: ${fullUrl}`);
+
     try {
-        const response = await fetch(`${API_URL}${endpoint}`, {
+        const response = await fetch(fullUrl, {
             ...options,
             headers
         });
 
+        console.log(`Response status: ${response.status}`);
+        console.log('Response headers:', response.headers);
+
+        const responseText = await response.text();
+
         if (!response.ok) {
-            if (response.status === 401) {
-                // Token might be expired, try to get a new one from the page
-                currentJWT = null;
-                return makeAPIRequest(endpoint, options);
-            }
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
         }
 
-        return response.json();
+        if (responseText) {
+            try {
+                const responseData = JSON.parse(responseText);
+                return responseData;
+            } catch (e) {
+                return responseText;
+            }
+        }
+
+        return null;
     } catch (error) {
         console.error('API request failed:', error);
         throw error;

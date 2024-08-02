@@ -14,6 +14,20 @@ let hasMoved = false;
 let debugMode = false; 
 let bulkActionModeEnabled = false;
 let selectedObservations = new Set();
+let currentUserId = null;
+
+async function getCurrentUserId() {
+    if (currentUserId) return currentUserId;
+    
+    try {
+        const response = await makeAPIRequest('/users/me');
+        currentUserId = response.results[0].id;
+        return currentUserId;
+    } catch (error) {
+        console.error('Error fetching current user ID:', error);
+        return null;
+    }
+}
 
 function debugLog(message) {
     if (debugMode) {
@@ -779,6 +793,7 @@ async function addTaxonId(observationId, taxonId, comment = '') {
         return { success: false, error: error.toString() };
     }
 }
+
 
 async function handleQualityMetricAPI(observationId, metric, vote) {
     const jwt = await getJWT();
@@ -2161,10 +2176,6 @@ async function applyBulkAction() {
                 confirmMessage += "\n\nPlease note: Removing DQI votes cannot be undone in bulk due to API limitations.";
             }
 
-            if (hasTaxonId) {
-                confirmMessage += "\n\nPlease note: Adding taxon IDs will withdraw any existing IDs you've made. Undoing this action will not restore previous IDs.";
-            }
-
             if (confirm(confirmMessage)) {
                 await executeBulkAction(selectedAction, modal);
             }
@@ -2244,12 +2255,7 @@ function createModalControls(availableActions) {
             if (hasDQIRemoval) {
                 disclaimerText += "Removing DQI votes cannot be undone in bulk due to API limitations.";
             }
-        
-            if (hasTaxonId) {
-                if (disclaimerText) disclaimerText += "\n\n";
-                disclaimerText += "Adding taxon IDs will remove any existing IDs you've made. Undoing this action will not restore previous IDs.";
-            }
-        
+               
             if (disclaimerText) {
                 disclaimer.textContent = disclaimerText;
                 disclaimer.style.display = 'block';
@@ -2546,11 +2552,24 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
                     };
                     break;
                 case 'addTaxonId':
+                    const currentUserId = await getCurrentUserId();
+                    console.log('Current user ID:', currentUserId);
+                    
+                    const userIdentifications = preActionStates[observationId].identifications
+                        .filter(id => id.user.id === currentUserId && id.current)
+                        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    console.log('User active identifications:', userIdentifications);
+
+                    const currentIdentification = userIdentifications[0];
+                    console.log('Current active identification:', currentIdentification);
+
                     undoAction = {
                         type: 'removeIdentification',
                         taxonId: actionItem.taxonId,
-                        identificationUUID: null // This will be filled in after the action is performed
+                        identificationUUID: null, // This will be filled in after the action is performed
+                        previousIdentificationUUID: currentIdentification ? currentIdentification.uuid : null
                     };
+                    console.log('Generated undo action:', undoAction);
                     break;
                 case 'qualityMetric':
                         undoAction = {
