@@ -1216,7 +1216,7 @@ window.addEventListener('load', () => {
     if (window.location.href.includes('/observations/identify')) {
         console.log('On identify page, creating bulk action buttons');
         createBulkActionButtons();
-        
+        updateSelectedObservations();
         // Add this check
         setTimeout(() => {
             const enableButton = document.getElementById('enable-bulk-mode-button');
@@ -1984,6 +1984,7 @@ function enableBulkActionMode() {
     bulkActionModeEnabled = true;
     document.getElementById('bulk-action-container').style.display = 'block';
     document.getElementById('enable-bulk-mode-button').style.display = 'none';
+    
     // Restore previously selected observations
     getObservationElements().forEach(obs => {
         const observationId = obs.querySelector('a[href^="/observations/"]')?.href.split('/').pop();
@@ -1991,6 +1992,16 @@ function enableBulkActionMode() {
             obs.classList.add('selected');
         }
     });
+    
+    // Set up observer for changes in the observation grid
+    const observationGrid = document.querySelector('.ObservationsGrid');
+    if (observationGrid) {
+        const observer = new MutationObserver(() => {
+            updateSelectedObservations();
+        });
+        observer.observe(observationGrid, { childList: true, subtree: true });
+    }
+
     updateAllSelections();
 }
 
@@ -2058,6 +2069,16 @@ function toggleSelection(element) {
             console.log('Updated selections:', selectedObservations);
         }
     }
+    updateVisualSelection();
+}
+
+function updateVisualSelection() {
+    getObservationElements().forEach(obs => {
+        const observationId = obs.querySelector('a[href^="/observations/"]')?.href.split('/').pop();
+        if (observationId) {
+            obs.classList.toggle('selected', selectedObservations.has(observationId));
+        }
+    });
 }
 
 function updateAllSelections() {
@@ -2095,6 +2116,27 @@ document.body.addEventListener('click', (e) => {
         }
     }
 });
+
+function updateSelectedObservations() {
+    const visibleObservations = new Set(
+        Array.from(getObservationElements()).map(obs => 
+            obs.querySelector('a[href^="/observations/"]')?.href.split('/').pop()
+        ).filter(Boolean)
+    );
+
+    const toRemove = [];
+    for (const id of selectedObservations) {
+        if (!visibleObservations.has(id)) {
+            toRemove.push(id);
+        }
+    }
+
+    toRemove.forEach(id => selectedObservations.delete(id));
+
+    if (toRemove.length > 0) {
+        console.log(`Removed ${toRemove.length} observations from selection due to filter change`);
+    }
+}
 
 async function applyBulkAction() {
     console.log('Applying bulk action');
@@ -2864,3 +2906,8 @@ function createSkippedActionsModal(skippedCount, skippedURL) {
         document.body.removeChild(modal);
     });
 }
+
+// Add this to the existing page change detection logic
+window.addEventListener('popstate', updateSelectedObservations);
+window.addEventListener('pushstate', updateSelectedObservations);
+window.addEventListener('replacestate', updateSelectedObservations);
