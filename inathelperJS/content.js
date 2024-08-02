@@ -6,9 +6,7 @@ let refreshEnabled = true;
 let isButtonsVisible = true;
 let customShortcuts = [];
 let lastKnownUpdate = 0;
-const API_URL = 'https://api.inaturalist.org/v1';
 let shortcutListVisible = false;
-let currentJWT = null;
 let currentObservationId = null;
 let checkInterval = null;
 let observationTabsContainer = null;
@@ -41,64 +39,7 @@ const qualityMetrics = [
     { value: 'subject', label: 'Evidence related to a single subject' }
 ];
 
-function getJWTFromPage() {
-    const metaTag = document.querySelector('meta[name="inaturalist-api-token"]');
-    return metaTag ? metaTag.getAttribute('content') : null;
-}
 
-async function getJWT() {
-    if (currentJWT) return currentJWT;
-    
-    currentJWT = getJWTFromPage();
-    if (currentJWT) {
-        chrome.storage.local.set({jwt: currentJWT});
-        return currentJWT;
-    }
-    
-    // If not on page, try to get from storage
-    const stored = await chrome.storage.local.get('jwt');
-    if (stored.jwt) {
-        currentJWT = stored.jwt;
-        return currentJWT;
-    }
-    
-    console.error('No JWT available');
-    return null;
-}
-
-async function makeAPIRequest(endpoint, options = {}) {
-    const jwt = await getJWT();
-    if (!jwt) {
-        console.error('No JWT available');
-        return null;
-    }
-
-    const headers = {
-        ...options.headers,
-        'Authorization': `Bearer ${jwt}`
-    };
-
-    try {
-        const response = await fetch(`${API_URL}${endpoint}`, {
-            ...options,
-            headers
-        });
-
-        if (!response.ok) {
-            if (response.status === 401) {
-                // Token might be expired, try to get a new one from the page
-                currentJWT = null;
-                return makeAPIRequest(endpoint, options);
-            }
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return response.json();
-    } catch (error) {
-        console.error('API request failed:', error);
-        throw error;
-    }
-}
 
 // Function to test the JWT
 async function testJWT() {
@@ -111,22 +52,6 @@ async function testJWT() {
         return false;
     }
 }
-
-// Initialize and test JWT when the script loads
-(async function() {
-    const jwt = await getJWT();
-    if (jwt) {
-        const isValid = await testJWT();
-        if (isValid) {
-            console.log('JWT is valid');
-        } else {
-            console.log('JWT is invalid, will try to get a new one on next API call');
-            currentJWT = null;
-        }
-    } else {
-        console.log('No JWT found');
-    }
-})();
 
 function toggleShortcutList() {
     if (shortcutListVisible) {
@@ -200,6 +125,7 @@ function createShortcutList() {
     list.style.paddingLeft = '20px';
     list.innerHTML = `
         <li>Shift + B: Toggle button visibility</li>
+        <li>Shift + V: Toggle bulk action box</li>
         <li>Alt + N: Cycle button position</li>
         <li>Ctrl + Shift + R: Toggle refresh</li>
         <li>Alt + H: Toggle this shortcut list</li>
@@ -221,6 +147,26 @@ function createShortcutList() {
     });
 }
 
+function toggleBulkActionVisibility() {
+    const bulkButtonContainer = document.getElementById('bulk-action-container');
+    const enableBulkModeButton = document.getElementById('enable-bulk-mode-button');
+    
+    if (bulkButtonContainer && enableBulkModeButton) {
+        if (bulkButtonContainer.style.display !== 'none' || enableBulkModeButton.style.display !== 'none') {
+            bulkButtonContainer.style.display = 'none';
+            enableBulkModeButton.style.display = 'none';
+        } else {
+            if (bulkActionModeEnabled) {
+                bulkButtonContainer.style.display = 'block';
+                enableBulkModeButton.style.display = 'none';
+            } else {
+                bulkButtonContainer.style.display = 'none';
+                enableBulkModeButton.style.display = 'block';
+            }
+        }
+    }
+}
+
 function handleAllShortcuts(event) {
     // Always allow these shortcuts, even when typing
     if (event.shiftKey && event.key.toLowerCase() === 'b') {
@@ -239,6 +185,11 @@ function handleAllShortcuts(event) {
     if (event.altKey && event.key.toLowerCase() === 'h') {
         event.preventDefault();
         toggleShortcutList();
+        return;
+    }
+    if (event.shiftKey && event.key.toLowerCase() === 'v') {
+        event.preventDefault();
+        toggleBulkActionVisibility();
         return;
     }
 
@@ -2256,28 +2207,6 @@ function createActionModal() {
     return modal;
 }
 
-function createProgressBar() {
-    const progressBar = document.createElement('div');
-    progressBar.style.cssText = `
-        width: 100%;
-        height: 20px;
-        background-color: #f0f0f0;
-        border-radius: 10px;
-        margin-top: 10px;
-        overflow: hidden;
-    `;
-    const progressFill = document.createElement('div');
-    progressFill.classList.add('progress-fill');
-    progressFill.style.cssText = `
-        width: 0%;
-        height: 100%;
-        background-color: #4CAF50;
-        transition: width 0.3s ease;
-    `;
-    progressBar.appendChild(progressFill);
-    return progressBar;
-}
-
 function createModalControls(availableActions) {
     const actionSelect = document.createElement('select');
     actionSelect.style.marginBottom = '10px';
@@ -2498,16 +2427,6 @@ async function handleActionResults(results, skippedObservations, preliminaryUndo
     }
 
     console.log('Bulk action results:', results);
-}
-
-async function updateProgressBar(progressFill, progress) {
-    return new Promise(resolve => {
-        requestAnimationFrame(() => {
-            progressFill.style.width = `${progress}%`;
-            void progressFill.offsetWidth;
-            requestAnimationFrame(resolve);
-        });
-    });
 }
 
 async function getCurrentQualityMetricState(observationId, metric) {

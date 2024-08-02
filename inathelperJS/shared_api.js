@@ -70,6 +70,9 @@ const controlledTerms = {
     }
 };
 
+let currentJWT = null;
+const API_URL = 'https://api.inaturalist.org/v1';
+
 function lookupTaxon(query, per_page = 10) {
     const baseUrl = 'https://api.inaturalist.org/v1/taxa/autocomplete';
     const params = new URLSearchParams({
@@ -478,6 +481,10 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
     title.style.marginTop = '0';
     modalContent.appendChild(title);
 
+    const progressBar = createProgressBar();
+    progressBar.style.display = 'none'; // Initially hidden
+    modalContent.appendChild(progressBar);
+
     undoRecords.forEach(record => {
         const recordDiv = document.createElement('div');
         recordDiv.style.cssText = `
@@ -530,7 +537,8 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
         undoButton.textContent = record.undone ? 'Undone' : 'Undo';
         undoButton.disabled = record.undone;
         undoButton.onclick = function() {
-            performUndoActions(record)
+            progressBar.style.display = 'block'; // Show progress bar
+            performUndoActions(record, progressBar.querySelector('.progress-fill'))
                 .then((result) => {
                     if (result.success) {
                         markRecordAsUndone(record.id);
@@ -542,14 +550,15 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
                         console.error('Some undo actions failed:', result.results);
                         alert('Some undo actions failed. Please check the console for details.');
                     }
+                    progressBar.style.display = 'none'; // Hide progress bar after completion
                 })
                 .catch(error => {
                     console.error('Error in performUndoActions:', error);
                     alert(`Error performing undo actions: ${error.message}`);
+                    progressBar.style.display = 'none'; // Hide progress bar on error
                 });
         };
         recordDiv.appendChild(undoButton);
-
         modalContent.appendChild(recordDiv);
     });
 
@@ -567,10 +576,13 @@ function getUndoRecords(callback) {
     });
 }
 
-async function performUndoActions(undoRecord) {
+async function performUndoActions(undoRecord, progressFill) {
     console.log('Performing undo actions for record:', JSON.stringify(undoRecord, null, 2));
     let allActionsSuccessful = true;
     const results = [];
+
+    const totalActions = Object.values(undoRecord.observations).reduce((sum, obs) => sum + obs.undoActions.length, 0);
+    let completedActions = 0;
 
     for (const [observationId, observationData] of Object.entries(undoRecord.observations)) {
         console.log(`Processing undo actions for observation ${observationId}:`, observationData);
@@ -590,11 +602,15 @@ async function performUndoActions(undoRecord) {
                 allActionsSuccessful = false;
                 results.push({ observationId, action: undoAction.type, error: error.toString() });
             }
+
+            completedActions++;
+            await updateProgressBar(progressFill, (completedActions / totalActions) * 100);
         }
     }
 
     return { success: allActionsSuccessful, results };
 }
+
 function markRecordAsUndone(recordId) {
     browserAPI.storage.local.get('undoRecords', function(result) {
         let undoRecords = result.undoRecords || [];
@@ -756,4 +772,113 @@ async function performSingleUndoAction(observationId, undoAction) {
             console.warn(`Unknown undo action type: ${undoAction.type}`);
             return Promise.resolve({ success: false, error: 'Unknown undo action type' });
     }
+}
+
+function createProgressBar() {
+    const progressBar = document.createElement('div');
+    progressBar.style.cssText = `
+        width: 100%;
+        height: 20px;
+        background-color: #f0f0f0;
+        border-radius: 10px;
+        margin-top: 10px;
+        overflow: hidden;
+    `;
+    const progressFill = document.createElement('div');
+    progressFill.classList.add('progress-fill');
+    progressFill.style.cssText = `
+        width: 0%;
+        height: 100%;
+        background-color: #4CAF50;
+        transition: width 0.3s ease;
+    `;
+    progressBar.appendChild(progressFill);
+    return progressBar;
+}
+
+async function updateProgressBar(progressFill, progress) {
+    return new Promise(resolve => {
+        requestAnimationFrame(() => {
+            progressFill.style.width = `${progress}%`;
+            void progressFill.offsetWidth;
+            requestAnimationFrame(resolve);
+        });
+    });
+}
+
+
+async function makeAPIRequest(endpoint, options = {}) {
+    const jwt = await getJWT();
+    if (!jwt) {
+        console.error('No JWT available');
+        return null;
+    }
+
+    const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${jwt}`
+    };
+
+    try {
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            ...options,
+            headers
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                // Token might be expired, try to get a new one from the page
+                currentJWT = null;
+                return makeAPIRequest(endpoint, options);
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return response.json();
+    } catch (error) {
+        console.error('API request failed:', error);
+        throw error;
+    }
+}
+
+// Initialize and test JWT when the script loads
+(async function() {
+    const jwt = await getJWT();
+    if (jwt) {
+        const isValid = await testJWT();
+        if (isValid) {
+            console.log('JWT is valid');
+        } else {
+            console.log('JWT is invalid, will try to get a new one on next API call');
+            currentJWT = null;
+        }
+    } else {
+        console.log('No JWT found');
+    }
+})();
+
+
+function getJWTFromPage() {
+    const metaTag = document.querySelector('meta[name="inaturalist-api-token"]');
+    return metaTag ? metaTag.getAttribute('content') : null;
+}
+
+async function getJWT() {
+    if (currentJWT) return currentJWT;
+    
+    currentJWT = getJWTFromPage();
+    if (currentJWT) {
+        chrome.storage.local.set({jwt: currentJWT});
+        return currentJWT;
+    }
+    
+    // If not on page, try to get from storage
+    const stored = await chrome.storage.local.get('jwt');
+    if (stored.jwt) {
+        currentJWT = stored.jwt;
+        return currentJWT;
+    }
+    
+    console.error('No JWT available');
+    return null;
 }
