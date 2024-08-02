@@ -589,25 +589,25 @@ function markRecordAsUndone(recordId) {
 async function performSingleUndoAction(observationId, undoAction) {
     console.log('Performing undo action:', undoAction, 'for observation:', observationId);
     switch (undoAction.type) {
-        case 'removeAnnotation':
-            if (undoAction.uuid) {
-                try {
-                    const response = await makeAPIRequest(`/annotations/${undoAction.uuid}`, { method: 'DELETE' });
-                    console.log('Annotation deletion response:', response);
-                    // iNaturalist might return a 204 No Content for successful deletion
-                    return { success: true, action: 'removeAnnotation', message: 'Annotation removed successfully' };
-                } catch (error) {
-                    console.error('Error removing annotation:', error);
-                    // If the error is 404 Not Found, the annotation might have already been deleted
-                    if (error.status === 404) {
-                        return { success: true, action: 'removeAnnotation', message: 'Annotation already removed or not found' };
+            case 'removeAnnotation':
+                if (undoAction.uuid) {
+                    try {
+                        const response = await makeAPIRequest(`/annotations/${undoAction.uuid}`, { method: 'DELETE' });
+                        console.log('Annotation deletion response:', response);
+                        // iNaturalist might return a 204 No Content for successful deletion
+                        return { success: true, action: 'removeAnnotation', message: 'Annotation removed successfully' };
+                    } catch (error) {
+                        console.error('Error removing annotation:', error);
+                        // If the error is 404 Not Found, the annotation might have already been deleted
+                        if (error.status === 404) {
+                            return { success: true, action: 'removeAnnotation', message: 'Annotation already removed or not found' };
+                        }
+                        return { success: false, error: error.toString() };
                     }
-                    return { success: false, error: error.toString() };
+                } else {
+                    console.error('Annotation UUID not found for undo action');
+                    return { success: false, error: 'Annotation UUID not found' };
                 }
-            } else {
-                console.error('Annotation UUID not found for undo action');
-                return { success: false, error: 'Annotation UUID not found' };
-            }
             case 'updateObservationField':
                 // First, get the current state of the observation
                 const observationResponse = await makeAPIRequest(`/observations/${observationId}`);
@@ -677,11 +677,29 @@ async function performSingleUndoAction(observationId, undoAction) {
             }
         case 'removeIdentification':
             return makeAPIRequest(`/identifications/${undoAction.identificationId}`, { method: 'DELETE' });
-        case 'removeQualityMetric':
-            if (undoAction.metric === 'needs_id') {
-                return makeAPIRequest(`/votes/unvote/observation/${observationId}?scope=needs_id`, { method: 'DELETE' });
-            } else {
-                return makeAPIRequest(`/observations/${observationId}/quality/${undoAction.metric}`, { method: 'DELETE' });
+        case 'qualityMetric':
+            if (undoAction.vote === 'remove') {
+                console.log('Skipping undo for DQI removal as it\'s not supported');
+                return { success: true, action: 'qualityMetric', message: 'Undo of DQI removal not supported' };
+            }
+            
+            const isNeedsId = undoAction.metric === 'needs_id';
+            const endpoint = isNeedsId
+                ? `/votes/unvote/observation/${observationId}?scope=needs_id`
+                : `/observations/${observationId}/quality/${undoAction.metric}`;
+            
+            try {
+                const response = await makeAPIRequest(endpoint, { method: 'DELETE' });
+                console.log(`Quality metric vote removal response for ${undoAction.metric}:`, response);
+                
+                return {
+                    success: true,
+                    action: 'qualityMetric',
+                    message: `Removed ${undoAction.metric} vote`
+                };
+            } catch (error) {
+                console.error(`Error in quality metric undo action for ${undoAction.metric}:`, error);
+                return { success: false, error: error.toString() };
             }
         default:
             console.warn(`Unknown undo action type: ${undoAction.type}`);

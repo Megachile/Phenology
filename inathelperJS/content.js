@@ -1384,6 +1384,35 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
     }
 }
 
+async function getCurrentQualityMetricState(observationId) {
+    console.log(`Getting current quality metric state for observation ${observationId}`);
+    try {
+        const response = await makeAPIRequest(`/observations/${observationId}`);
+        const observation = response.results[0];
+        console.log(`Observation data:`, observation);
+
+        const qualityMetrics = {};
+        observation.quality_metrics.forEach(qm => {
+            qualityMetrics[qm.metric] = qm.agree ? 'agree' : 'disagree';
+        });
+
+        // Handle 'needs_id' separately
+        if (observation.owners_identification && observation.owners_identification.current) {
+            qualityMetrics['needs_id'] = 'agree';
+        } else if (observation.community_taxon && observation.taxon.id !== observation.community_taxon.id) {
+            qualityMetrics['needs_id'] = 'disagree';
+        } else {
+            qualityMetrics['needs_id'] = null;  // No vote for needs_id
+        }
+
+        console.log(`Current quality metrics:`, qualityMetrics);
+        return qualityMetrics;
+    } catch (error) {
+        console.error(`Error fetching quality metric state for observation ${observationId}:`, error);
+        return {};
+    }
+}
+
 async function getObservationFieldValue(observationId, fieldId) {
     try {
         const response = await makeAPIRequest(`/observations/${observationId}`);
@@ -2067,31 +2096,56 @@ document.body.addEventListener('click', (e) => {
     }
 });
 
-function applyBulkActionWithConfirmation(actionId, selectedObservations) {
-    browserAPI.storage.sync.get('customButtons', function(data) {
-        const customButtons = data.customButtons || [];
-        const selectedAction = customButtons.find(button => button.id === actionId);
-        if (selectedAction) {
-            const confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${selectedObservations.size} observations? Note: iNaturalist policy requires that you have individually inspected every observation before you apply this action.`;
-            if (confirm(confirmMessage)) {
-                applyBulkAction(selectedAction, selectedObservations);
-            }
-        } else {
-            alert('Selected action not found.');
-        }
-    });
-}
-
 async function applyBulkAction() {
     console.log('Applying bulk action');
-    const customButtons = await new Promise(resolve => browserAPI.storage.sync.get('customButtons', resolve));
-    const availableActions = (customButtons.customButtons || []).filter(button => !button.configurationDisabled);
-
+    const availableActions = await getAvailableActions();
     if (availableActions.length === 0) {
         alert('No available actions found. Please configure some actions first.');
         return;
     }
 
+    const modal = createActionModal();
+    const { actionSelect, applyButton, cancelButton } = createModalControls(availableActions);
+    modal.appendChild(actionSelect);
+    modal.appendChild(applyButton);
+    modal.appendChild(cancelButton);
+
+    document.body.appendChild(modal);
+
+    setupTitleUpdater(modal);
+    setupModalCloseHandler(cancelButton, modal);
+
+    applyButton.onclick = async () => {
+        if (!actionSelect.value) {
+            alert('Please select an action before applying.');
+            return;
+        }
+        const selectedAction = availableActions.find(button => button.id === actionSelect.value);
+        if (selectedAction) {
+            const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
+
+            let confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${selectedObservations.size} observations? Note: iNaturalist policy requires that you have individually inspected every observation before you apply this action.`;
+
+             if (hasDQIRemoval) {
+                    confirmMessage += " Please note: Removing DQI votes cannot be undone in bulk due to API limitations.";
+                }
+
+            if (confirm(confirmMessage)) {
+                await executeBulkAction(selectedAction, modal);
+            }
+        } else {
+            alert('Selected action not found.');
+        }
+        document.body.removeChild(modal);
+    };
+}
+
+async function getAvailableActions() {
+    const customButtons = await new Promise(resolve => browserAPI.storage.sync.get('customButtons', resolve));
+    return (customButtons.customButtons || []).filter(button => !button.configurationDisabled);
+}
+
+function createActionModal() {
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed;
@@ -2107,7 +2161,19 @@ async function applyBulkAction() {
         max-height: 80%;
         overflow-y: auto;
     `;
-    
+    const progressBar = createProgressBar();
+    modal.appendChild(progressBar);
+
+    const disclaimer = document.createElement('p');
+    disclaimer.id = 'action-disclaimer';
+    disclaimer.style.color = 'red';
+    disclaimer.style.display = 'none';
+    modal.appendChild(disclaimer);
+
+    return modal;
+}
+
+function createProgressBar() {
     const progressBar = document.createElement('div');
     progressBar.style.cssText = `
         width: 100%;
@@ -2118,6 +2184,7 @@ async function applyBulkAction() {
         overflow: hidden;
     `;
     const progressFill = document.createElement('div');
+    progressFill.classList.add('progress-fill');
     progressFill.style.cssText = `
         width: 0%;
         height: 100%;
@@ -2125,27 +2192,13 @@ async function applyBulkAction() {
         transition: width 0.3s ease;
     `;
     progressBar.appendChild(progressFill);
-    modal.appendChild(progressBar);
+    return progressBar;
+}
 
-    function updateProgressBar(progress) {
-        return new Promise(resolve => {
-            requestAnimationFrame(() => {
-                progressFill.style.width = `${progress}%`;
-                // Force a reflow to ensure the browser renders the update
-                void progressFill.offsetWidth;
-                requestAnimationFrame(resolve);
-            });
-        });
-    }   
-
-    const title = document.createElement('h2');
-    title.id = 'action-selection-title';
-    modal.appendChild(title);
-
+function createModalControls(availableActions) {
     const actionSelect = document.createElement('select');
     actionSelect.style.marginBottom = '10px';
     
-    // Add default "Select an action" option
     const defaultOption = document.createElement('option');
     defaultOption.value = "";
     defaultOption.textContent = "Select an action";
@@ -2159,157 +2212,47 @@ async function applyBulkAction() {
         option.textContent = button.name;
         actionSelect.appendChild(option);
     });
-    modal.appendChild(actionSelect);
 
     const applyButton = document.createElement('button');
     applyButton.textContent = 'Apply Action';
-    applyButton.onclick = async () => {
-        if (!actionSelect.value) {
-            alert('Please select an action before applying.');
-            return;
-        }
-        const selectedActionId = actionSelect.value;
-        const selectedAction = availableActions.find(button => button.id === selectedActionId);
-        if (selectedAction) {
-            const observationIds = Array.from(selectedObservations);
-            const confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${observationIds.length} observations?`;
-            if (confirm(confirmMessage)) {
-                const observationIds = Array.from(selectedObservations);
-                const totalObservations = observationIds.length;
-                let processedObservations = 0;
-
-                progressFill.style.width = '0%';
-
-                console.log('Confirm clicked, generating preActionStates');
-                const preActionStates = await generatePreActionStates(observationIds);
-                console.log('PreActionStates generated:', preActionStates);
-                
-                const preliminaryUndoRecord = generatePreliminaryUndoRecord(selectedAction, observationIds, preActionStates);
-                
-                const results = [];
-                let skippedObservations = [];
-
-                for (const observationId of observationIds) {
-                    for (const action of selectedAction.actions) {
-                        try {
-                            if (action.type === 'observationField' || action.type === 'copyObservationField') {
-                                let fieldId = action.fieldId;
-                                let fieldValue = action.fieldValue;
-                
-                                if (action.type === 'copyObservationField') {
-                                    fieldId = action.targetFieldId;
-                                    fieldValue = getExistingObservationFieldValue(preActionStates[observationId], action.sourceFieldId);
-                                    if (fieldValue === null) {
-                                        console.log(`Observation ${observationId}: Source field ${action.sourceFieldId} does not exist or is empty - skipping`);
-                                        continue;
-                                    }
-                                }
-                
-                                const existingValue = getExistingObservationFieldValue(preActionStates[observationId], fieldId);
-                                console.log(`Observation ${observationId}: Existing value: "${existingValue}", Desired value: "${fieldValue}"`);
-                                
-                                if (existingValue !== null) {
-                                    if (existingValue === fieldValue) {
-                                        console.log(`Observation ${observationId}: Existing value matches desired value - silently skipping`);
-                                    } else {
-                                        console.log(`Observation ${observationId}: Existing value differs from desired value - skipping and adding to skipped list`);
-                                        skippedObservations.push(observationId);
-                                    }
-                                    continue; // Skip to the next action
-                                }
-                            }
-                            
-                            console.log(`Performing action ${action.type} for observation ${observationId}`);
-                            const result = await performSingleAction(action, observationId, true);
-                            console.log(`Action result:`, result);
-                            if (result.success) {
-                                if (action.type === 'addComment' && result.commentUUID) {
-                                    const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
-                                        ua => ua.type === 'removeComment' && ua.commentBody === action.commentBody
-                                    );
-                                    if (undoAction) {
-                                        undoAction.commentUUID = result.commentUUID;
-                                        console.log(`Updated undo action with comment UUID: ${result.commentUUID}`);
-                                    }
-                                } else if (action.type === 'annotation' && result.annotationUUID) {
-                                    const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
-                                        ua => ua.type === 'removeAnnotation' && 
-                                            ua.attributeId === action.annotationField && 
-                                            ua.valueId === action.annotationValue
-                                    );
-                                    if (undoAction) {
-                                        undoAction.uuid = result.annotationUUID;
-                                    }
-                                }
-                            } else {
-                                console.error(`Action failed for observation ${observationId}:`, result.error);
-                                skippedObservations.push(observationId);
-                            }
-                            results.push({ observationId, action: action.type, success: result.success, error: result.error });
-                        } catch (error) {
-                            console.error(`Failed to perform action ${action.type} for observation ${observationId}:`, error);
-                            results.push({ observationId, action: action.type, success: false, error: error.toString() });
-                        }
-                    }
-
-                    // Update progress after each observation, even if it was skipped
-                    processedObservations++;
-                    const progress = (processedObservations / totalObservations) * 100;
-                    await updateProgressBar(progress);
-                }
-                await updateProgressBar(100);
-                await new Promise(resolve => setTimeout(resolve, 300));
-                const successCount = results.filter(r => r.success).length;
-                const totalActions = results.length;
-                const skippedCount = skippedObservations.length;
-                
-                if (skippedCount > 0) {
-                    const skippedURL = generateObservationURL(skippedObservations);
-                    console.log('Generated URL for skipped observations:', skippedURL);
-                    createSkippedActionsModal(skippedCount, skippedURL);
-                } else {
-                    console.log('No skipped actions to report');
-                    alert(`Bulk action applied: ${successCount} out of ${totalActions} actions completed successfully.`);
-                }
-                
-                // Generate undo record only for successful actions
-                const successfulResults = results.filter(r => r.success);
-                const undoRecord = generateUndoRecord(preliminaryUndoRecord, successfulResults);
-                if (undoRecord.affectedObservationsCount > 0) {
-                    await storeUndoRecord(undoRecord);
-                    console.log('Undo record stored:', undoRecord);
-                } else {
-                    console.log('No actions to undo, undo record not stored');
-                }
-
-                console.log('Bulk action results:', results);
-            }
-        } else {
-            alert('Selected action not found.');
-        }
-        document.body.removeChild(modal);
-    };
-    modal.appendChild(applyButton);
 
     const cancelButton = document.createElement('button');
     cancelButton.textContent = 'Cancel';
-    cancelButton.onclick = () => document.body.removeChild(modal);
-    modal.appendChild(cancelButton);
 
-    document.body.appendChild(modal);
+    actionSelect.onchange = () => {
+        const selectedAction = availableActions.find(button => button.id === actionSelect.value);
+        const disclaimer = document.getElementById('action-disclaimer');
+        
+        if (selectedAction) {
+            const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
 
-    // Function to update the title with the current number of selected observations
-    function updateTitle() {
-        const titleElement = document.getElementById('action-selection-title');
-        if (titleElement) {
-            titleElement.textContent = `Select Action for ${selectedObservations.size} Observations`;
+
+                if (hasDQIRemoval) {
+                    disclaimer.textContent += " Removing DQI votes cannot be undone in bulk due to API limitations.";
+                    disclaimer.style.display = 'block';
+                }                
+                else {
+                disclaimer.style.display = 'none';
+            }
+        } else {
+            disclaimer.style.display = 'none';
         }
+    };
+
+    return { actionSelect, applyButton, cancelButton };
+}
+
+function setupTitleUpdater(modal) {
+    const title = document.createElement('h2');
+    title.id = 'action-selection-title';
+    modal.insertBefore(title, modal.firstChild);
+
+    function updateTitle() {
+        title.textContent = `Select Action for ${selectedObservations.size} Observations`;
     }
 
-    // Initial title update
     updateTitle();
 
-    // Set up a MutationObserver to watch for changes in the selected observations
     const observer = new MutationObserver(updateTitle);
     observer.observe(document.body, { 
         subtree: true, 
@@ -2317,8 +2260,168 @@ async function applyBulkAction() {
         attributeFilter: ['class']
     });
 
-    // Clean up the observer when the modal is closed
-    cancelButton.addEventListener('click', () => observer.disconnect());
+    return observer;
+}
+
+function setupModalCloseHandler(cancelButton, modal) {
+    cancelButton.onclick = () => document.body.removeChild(modal);
+}
+
+async function executeBulkAction(selectedAction, modal) {
+    const observationIds = Array.from(selectedObservations);
+    const totalObservations = observationIds.length;
+    let processedObservations = 0;
+    const progressFill = modal.querySelector('.progress-fill');
+    progressFill.style.width = '0%';
+
+    const preActionStates = await generatePreActionStates(observationIds);
+    const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedAction, observationIds, preActionStates);  
+    
+    const results = [];
+    const skippedObservations = [];
+
+    for (const observationId of observationIds) {
+        for (const action of selectedAction.actions) {
+            await executeAction(action, observationId, preActionStates, preliminaryUndoRecord, results, skippedObservations);
+        }
+        processedObservations++;
+        await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
+    }
+    await updateProgressBar(progressFill, 100);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    await handleActionResults(results, skippedObservations, preliminaryUndoRecord);
+}
+
+async function executeAction(action, observationId, preActionStates, preliminaryUndoRecord, results, skippedObservations) {
+    try {
+        const shouldExecuteAction = determineIfActionShouldExecute(action, observationId, preActionStates, skippedObservations);
+        if (shouldExecuteAction) {
+            console.log(`Performing action ${action.type} for observation ${observationId}`);
+            const result = await performSingleAction(action, observationId, true);
+            console.log(`Action result:`, result);
+            handleActionResult(result, action, observationId, preliminaryUndoRecord, results, skippedObservations);
+        }
+    } catch (error) {
+        console.error(`Failed to perform action ${action.type} for observation ${observationId}:`, error);
+        results.push({ observationId, action: action.type, success: false, error: error.toString() });
+    }
+}
+
+function determineIfActionShouldExecute(action, observationId, preActionStates, skippedObservations) {
+    if (action.type === 'qualityMetric') {
+        const currentState = getCurrentQualityMetricState(observationId, action.metric);
+        console.log(`Current state for ${action.metric}:`, currentState);
+        
+        if (currentState === action.vote) {
+            console.log(`Skipping ${action.metric} for observation ${observationId} as it's already in the desired state`);
+            return false;
+        }
+    } else if (action.type === 'observationField' || action.type === 'copyObservationField') {
+        let fieldId = action.fieldId;
+        let fieldValue = action.fieldValue;
+
+        if (action.type === 'copyObservationField') {
+            fieldId = action.targetFieldId;
+            fieldValue = getExistingObservationFieldValue(preActionStates[observationId], action.sourceFieldId);
+            if (fieldValue === null) {
+                console.log(`Observation ${observationId}: Source field ${action.sourceFieldId} does not exist or is empty - skipping`);
+                return false;
+            }
+        }
+
+        const existingValue = getExistingObservationFieldValue(preActionStates[observationId], fieldId);
+        console.log(`Observation ${observationId}: Existing value: "${existingValue}", Desired value: "${fieldValue}"`);
+        
+        if (existingValue !== null) {
+            if (existingValue === fieldValue) {
+                console.log(`Observation ${observationId}: Existing value matches desired value - silently skipping`);
+                return false;
+            } else {
+                console.log(`Observation ${observationId}: Existing value differs from desired value - skipping and adding to skipped list`);
+                skippedObservations.push(observationId);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+function handleActionResult(result, action, observationId, preliminaryUndoRecord, results, skippedObservations) {
+    if (result.success) {
+        if (action.type === 'addComment' && result.commentUUID) {
+            const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
+                ua => ua.type === 'removeComment' && ua.commentBody === action.commentBody
+            );
+            if (undoAction) {
+                undoAction.commentUUID = result.commentUUID;
+                console.log(`Updated undo action with comment UUID: ${result.commentUUID}`);
+            }
+        } else if (action.type === 'annotation' && result.annotationUUID) {
+            const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
+                ua => ua.type === 'removeAnnotation' && 
+                    ua.attributeId === action.annotationField && 
+                    ua.valueId === action.annotationValue
+            );
+            if (undoAction) {
+                undoAction.uuid = result.annotationUUID;
+            }
+        }
+    } else {
+        console.error(`Action failed for observation ${observationId}:`, result.error);
+        skippedObservations.push(observationId);
+    }
+    results.push({ observationId, action: action.type, success: result.success, error: result.error });
+}
+
+async function handleActionResults(results, skippedObservations, preliminaryUndoRecord) {
+    const successCount = results.filter(r => r.success).length;
+    const totalActions = results.length;
+    const skippedCount = skippedObservations.length;
+    
+    if (skippedCount > 0) {
+        const skippedURL = generateObservationURL(skippedObservations);
+        console.log('Generated URL for skipped observations:', skippedURL);
+        createSkippedActionsModal(skippedCount, skippedURL);
+    } else {
+        console.log('No skipped actions to report');
+        alert(`Bulk action applied: ${successCount} out of ${totalActions} actions completed successfully.`);
+    }
+    
+    const successfulResults = results.filter(r => r.success);
+    const undoRecord = generateUndoRecord(preliminaryUndoRecord, successfulResults);
+    if (undoRecord.affectedObservationsCount > 0) {
+        await storeUndoRecord(undoRecord);
+        console.log('Undo record stored:', undoRecord);
+    } else {
+        console.log('No actions to undo, undo record not stored');
+    }
+
+    console.log('Bulk action results:', results);
+}
+
+async function updateProgressBar(progressFill, progress) {
+    return new Promise(resolve => {
+        requestAnimationFrame(() => {
+            progressFill.style.width = `${progress}%`;
+            void progressFill.offsetWidth;
+            requestAnimationFrame(resolve);
+        });
+    });
+}
+
+async function getCurrentQualityMetricState(observationId, metric) {
+    try {
+        const response = await makeAPIRequest(`/observations/${observationId}`);
+        const observation = response.results[0];
+        const qualityMetric = observation.quality_metrics.find(qm => qm.metric === metric);
+        if (qualityMetric) {
+            return qualityMetric.agree ? 'agree' : 'disagree';
+        }
+        return 'unknown';
+    } catch (error) {
+        console.error(`Error fetching quality metric state for observation ${observationId}:`, error);
+        return 'unknown';
+    }
 }
 
 function getExistingObservationFieldValue(observationState, fieldId) {
@@ -2377,7 +2480,8 @@ function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-function generatePreliminaryUndoRecord(action, observationIds, preActionStates) {
+async function generatePreliminaryUndoRecord(action, observationIds, preActionStates) {
+    console.log('Generating preliminary undo record for action:', action.name);
     let undoRecord = {
         id: generateUniqueId(),
         timestamp: new Date().toISOString(),
@@ -2385,12 +2489,15 @@ function generatePreliminaryUndoRecord(action, observationIds, preActionStates) 
         observations: {}
     };
 
-    observationIds.forEach(observationId => {
+    for (const observationId of observationIds) {
         undoRecord.observations[observationId] = {
             undoActions: []
         };
 
-        action.actions.forEach(actionItem => {
+        const currentQualityMetrics = await getCurrentQualityMetricState(observationId);
+        console.log(`Current quality metrics for observation ${observationId}:`, currentQualityMetrics);
+
+        for (const actionItem of action.actions) {
             let undoAction;
             switch (actionItem.type) {
                 case 'observationField':
@@ -2428,11 +2535,16 @@ function generatePreliminaryUndoRecord(action, observationIds, preActionStates) 
                     });
                     break;
                 case 'qualityMetric':
-                    undoRecord.observations[observationId].undoActions.push({
-                        type: 'removeQualityMetric',
-                        metric: actionItem.metric,
-                        vote: actionItem.vote
-                    });
+                    if (actionItem.vote !== 'remove') {
+                        undoAction = {
+                            type: 'qualityMetric',
+                            metric: actionItem.metric,
+                            vote: actionItem.vote
+                        };
+                        console.log(`Generated undo action for quality metric addition:`, undoAction);
+                    } else {
+                        console.log(`Skipping undo action generation for DQI removal`);
+                    }
                     break;
                 case 'copyObservationField':
                     undoRecord.observations[observationId].undoActions.push({
@@ -2445,9 +2557,10 @@ function generatePreliminaryUndoRecord(action, observationIds, preActionStates) 
             if (undoAction) {
                 undoRecord.observations[observationId].undoActions.push(undoAction);
             }
-        });
-    });
+        }
+    }
 
+    console.log('Generated preliminary undo record:', undoRecord);
     return undoRecord;
 }
 
