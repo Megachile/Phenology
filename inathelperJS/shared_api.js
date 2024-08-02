@@ -425,7 +425,6 @@ function removeUndoRecord(id, callback) {
         });
     });
 }
-
 function createUndoRecordsModal(undoRecords, onUndoClick) {
     const modal = document.createElement('div');
     modal.style.cssText = `
@@ -444,21 +443,34 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
     const modalContent = document.createElement('div');
     modalContent.style.cssText = `
         background-color: white;
-        padding: 20px;
         border-radius: 5px;
         width: 80%;
         max-width: 600px;
         max-height: 80%;
-        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
         position: relative;
     `;
+
+    const headerSection = document.createElement('div');
+    headerSection.style.cssText = `
+        position: sticky;
+        top: 0;
+        background-color: white;
+        padding: 20px 20px 10px;
+        border-bottom: 1px solid #ccc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 1;
+    `;
+    const title = document.createElement('h2');
+    title.textContent = 'Undo Records';
+    title.style.margin = '0';
 
     const closeButton = document.createElement('button');
     closeButton.textContent = '\u2715'; // Unicode "times" symbol
     closeButton.style.cssText = `
-        position: absolute;
-        top: 10px;
-        right: 10px;
         font-size: 16px;
         background: #f0f0f0;
         border: 1px solid #ccc;
@@ -474,16 +486,50 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
         line-height: 1;
     `;
     closeButton.onclick = () => document.body.removeChild(modal);
-    modalContent.appendChild(closeButton);
 
-    const title = document.createElement('h2');
-    title.textContent = 'Undo Records';
-    title.style.marginTop = '0';
-    modalContent.appendChild(title);
+    headerSection.appendChild(title);
+    headerSection.appendChild(closeButton);
 
-    const progressBar = createProgressBar();
-    progressBar.style.display = 'none'; // Initially hidden
+    const progressBarContainer = document.createElement('div');
+    progressBarContainer.style.cssText = `
+        width: 100%;
+        padding: 10px 20px;
+        box-sizing: border-box;
+    `;
+
+    const progressBar = document.createElement('div');
+    progressBar.style.cssText = `
+        width: 100%;
+        height: 20px;
+        background-color: #f0f0f0;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid #ccc;
+    `;
+
+    const progressFill = document.createElement('div');
+    progressFill.classList.add('progress-fill');
+    progressFill.style.cssText = `
+        width: 0%;
+        height: 100%;
+        background-color: #4CAF50;
+        transition: width 0.3s ease;
+    `;
+
+    progressBar.appendChild(progressFill);
+    progressBarContainer.appendChild(progressBar);
+    progressBarContainer.style.display = 'none'; // Initially hidden
+
+    const contentSection = document.createElement('div');
+    contentSection.style.cssText = `
+        padding: 0 20px 20px;
+        overflow-y: auto;
+        flex-grow: 1;
+    `;
+
+    modalContent.appendChild(headerSection);
     modalContent.appendChild(progressBar);
+    modalContent.appendChild(contentSection);
 
     undoRecords.forEach(record => {
         const recordDiv = document.createElement('div');
@@ -531,30 +577,32 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
         const undoButton = document.createElement('button');
         undoButton.textContent = record.undone ? 'Undone' : 'Undo';
         undoButton.disabled = record.undone;
-        undoButton.onclick = function() {
+        undoButton.onclick = async function() {
             progressBar.style.display = 'block'; // Show progress bar
-            performUndoActions(record, progressBar.querySelector('.progress-fill'))
-                .then((result) => {
-                    if (result.success) {
-                        markRecordAsUndone(record.id);
-                        undoButton.textContent = 'Undone';
-                        undoButton.disabled = true;
-                        recordDiv.style.textDecoration = 'line-through';
-                        console.log('All undo actions completed successfully:', result.results);
-                    } else {
-                        console.error('Some undo actions failed:', result.results);
-                        alert('Some undo actions failed. Please check the console for details.');
-                    }
-                    progressBar.style.display = 'none'; // Hide progress bar after completion
-                })
-                .catch(error => {
-                    console.error('Error in performUndoActions:', error);
-                    alert(`Error performing undo actions: ${error.message}`);
-                    progressBar.style.display = 'none'; // Hide progress bar on error
-                });
+            const progressFill = progressBar.querySelector('.progress-fill');
+            try {
+                const result = await performUndoActions(record, progressFill);
+                await updateProgressBar(progressFill, 100);
+                await new Promise(resolve => setTimeout(resolve, 300));
+                if (result.success) {
+                    markRecordAsUndone(record.id);
+                    undoButton.textContent = 'Undone';
+                    undoButton.disabled = true;
+                    recordDiv.style.textDecoration = 'line-through';
+                    console.log('All undo actions completed successfully:', result.results);
+                } else {
+                    console.error('Some undo actions failed:', result.results);
+                    alert('Some undo actions failed. Please check the console for details.');
+                }
+            } catch (error) {
+                console.error('Error in performUndoActions:', error);
+                alert(`Error performing undo actions: ${error.message}`);
+            } finally {
+                progressBar.style.display = 'none'; // Hide progress bar after completion
+            }
         };
         recordDiv.appendChild(undoButton);
-        modalContent.appendChild(recordDiv);
+        contentSection.appendChild(recordDiv);
     });
 
     modal.appendChild(modalContent);
@@ -787,7 +835,7 @@ function createProgressBar() {
         height: 20px;
         background-color: #f0f0f0;
         border-radius: 10px;
-        margin-top: 10px;
+        margin: 10px 0;
         overflow: hidden;
     `;
     const progressFill = document.createElement('div');
@@ -903,4 +951,16 @@ async function getJWT() {
     
     console.error('No JWT available');
     return null;
+}
+
+
+async function testJWT() {
+    try {
+        const response = await makeAPIRequest('/users/me');
+        console.log('JWT test response:', response);
+        return response && response.results && response.results[0] && response.results[0].id;
+    } catch (error) {
+        console.error('Error in JWT test:', error);
+        return false;
+    }
 }

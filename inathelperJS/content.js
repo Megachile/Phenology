@@ -53,20 +53,6 @@ const qualityMetrics = [
     { value: 'subject', label: 'Evidence related to a single subject' }
 ];
 
-
-
-// Function to test the JWT
-async function testJWT() {
-    try {
-        const response = await makeAPIRequest('/users/me');
-        console.log('JWT test response:', response);
-        return response && response.results && response.results[0] && response.results[0].id;
-    } catch (error) {
-        console.error('Error in JWT test:', error);
-        return false;
-    }
-}
-
 function toggleShortcutList() {
     if (shortcutListVisible) {
         document.getElementById('shortcut-list-container').remove();
