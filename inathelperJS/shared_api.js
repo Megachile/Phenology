@@ -493,6 +493,28 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
         actionInfo.style.margin = '0 0 10px 0';
         recordDiv.appendChild(actionInfo);
 
+        // Add disclaimers
+        const disclaimers = [];
+                
+        // Check for taxon identification actions
+        if (Object.values(record.observations).some(obs => obs.undoActions.some(action => action.type === 'removeIdentification'))) {
+            disclaimers.push("Warning: Undoing this action will remove the added identification but won't restore any prior identifications.");
+        }
+
+        // Check for DQI removal actions
+        if (Object.values(record.observations).some(obs => obs.undoActions.some(action => action.type === 'qualityMetric' && action.vote === 'remove'))) {
+            disclaimers.push("Note: Removed DQI votes cannot be restored due to API limitations.");
+        }
+
+        if (disclaimers.length > 0) {
+            const disclaimerParagraph = document.createElement('p');
+            disclaimerParagraph.style.color = 'red';
+            disclaimerParagraph.style.fontStyle = 'italic';
+            disclaimerParagraph.style.fontSize = '0.9em';
+            disclaimerParagraph.textContent = disclaimers.join(' ');
+            recordDiv.appendChild(disclaimerParagraph);
+        }
+
         const observationIds = Object.keys(record.observations);
         const observationUrl = generateObservationURL(observationIds);
 
@@ -689,7 +711,22 @@ async function performSingleUndoAction(observationId, undoAction) {
                 return { success: false, error: 'Comment UUID not found' };
             }
         case 'removeIdentification':
-            return makeAPIRequest(`/identifications/${undoAction.identificationId}`, { method: 'DELETE' });
+            if (undoAction.identificationUUID) {
+                try {
+                    const response = await makeAPIRequest(`/identifications/${undoAction.identificationUUID}`, { method: 'DELETE' });
+                    console.log('Identification deletion response:', response);
+                    return { success: true, action: 'removeIdentification', message: 'Identification removed successfully' };
+                } catch (error) {
+                    console.error('Error removing identification:', error);
+                    if (error.response && error.response.status === 404) {
+                        return { success: true, action: 'removeIdentification', message: 'Identification already removed or not found' };
+                    }
+                    return { success: false, error: error.toString() };
+                }
+            } else {
+                console.error('Identification UUID not found for undo action');
+                return { success: false, error: 'Identification UUID not found' };
+            }
         case 'qualityMetric':
             if (undoAction.vote === 'remove') {
                 console.log('Skipping undo for DQI removal as it\'s not supported');

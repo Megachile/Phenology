@@ -821,13 +821,14 @@ async function addTaxonId(observationId, taxonId, comment = '') {
             return { success: false, message: 'Taxon ID not added', data: responseData };
         } else {
             console.log('Taxon ID added successfully:', responseData);
-            return { success: true, data: responseData };
+            return { success: true, data: responseData, identificationUUID: responseData.uuid };
         }
     } catch (error) {
         console.error('Error adding Taxon ID:', error);
         return { success: false, error: error.toString() };
     }
 }
+
 async function handleQualityMetricAPI(observationId, metric, vote) {
     const jwt = await getJWT();
     if (!jwt) {
@@ -1375,7 +1376,10 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
             return { ...commentResult, commentUUID: commentResult.uuid };
         case 'addTaxonId':
             const idResult = await addTaxonId(observationId, action.taxonId, action.comment);
-            return { ...idResult, identificationId: idResult.data.id };
+            return { 
+                ...idResult, 
+                identificationUUID: idResult.identificationUUID 
+            };
         case 'qualityMetric':
             return handleQualityMetricAPI(observationId, action.metric, action.vote);
         default:
@@ -2165,6 +2169,7 @@ async function applyBulkAction() {
         const selectedAction = availableActions.find(button => button.id === actionSelect.value);
         if (selectedAction) {
             const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
+            const hasTaxonId = selectedAction.actions.some(action => action.type === 'addTaxonId');
 
             let confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${selectedObservations.size} observation(s)?\n\n`;
             confirmMessage += "This action includes:\n";
@@ -2203,6 +2208,10 @@ async function applyBulkAction() {
 
             if (hasDQIRemoval) {
                 confirmMessage += "\n\nPlease note: Removing DQI votes cannot be undone in bulk due to API limitations.";
+            }
+
+            if (hasTaxonId) {
+                confirmMessage += "\n\nPlease note: Adding taxon IDs will withdraw any existing IDs you've made. Undoing this action will not restore previous IDs.";
             }
 
             if (confirm(confirmMessage)) {
@@ -2299,13 +2308,23 @@ function createModalControls(availableActions) {
         
         if (selectedAction) {
             const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
-
-
-                if (hasDQIRemoval) {
-                    disclaimer.textContent += " Removing DQI votes cannot be undone in bulk due to API limitations.";
-                    disclaimer.style.display = 'block';
-                }                
-                else {
+            const hasTaxonId = selectedAction.actions.some(action => action.type === 'addTaxonId');
+        
+            let disclaimerText = '';
+        
+            if (hasDQIRemoval) {
+                disclaimerText += "Removing DQI votes cannot be undone in bulk due to API limitations.";
+            }
+        
+            if (hasTaxonId) {
+                if (disclaimerText) disclaimerText += "\n\n";
+                disclaimerText += "Adding taxon IDs will remove any existing IDs you've made. Undoing this action will not restore previous IDs.";
+            }
+        
+            if (disclaimerText) {
+                disclaimer.textContent = disclaimerText;
+                disclaimer.style.display = 'block';
+            } else {
                 disclaimer.style.display = 'none';
             }
         } else {
@@ -2432,12 +2451,20 @@ function handleActionResult(result, action, observationId, preliminaryUndoRecord
             }
         } else if (action.type === 'annotation' && result.annotationUUID) {
             const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
-                ua => ua.type === 'removeAnnotation' && 
-                    ua.attributeId === action.annotationField && 
+                ua => ua.type === 'removeAnnotation' &&
+                    ua.attributeId === action.annotationField &&
                     ua.valueId === action.annotationValue
             );
             if (undoAction) {
                 undoAction.uuid = result.annotationUUID;
+            }
+        } else if (action.type === 'addTaxonId' && result.identificationUUID) {
+            const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
+                ua => ua.type === 'removeIdentification' && ua.taxonId === action.taxonId
+            );
+            if (undoAction) {
+                undoAction.identificationUUID = result.identificationUUID;
+                console.log(`Updated undo action with identification UUID: ${result.identificationUUID}`);
             }
         }
     } else {
@@ -2600,22 +2627,19 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
                     };
                     break;
                 case 'addTaxonId':
-                    undoRecord.observations[observationId].undoActions.push({
+                    undoAction = {
                         type: 'removeIdentification',
-                        taxonId: actionItem.taxonId
-                    });
+                        taxonId: actionItem.taxonId,
+                        identificationUUID: null // This will be filled in after the action is performed
+                    };
                     break;
                 case 'qualityMetric':
-                    if (actionItem.vote !== 'remove') {
                         undoAction = {
                             type: 'qualityMetric',
                             metric: actionItem.metric,
                             vote: actionItem.vote
                         };
                         console.log(`Generated undo action for quality metric addition:`, undoAction);
-                    } else {
-                        console.log(`Skipping undo action generation for DQI removal`);
-                    }
                     break;
                 case 'copyObservationField':
                     undoRecord.observations[observationId].undoActions.push({
