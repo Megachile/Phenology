@@ -2697,7 +2697,6 @@ function downloadUndoRecord(undoRecord) {
     URL.revokeObjectURL(url);
 }
 
-
 function generateUndoApiCalls(undoRecord) {
     let apiCalls = [];
 
@@ -2719,7 +2718,7 @@ function generateUndoApiCalls(undoRecord) {
                     }
                     break;
                 case 'removeFromProject':
-                    apiCalls.push(`DELETE /project_observations?observation_id=${observationId}&project_id=${undoAction.projectId}`);
+                    apiCalls.push(`DELETE /project_observations/${undoAction.projectObservationId}`);
                     break;
                 case 'removeComment':
                     apiCalls.push(`DELETE /comments/:id (ID to be determined after action execution)`);

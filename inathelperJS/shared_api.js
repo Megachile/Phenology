@@ -653,9 +653,8 @@ async function performSingleUndoAction(observationId, undoAction) {
                     return { success: true, message: 'No action needed' };
                 }
         case 'removeFromProject':
-            return makeAPIRequest(`/project_observations`, {
-                method: 'DELETE',
-                body: JSON.stringify({ observation_id: observationId, project_id: undoAction.projectId })
+            return makeAPIRequest(`/project_observations/${undoAction.projectObservationId}`, {
+                method: 'DELETE'
             });
         case 'removeComment':
             console.log('Attempting to remove comment:', undoAction);

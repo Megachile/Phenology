@@ -95,8 +95,8 @@ document.addEventListener('DOMContentLoaded', function() {
         link.href = url;  // Use the url directly, without additional encoding
         link.target = '_blank';
         link.textContent = url;
-        generatedUrlDiv.innerHTML = '';
-        generatedUrlDiv.appendChild(link);
+        /*generatedUrlDiv.innerHTML = '';
+        generatedUrlDiv.appendChild(link); */
     });
 
     const geoInputs = [
@@ -266,7 +266,6 @@ function addField(type) {
            <input type="text" id="${type}${fieldCount}" placeholder="Enter ID taxon">
             <input type="text" id="${type}Id${fieldCount}" placeholder="ID Taxon ID" readonly>
             <button class="removeFieldButton">Remove</button>
-            <label><input type="checkbox" class="negationCheckbox"> Without</label>
             `;
         } else if (type === 'idTaxon') {
             fieldGroup.innerHTML = `
