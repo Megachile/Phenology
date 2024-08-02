@@ -616,12 +616,11 @@ async function performSingleUndoAction(observationId, undoAction) {
                     try {
                         const response = await makeAPIRequest(`/annotations/${undoAction.uuid}`, { method: 'DELETE' });
                         console.log('Annotation deletion response:', response);
-                        // iNaturalist might return a 204 No Content for successful deletion
                         return { success: true, action: 'removeAnnotation', message: 'Annotation removed successfully' };
                     } catch (error) {
                         console.error('Error removing annotation:', error);
-                        // If the error is 404 Not Found, the annotation might have already been deleted
-                        if (error.status === 404) {
+                        if (error.message && error.message.includes('HTTP error! status: 404')) {
+                            console.log('Annotation not found (404). It may have been already deleted.');
                             return { success: true, action: 'removeAnnotation', message: 'Annotation already removed or not found' };
                         }
                         return { success: false, error: error.toString() };
@@ -701,7 +700,8 @@ async function performSingleUndoAction(observationId, undoAction) {
                     return { success: true, action: 'removeComment', message: 'Comment removed successfully' };
                 } catch (error) {
                     console.error('Error removing comment:', error);
-                    if (error.response && error.response.status === 404) {
+                    if (error.message && error.message.includes('HTTP error! status: 404')) {
+                        console.log('Comment not found (404). It may have been already deleted.');
                         return { success: true, action: 'removeComment', message: 'Comment already removed or not found' };
                     }
                     return { success: false, error: error.toString() };
@@ -718,7 +718,8 @@ async function performSingleUndoAction(observationId, undoAction) {
                     return { success: true, action: 'removeIdentification', message: 'Identification removed successfully' };
                 } catch (error) {
                     console.error('Error removing identification:', error);
-                    if (error.response && error.response.status === 404) {
+                    if (error.message && error.message.includes('HTTP error! status: 404')) {
+                        console.log('Identification not found (404). It may have been already deleted.');
                         return { success: true, action: 'removeIdentification', message: 'Identification already removed or not found' };
                     }
                     return { success: false, error: error.toString() };
