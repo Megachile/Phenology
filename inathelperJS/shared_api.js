@@ -179,36 +179,54 @@ function setupAutocompleteDropdown(inputElement, lookupFunction, onSelectFunctio
         debounceTimeout = setTimeout(() => {
             if (inputElement.value.length < 2) {
                 suggestionContainer.innerHTML = '';
+                suggestionContainer.style.display = 'none'; // Hide when input is too short
                 return;
             }
             lookupFunction(inputElement.value)
-        .then(results => {
-            suggestionContainer.innerHTML = '';
-            results.forEach(result => {
-                const suggestion = document.createElement('div');
-                suggestion.className = 'autocomplete-suggestion';
-                if (result.icon_url) {
-                    suggestion.innerHTML = `<img src="${result.icon_url}" alt="${result.login}" style="width: 30px; height: 30px; margin-right: 10px;">`;
+            .then(results => {
+                suggestionContainer.innerHTML = '';
+                if (results.length > 0) {
+                    suggestionContainer.style.display = 'block'; // Show when there are results
+                    results.forEach(result => {
+                        const suggestion = document.createElement('div');
+                        suggestion.className = 'autocomplete-suggestion';
+                        if (result.icon_url) {
+                            suggestion.innerHTML = `<img src="${result.icon_url}" alt="${result.login}" style="width: 30px; height: 30px; margin-right: 10px;">`;
+                        }
+                        suggestion.innerHTML += result.displayName || result.name || result.title || result.login;
+                        if (result.usageCount !== undefined) {
+                            suggestion.innerHTML += ` (${result.usageCount} uses)`;
+                        }
+                        suggestion.addEventListener('click', () => {
+                            onSelectFunction(result, inputElement);
+                            inputElement.value = result.login || result.name || result.title;
+                            suggestionContainer.innerHTML = '';
+                            suggestionContainer.style.display = 'none'; // Hide after selection
+                        });
+                        suggestionContainer.appendChild(suggestion);
+                    });
+                } else {
+                    suggestionContainer.style.display = 'none'; // Hide if no results
                 }
-                suggestion.innerHTML += result.displayName || result.name || result.title || result.login;
-                if (result.usageCount !== undefined) {
-                    suggestion.innerHTML += ` (${result.usageCount} uses)`;
-                }
-                suggestion.addEventListener('click', () => {
-                    onSelectFunction(result, inputElement);
-                    inputElement.value = result.login || result.name || result.title;
-                    suggestionContainer.innerHTML = '';
-                });
-                suggestionContainer.appendChild(suggestion);
+            })
+            .catch(error => {
+                console.error('Error fetching suggestions:', error);
+                suggestionContainer.style.display = 'none'; // Hide on error
             });
-        })
-        .catch(error => console.error('Error fetching suggestions:', error));
         }, 300);
+    });
+
+    // Hide suggestions when input loses focus
+    inputElement.addEventListener('blur', () => {
+        setTimeout(() => {
+            suggestionContainer.style.display = 'none';
+        }, 200); // Small delay to allow for selection
     });
 
     document.addEventListener('click', (event) => {
         if (!inputElement.contains(event.target) && !suggestionContainer.contains(event.target)) {
             suggestionContainer.innerHTML = '';
+            suggestionContainer.style.display = 'none'; // Hide when clicking outside
         }
     });
 }
