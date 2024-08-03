@@ -75,15 +75,17 @@ function toggleShortcutList() {
     }
   }, 100);
   
-  const observer = new MutationObserver((mutations) => {
+const observer = new MutationObserver((mutations) => {
     const modal = document.querySelector('.ObservationModal.FullScreenModal');
     const enableButton = document.getElementById('enable-bulk-mode-button');
     const bulkContainer = document.getElementById('bulk-action-container');
 
-    if (modal) {
-        if (enableButton) enableButton.style.display = 'none';
-    } else {
-        if (enableButton && !bulkActionModeEnabled) enableButton.style.display = 'block';
+    if (!bulkActionManuallyHidden) {
+        if (modal) {
+            if (enableButton) enableButton.style.display = 'none';
+        } else {
+            if (enableButton && !bulkActionModeEnabled) enableButton.style.display = 'block';
+        }
     }
 
     if (modal) {
@@ -147,6 +149,8 @@ function createShortcutList() {
     });
 }
 
+let bulkActionManuallyHidden = false;
+
 function toggleBulkActionVisibility() {
     const bulkButtonContainer = document.getElementById('bulk-action-container');
     const enableBulkModeButton = document.getElementById('enable-bulk-mode-button');
@@ -155,7 +159,9 @@ function toggleBulkActionVisibility() {
         if (bulkButtonContainer.style.display !== 'none' || enableBulkModeButton.style.display !== 'none') {
             bulkButtonContainer.style.display = 'none';
             enableBulkModeButton.style.display = 'none';
+            bulkActionManuallyHidden = true;
         } else {
+            bulkActionManuallyHidden = false;
             if (bulkActionModeEnabled) {
                 bulkButtonContainer.style.display = 'block';
                 enableBulkModeButton.style.display = 'none';
