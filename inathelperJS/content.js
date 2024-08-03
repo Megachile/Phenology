@@ -2129,7 +2129,8 @@ async function applyBulkAction() {
             selectedAction.actions.forEach(action => {
                 switch (action.type) {
                     case 'observationField':
-                        confirmMessage += `- Add observation field: ${action.fieldName} = ${action.fieldValue}\n`;
+                        const displayValue = action.displayValue || action.fieldValue;
+                        confirmMessage += `- Add observation field: ${action.fieldName} = ${displayValue}\n`;
                         break;
                     case 'annotation':
                         const attribute = Object.entries(controlledTerms).find(([_, value]) => value.id === parseInt(action.annotationField));
