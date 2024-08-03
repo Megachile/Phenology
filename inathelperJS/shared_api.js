@@ -442,10 +442,9 @@ function removeUndoRecord(id, callback) {
             callback();
         });
     });
-}
-function createUndoRecordsModal(undoRecords, onUndoClick) {
-    const modal = document.createElement('div');
-    modal.style.cssText = `
+}function createUndoRecordsModal(undoRecords, onUndoClick) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
@@ -464,10 +463,10 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
         border-radius: 5px;
         width: 80%;
         max-width: 600px;
-        max-height: 80%;
+        max-height: 80vh;
         display: flex;
         flex-direction: column;
-        position: relative;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     `;
 
     const headerSection = document.createElement('div');
@@ -475,7 +474,7 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
         position: sticky;
         top: 0;
         background-color: white;
-        padding: 20px 20px 10px;
+        padding: 20px;
         border-bottom: 1px solid #ccc;
         display: flex;
         justify-content: space-between;
@@ -487,7 +486,7 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
     title.style.margin = '0';
 
     const closeButton = document.createElement('button');
-    closeButton.textContent = '\u2715'; // Unicode "times" symbol
+    closeButton.textContent = '\u2715';
     closeButton.style.cssText = `
         font-size: 16px;
         background: #f0f0f0;
@@ -503,59 +502,29 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
         padding: 0;
         line-height: 1;
     `;
-    closeButton.onclick = () => document.body.removeChild(modal);
-
-    headerSection.appendChild(title);
-    headerSection.appendChild(closeButton);
-
-    const progressBarContainer = document.createElement('div');
-    progressBarContainer.style.cssText = `
-        width: 100%;
-        padding: 10px 20px;
-        box-sizing: border-box;
-    `;
-
-    const progressBar = document.createElement('div');
-    progressBar.style.cssText = `
-        width: 100%;
-        height: 20px;
-        background-color: #f0f0f0;
-        border-radius: 10px;
-        overflow: hidden;
-        border: 1px solid #ccc;
-    `;
-
-    const progressFill = document.createElement('div');
-    progressFill.classList.add('progress-fill');
-    progressFill.style.cssText = `
-        width: 0%;
-        height: 100%;
-        background-color: #4CAF50;
-        transition: width 0.3s ease;
-    `;
-
-    progressBar.appendChild(progressFill);
-    progressBarContainer.appendChild(progressBar);
-    progressBarContainer.style.display = 'none'; // Initially hidden
+    closeButton.onclick = () => document.body.removeChild(overlay);
 
     const contentSection = document.createElement('div');
     contentSection.style.cssText = `
-        padding: 0 20px 20px;
+        padding: 20px;
         overflow-y: auto;
         flex-grow: 1;
     `;
-
+    
+    headerSection.appendChild(title);
+    headerSection.appendChild(closeButton);
     modalContent.appendChild(headerSection);
+    const progressBar = createProgressBar();
     modalContent.appendChild(progressBar);
     modalContent.appendChild(contentSection);
 
-    undoRecords.forEach(record => {
+    undoRecords.forEach((record, index) => {
         const recordDiv = document.createElement('div');
         recordDiv.style.cssText = `
             border: 1px solid #ccc;
             border-radius: 5px;
-            padding: 10px;
-            margin-bottom: 10px;
+            padding: 15px;
+            margin-bottom: ${index < undoRecords.length - 1 ? '15px' : '0'};
             ${record.undone ? 'text-decoration: line-through;' : ''}
         `;
 
@@ -623,8 +592,8 @@ function createUndoRecordsModal(undoRecords, onUndoClick) {
         contentSection.appendChild(recordDiv);
     });
 
-    modal.appendChild(modalContent);
-    return modal;
+    overlay.appendChild(modalContent);
+    return overlay;
 }
 
 function getUndoRecords(callback) {
@@ -847,15 +816,23 @@ async function performSingleUndoAction(observationId, undoAction) {
 }
 
 function createProgressBar() {
+    const progressBarContainer = document.createElement('div');
+    progressBarContainer.style.cssText = `
+        width: 100%;
+        padding: 0 20px;
+        box-sizing: border-box;
+    `;
+
     const progressBar = document.createElement('div');
     progressBar.style.cssText = `
         width: 100%;
         height: 20px;
         background-color: #f0f0f0;
         border-radius: 10px;
-        margin: 10px 0;
         overflow: hidden;
+        margin: 10px 0;
     `;
+
     const progressFill = document.createElement('div');
     progressFill.classList.add('progress-fill');
     progressFill.style.cssText = `
@@ -864,8 +841,12 @@ function createProgressBar() {
         background-color: #4CAF50;
         transition: width 0.3s ease;
     `;
+
     progressBar.appendChild(progressFill);
-    return progressBar;
+    progressBarContainer.appendChild(progressBar);
+    progressBarContainer.style.display = 'none'; // Initially hidden
+
+    return progressBarContainer;
 }
 
 async function updateProgressBar(progressFill, progress) {
