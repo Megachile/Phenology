@@ -1113,26 +1113,75 @@ style.textContent = `
         border-radius: 6px;
         z-index: -1;
     }
- .modal-link {
+    .modal-link {
             word-break: break-all;
             color: blue;
             text-decoration: underline;
             cursor: pointer;
         }
 
-        .modal-button {
-            margin-top: 10px;
-            padding: 5px 10px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-        }
+    .modal-button {
+        margin-top: 10px;
+        padding: 5px 10px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+    }
 
-        .modal-button:hover {
-            background-color: #45a049;
-        }
+    .modal-button:hover {
+        background-color: #45a049;
+    }
+    #sort-buttons-container {
+        position: absolute;
+        top: -30px;
+        right: 0;
+        z-index: 10002;
+    }
+    #sort-button {
+        background-color: rgba(0, 0, 0, 0.1);
+        border: none;
+        border-radius: 3px;
+        padding: 5px 10px;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+    }
+    #sort-button:hover {
+        background-color: rgba(0, 0, 0, 0.2);
+    }
+    #sort-button::after {
+        content: '▼';
+        margin-left: 5px;
+        font-size: 10px;
+    }
+    #sort-dropdown {
+        display: none;
+        position: absolute;
+        bottom: 100%;
+        right: 0;
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+        padding: 5px 0;
+        margin-bottom: 5px;
+    }
+    #sort-dropdown button {
+        display: block;
+        width: 100%;
+        padding: 5px 10px;
+        text-align: left;
+        background: none;
+        border: none;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    #sort-dropdown button:hover {
+        background-color: #f0f0f0;
+    }
 `;
 document.head.appendChild(style);
 
@@ -1615,12 +1664,46 @@ function toggleRefresh() {
 
 function createDynamicButtons() {
     console.log('createDynamicButtons called');
-    browserAPI.storage.local.get(['customButtons', 'buttonOrder'], function(data) {
+    browserAPI.storage.local.get(['customButtons', 'buttonOrder', 'currentSortMethod'], function(data) {
         if (data.customButtons && data.customButtons.length > 0) {
             debugLog('Retrieved buttonOrder from storage:', data.buttonOrder);
             debugLog('Retrieved customButtons from storage:', data.customButtons);
             customShortcuts = [];
             buttonContainer.innerHTML = ''; // Clear existing buttons
+
+            // Remove any existing sort button container
+            const existingSortContainer = document.getElementById('sort-buttons-container');
+            if (existingSortContainer) {
+                existingSortContainer.remove();
+            }
+
+            // Create sort button container
+            const sortButtonContainer = document.createElement('div');
+            sortButtonContainer.id = 'sort-buttons-container';
+            buttonContainer.parentElement.insertBefore(sortButtonContainer, buttonContainer);
+
+            // Add sort button and dropdown
+            const sortButton = document.createElement('button');
+            sortButton.id = 'sort-button';
+            sortButton.innerHTML = getSortButtonText(data.currentSortMethod || 'default');
+            sortButton.title = 'Sort buttons';
+            sortButtonContainer.appendChild(sortButton);
+
+            const sortDropdown = document.createElement('div');
+            sortDropdown.id = 'sort-dropdown';
+            sortDropdown.innerHTML = `
+                <button id="sort-az">Sort A-Z</button>
+                <button id="sort-za">Sort Z-A</button>
+                <button id="sort-new-old">Sort New-Old</button>
+                <button id="sort-old-new">Sort Old-New</button>
+            `;
+            sortButtonContainer.appendChild(sortDropdown);
+
+            sortButton.addEventListener('click', toggleSortDropdown);
+            document.getElementById('sort-az').addEventListener('click', () => sortButtons('az'));
+            document.getElementById('sort-za').addEventListener('click', () => sortButtons('za'));
+            document.getElementById('sort-new-old').addEventListener('click', () => sortButtons('new-old'));
+            document.getElementById('sort-old-new').addEventListener('click', () => sortButtons('old-new'));
 
             const orderedButtons = data.buttonOrder || data.customButtons.map(config => config.id);
 
@@ -1866,7 +1949,7 @@ function saveButtonOrder() {
     const buttons = document.querySelectorAll('.button-ph');
     const order = Array.from(buttons).map(button => button.dataset.buttonId);
     browserAPI.storage.local.set({ buttonOrder: order }, function() {
-        //debugLog('Button order saved:', order);
+        debugLog('Button order saved:', order);
     });
 }
 
@@ -2813,3 +2896,69 @@ function createSkippedActionsModal(skippedCount, skippedURL) {
 window.addEventListener('popstate', updateSelectedObservations);
 window.addEventListener('pushstate', updateSelectedObservations);
 window.addEventListener('replacestate', updateSelectedObservations);
+
+function toggleSortDropdown(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById('sort-dropdown');
+    const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
+    dropdown.style.display = isHidden ? 'block' : 'none';
+    
+    if (isHidden) {
+        document.addEventListener('click', closeSortDropdown);
+    } else {
+        document.removeEventListener('click', closeSortDropdown);
+    }
+}
+
+function closeSortDropdown(event) {
+    const dropdown = document.getElementById('sort-dropdown');
+    const sortButton = document.getElementById('sort-button');
+    if (!dropdown.contains(event.target) && event.target !== sortButton) {
+        dropdown.style.display = 'none';
+        document.removeEventListener('click', closeSortDropdown);
+    }
+}
+
+function sortButtons(method) {
+    const buttons = Array.from(buttonContainer.querySelectorAll('.button-ph'));
+    
+    buttons.sort((a, b) => {
+        switch (method) {
+            case 'az':
+                return a.innerText.localeCompare(b.innerText);
+            case 'za':
+                return b.innerText.localeCompare(a.innerText);
+            case 'new-old':
+                return b.dataset.buttonId.localeCompare(a.dataset.buttonId);
+            case 'old-new':
+                return a.dataset.buttonId.localeCompare(b.dataset.buttonId);
+        }
+    });
+
+    buttons.forEach(button => buttonContainer.appendChild(button));
+    saveButtonOrder();
+    
+    const sortButton = document.getElementById('sort-button');
+    sortButton.innerHTML = getSortButtonText(method);
+    
+    browserAPI.storage.local.set({ currentSortMethod: method }, function() {
+        debugLog('Current sort method saved:', method);
+    });
+    
+    document.getElementById('sort-dropdown').style.display = 'none';
+}
+
+function getSortButtonText(method) {
+    switch (method) {
+        case 'az':
+            return 'Sort: A-Z';
+        case 'za':
+            return 'Sort: Z-A';
+        case 'new-old':
+            return 'Sort: New-Old';
+        case 'old-new':
+            return 'Sort: Old-New';
+        default:
+            return 'Sort';
+    }
+}
