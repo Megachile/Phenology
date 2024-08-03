@@ -301,14 +301,14 @@ async function saveConfiguration() {
         updateOrAddConfiguration(newConfig);
 
         // Update button order
-        let buttonOrder = await browserAPI.storage.sync.get('buttonOrder');
+        let buttonOrder = await browserAPI.storage.local.get('buttonOrder');
         buttonOrder = buttonOrder.buttonOrder || [];
         if (!editIndex) {
             // If it's a new button, add it to the end of the order
             buttonOrder.push(newConfig.id);
         }
 
-        await browserAPI.storage.sync.set({
+        await browserAPI.storage.local.set({
             customButtons: customButtons,
             observationFieldMap: observationFieldMap,
             buttonOrder: buttonOrder,
@@ -440,7 +440,7 @@ function mergeConfigurations(importedData) {
     console.log('Conflicts found:', conflicts);
 
     // Get current button order
-    browserAPI.storage.sync.get('buttonOrder', function(data) {
+    browserAPI.storage.local.get('buttonOrder', function(data) {
         let buttonOrder = data.buttonOrder || [];
         console.log('Current button order before update:', buttonOrder);
 
@@ -449,7 +449,7 @@ function mergeConfigurations(importedData) {
         console.log('Updated button order:', updatedButtonOrder);
 
         const saveAndNotify = () => {
-            browserAPI.storage.sync.set({
+            browserAPI.storage.local.set({
                 customButtons: customButtons,
                 observationFieldMap: {...observationFieldMap, ...(importedData.observationFieldMap || {})},
                 lastConfigUpdate: Date.now(),
@@ -459,10 +459,10 @@ function mergeConfigurations(importedData) {
                 console.log('Final customButtons:', customButtons);
                 
                 // Check storage usage
-                browserAPI.storage.sync.getBytesInUse(null, function(bytesInUse) {
+                browserAPI.storage.local.getBytesInUse(null, function(bytesInUse) {
                     console.log('Storage bytes in use:', bytesInUse);
-                    console.log('Storage quota:', browserAPI.storage.sync.QUOTA_BYTES);
-                    const percentageUsed = (bytesInUse / browserAPI.storage.sync.QUOTA_BYTES) * 100;
+                    console.log('Storage quota:', browserAPI.storage.local.QUOTA_BYTES);
+                    const percentageUsed = (bytesInUse / browserAPI.storage.local.QUOTA_BYTES) * 100;
                     console.log('Storage usage: ' + percentageUsed.toFixed(2) + '%');
                 });
                 
@@ -678,7 +678,7 @@ function addActionToForm(action = null) {
 }
 
 function loadConfigurations() {
-    browserAPI.storage.sync.get(['customButtons', 'observationFieldMap'], function(data) {
+    browserAPI.storage.local.get(['customButtons', 'observationFieldMap'], function(data) {
         console.log('Loaded data:', data);
         customButtons = data.customButtons || [];
         observationFieldMap = data.observationFieldMap || {};
@@ -844,7 +844,7 @@ function updateConfigurationDisplay(config) {
 }
 
 function saveConfigurations() {
-    browserAPI.storage.sync.set({
+    browserAPI.storage.local.set({
         customButtons: customButtons,
         lastConfigUpdate: Date.now()
     }, function() {
@@ -857,7 +857,7 @@ function saveAndReloadConfigurations(updateTimestamp = false) {
     if (updateTimestamp) {
         dataToSave.lastConfigUpdate = Date.now();
     }
-    browserAPI.storage.sync.set(dataToSave, function() {
+    browserAPI.storage.local.set(dataToSave, function() {
         console.log('Configuration updated');
         loadConfigurations();
     });
@@ -938,7 +938,7 @@ function updateConfigurations(configId) {
     const index = customButtons.findIndex(c => c.id === configId);
     if (index !== -1) {
         customButtons[index] = updatedConfig;
-        browserAPI.storage.sync.set({customButtons: customButtons}, function() {
+        browserAPI.storage.local.set({customButtons: customButtons}, function() {
             console.log('Configuration updated');
             loadConfigurations();
             clearForm();
@@ -954,7 +954,7 @@ function toggleHideConfiguration(configId) {
     const config = customButtons.find(c => c.id === configId);
     if (config) {
         config.buttonHidden = !config.buttonHidden;
-        browserAPI.storage.sync.set({customButtons: customButtons}, function() {
+        browserAPI.storage.local.set({customButtons: customButtons}, function() {
             console.log('Configuration visibility toggled');
             loadConfigurations();
         });
@@ -964,7 +964,7 @@ function toggleHideConfiguration(configId) {
 function deleteConfiguration(configId) {
     if (confirm('Are you sure you want to delete this configuration?')) {
         customButtons = customButtons.filter(c => c.id !== configId);
-        browserAPI.storage.sync.set({
+        browserAPI.storage.local.set({
             customButtons: customButtons,
             lastConfigUpdate: Date.now()
         }, function() {

@@ -132,7 +132,7 @@ function createShortcutList() {
     `;
 
     // Add custom shortcuts
-    browserAPI.storage.sync.get('customButtons', function(data) {
+    browserAPI.storage.local.get('customButtons', function(data) {
         const customButtons = data.customButtons || [];
         customButtons.forEach(button => {
             if (button.shortcut && button.shortcut.key) {
@@ -222,7 +222,7 @@ function handleAllShortcuts(event) {
 document.addEventListener('keydown', handleAllShortcuts);
 
 function checkForConfigUpdates() {
-    browserAPI.storage.sync.get(['lastConfigUpdate'], function(result) {
+    browserAPI.storage.local.get(['lastConfigUpdate'], function(result) {
         if (result.lastConfigUpdate) {
             if (lastKnownUpdate === 0) {
                 // First time checking, just update lastKnownUpdate without showing notification
@@ -283,11 +283,11 @@ function cycleButtonPosition() {
     buttonPosition = positions[currentPositionIndex];
     updatePositions();
     updateBulkButtonPosition();
-    browserAPI.storage.sync.set({buttonPosition: buttonPosition});
+    browserAPI.storage.local.set({buttonPosition: buttonPosition});
 }
 
 
-browserAPI.storage.sync.get('buttonPosition', function(data) {
+browserAPI.storage.local.get('buttonPosition', function(data) {
     if (data.buttonPosition) {
         buttonPosition = data.buttonPosition;
         currentPositionIndex = positions.indexOf(buttonPosition);
@@ -1615,7 +1615,7 @@ function toggleRefresh() {
 
 function createDynamicButtons() {
     console.log('createDynamicButtons called');
-    browserAPI.storage.sync.get(['customButtons', 'buttonOrder'], function(data) {
+    browserAPI.storage.local.get(['customButtons', 'buttonOrder'], function(data) {
         if (data.customButtons && data.customButtons.length > 0) {
             debugLog('Retrieved buttonOrder from storage:', data.buttonOrder);
             debugLog('Retrieved customButtons from storage:', data.customButtons);
@@ -1865,14 +1865,14 @@ function isBeforeButton(y, button) {
 function saveButtonOrder() {
     const buttons = document.querySelectorAll('.button-ph');
     const order = Array.from(buttons).map(button => button.dataset.buttonId);
-    browserAPI.storage.sync.set({ buttonOrder: order }, function() {
+    browserAPI.storage.local.set({ buttonOrder: order }, function() {
         //debugLog('Button order saved:', order);
     });
 }
 
 function loadButtonOrder() {
     debugLog('Loading button order');
-    browserAPI.storage.sync.get('buttonOrder', (data) => {
+    browserAPI.storage.local.get('buttonOrder', (data) => {
         if (data.buttonOrder) {
             debugLog('Stored button order:', data.buttonOrder);
             const container = document.getElementById('custom-extension-container');
@@ -2172,7 +2172,7 @@ async function applyBulkAction() {
     };
 }
 async function getAvailableActions() {
-    const customButtons = await new Promise(resolve => browserAPI.storage.sync.get('customButtons', resolve));
+    const customButtons = await new Promise(resolve => browserAPI.storage.local.get('customButtons', resolve));
     return (customButtons.customButtons || []).filter(button => !button.configurationDisabled);
 }
 
