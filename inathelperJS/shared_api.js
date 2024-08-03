@@ -816,6 +816,7 @@ async function performSingleUndoAction(observationId, undoAction) {
 }
 
 function createProgressBar() {
+    console.log('Creating progress bar');
     const progressBarContainer = document.createElement('div');
     progressBarContainer.style.cssText = `
         width: 100%;
@@ -844,7 +845,7 @@ function createProgressBar() {
 
     progressBar.appendChild(progressFill);
     progressBarContainer.appendChild(progressBar);
-    progressBarContainer.style.display = 'none'; // Initially hidden
+    progressBarContainer.style.display = 'block'; 
 
     return progressBarContainer;
 }
