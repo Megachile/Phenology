@@ -1667,8 +1667,17 @@ function toggleRefresh() {
     updateRefreshIndicator();
 }
 
+function isValidPageForButtons() {
+    const path = window.location.pathname;
+    return path.includes('/observations/identify') || /^\/observations\/\d+/.test(path);
+}
+
 function createDynamicButtons() {
     console.log('createDynamicButtons called');
+    if (!isValidPageForButtons()) {
+        console.log('Not a valid page for buttons, skipping creation');
+        return;
+    }
     browserAPI.storage.local.get(['customButtons', 'buttonOrder', 'currentSortMethod'], function(data) {
         if (data.customButtons && data.customButtons.length > 0) {
             debugLog('Retrieved buttonOrder from storage:', data.buttonOrder);
