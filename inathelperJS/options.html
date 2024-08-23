@@ -299,7 +299,6 @@ button:hover {
     color: white;
     border-color: #45a049;
 }
-
 .inactive-sort {
     opacity: 0.6;
 }
@@ -313,6 +312,26 @@ button:hover {
         color: #0000EE;
         text-decoration: underline;
     }
+
+    #listManagement {
+    margin-bottom: 20px;
+  }
+  .list-item {
+    background-color: #f0f0f0;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .list-name {
+    font-size: 18px;
+    font-weight: bold;
+  }
+  .list-actions button {
+    margin-left: 10px;
+  }
     </style>
 </head>
 <body>
@@ -363,7 +382,12 @@ button:hover {
         </div>
     </div>
     <div id="buttonConfigs"></div>
-
+    <h2>Personal Lists</h2>
+    <div id="listManagement">
+    <input type="text" id="newListName" placeholder="New List Name">
+    <button id="createList">Create List</button>
+    <div id="existingLists"></div>
+    </div>
     <div id="buttonConfigs"></div>
     <script src="shared_api.js"></script>
     <script src="options.js"></script>

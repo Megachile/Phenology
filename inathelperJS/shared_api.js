@@ -964,3 +964,20 @@ async function testJWT() {
         return false;
     }
 }
+
+function generateListObservationURL(listId) {
+    return new Promise((resolve) => {
+        browserAPI.storage.local.get('customLists', function(data) {
+            const customLists = data.customLists || [];
+            const list = customLists.find(l => l.id === listId);
+            if (list && list.observations.length > 0) {
+                const baseURL = 'https://www.inaturalist.org/observations/identify?quality_grade=casual,needs_id,research&reviewed=any&verifiable=any&place_id=any';
+                const url = `${baseURL}&per_page=${list.observations.length}&id=${list.observations.join(',')}`;
+                resolve(url);
+            } else {
+                resolve(null);
+            }
+        });
+    });
+}
+

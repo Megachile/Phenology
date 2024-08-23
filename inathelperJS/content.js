@@ -1388,10 +1388,36 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
             };
         case 'qualityMetric':
             return handleQualityMetricAPI(observationId, action.metric, action.vote);
+        case 'addToList':
+            return addObservationToList(observationId, action.listId);
         default:
             console.warn(`Unknown action type: ${action.type}`);
             return Promise.resolve();
     }
+}
+
+async function addObservationToList(observationId, listId) {
+    return new Promise((resolve, reject) => {
+        browserAPI.storage.local.get('customLists', function(data) {
+            const customLists = data.customLists || [];
+            const listIndex = customLists.findIndex(list => list.id === listId);
+            if (listIndex !== -1) {
+                if (!customLists[listIndex].observations.includes(observationId)) {
+                    customLists[listIndex].observations.push(observationId);
+                    browserAPI.storage.local.set({customLists: customLists}, function() {
+                        console.log(`Observation ${observationId} added to list ${customLists[listIndex].name}`);
+                        resolve({ success: true, message: `Observation added to list: ${customLists[listIndex].name}` });
+                    });
+                } else {
+                    console.log(`Observation ${observationId} already in list ${customLists[listIndex].name}`);
+                    resolve({ success: true, message: 'Observation already in list' });
+                }
+            } else {
+                console.error(`List with ID ${listId} not found`);
+                reject(new Error('List not found'));
+            }
+        });
+    });
 }
 
 async function getCurrentQualityMetricState(observationId) {

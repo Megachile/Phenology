@@ -155,6 +155,9 @@ function extractActionsFromForm() {
                 action.targetFieldId = actionDiv.querySelector('.targetFieldId').value.trim();
                 action.targetFieldName = actionDiv.querySelector('.targetFieldName').value.trim();
                 break;
+            case 'addToList':
+                action.listId = actionDiv.querySelector('.listSelect').value;
+                break;
         }
 
         return action;
@@ -362,7 +365,12 @@ function editConfiguration(configId) {
         console.log('Adding actions to form');
         config.actions.forEach((action, index) => {
             console.log(`Adding action ${index + 1}:`, action);
-            addActionToForm(action);
+            const actionDiv = addActionToForm(action);
+            
+            // Populate the action inputs after the action div is added to the DOM
+            setTimeout(() => {
+                populateActionInputs(actionDiv, action);
+            }, 0);
         });
 
         const saveButton = document.getElementById('saveButton');
@@ -374,6 +382,60 @@ function editConfiguration(configId) {
     } catch (error) {
         console.error('Error in editConfiguration:', error);
         alert(`An error occurred while editing the configuration: ${error.message}\n\nPlease check the console for more details.`);
+    }
+}
+
+function populateActionInputs(actionDiv, action) {
+    console.log('Populating action inputs for:', action.type);
+    const actionType = actionDiv.querySelector('.actionType');
+    actionType.value = action.type;
+    actionType.dispatchEvent(new Event('change'));
+
+    switch (action.type) {
+        case 'observationField':
+            actionDiv.querySelector('.fieldName').value = action.fieldName || '';
+            actionDiv.querySelector('.fieldId').value = action.fieldId || '';
+            actionDiv.querySelector('.fieldValue').value = action.fieldValue || '';
+            break;
+        case 'annotation':
+            actionDiv.querySelector('.annotationField').value = action.annotationField || '';
+            const annotationValue = actionDiv.querySelector('.annotationValue');
+            updateAnnotationValues(actionDiv.querySelector('.annotationField'), annotationValue);
+            annotationValue.value = action.annotationValue || '';
+            break;
+        case 'addToProject':
+            actionDiv.querySelector('.projectName').value = action.projectName || '';
+            actionDiv.querySelector('.projectId').value = action.projectId || '';
+            break;
+        case 'addComment':
+            actionDiv.querySelector('.commentBody').value = action.commentBody || '';
+            break;
+        case 'addTaxonId':
+            actionDiv.querySelector('.taxonName').value = action.taxonName || '';
+            actionDiv.querySelector('.taxonId').value = action.taxonId || '';
+            actionDiv.querySelector('.taxonComment').value = action.comment || '';
+            break;
+        case 'qualityMetric':
+            actionDiv.querySelector('.qualityMetricType').value = action.metric || '';
+            actionDiv.querySelector('.qualityMetricVote').value = action.vote || '';
+            break;
+        case 'copyObservationField':
+            actionDiv.querySelector('.sourceFieldName').value = action.sourceFieldName || '';
+            actionDiv.querySelector('.sourceFieldId').value = action.sourceFieldId || '';
+            actionDiv.querySelector('.targetFieldName').value = action.targetFieldName || '';
+            actionDiv.querySelector('.targetFieldId').value = action.targetFieldId || '';
+            break;
+        case 'addToList':
+            const listSelect = actionDiv.querySelector('.listSelect');
+            if (listSelect) {
+                console.log('Refreshing list select for existing Add to List action');
+                refreshListSelect(listSelect);
+                setTimeout(() => {
+                    console.log('Setting list select value to:', action.listId);
+                    listSelect.value = action.listId || '';
+                }, 100);
+            }
+            break;
     }
 }
 
@@ -497,6 +559,7 @@ function addActionToForm(action = null) {
             <option value="addToProject">Add to Project</option>
             <option value="qualityMetric">Data Quality Indicators</option>
             <option value="copyObservationField">Copy Observation Field</option>
+            <option value="addToList">Add Observation To List</option>
         </select>
         <div class="ofInputs">
             <input type="text" class="fieldName" placeholder="Observation Field Name">
@@ -536,6 +599,11 @@ function addActionToForm(action = null) {
             <input type="number" class="sourceFieldId" placeholder="Source Field ID" readonly>
             <input type="text" class="targetFieldName" placeholder="Target Field Name">
             <input type="number" class="targetFieldId" placeholder="Target Field ID" readonly>
+        </div>        
+        <div class="addToListInputs" style="display:none;">
+        <select class="listSelect">
+            <option value="">Select a List</option>
+        </select>
         </div>
         <button class="removeActionButton">Remove Action</button>
     `;
@@ -549,6 +617,9 @@ function addActionToForm(action = null) {
     const taxonIdInputs = actionDiv.querySelector('.taxonIdInputs');
     const qualityMetricInputs = actionDiv.querySelector('.qualityMetricInputs');
     const copyObservationFieldInputs = actionDiv.querySelector('.copyObservationFieldInputs');
+    const addToListInputs = actionDiv.querySelector('.addToListInputs');
+    const listSelect = actionDiv.querySelector('.listSelect');
+    console.log('Setting up action form for type:', action ? action.type : 'new action');
     if (taxonIdInputs) {
         taxonIdInputs.innerHTML += `
             <textarea class="taxonComment" placeholder="Enter comment (optional)"></textarea>
@@ -562,7 +633,33 @@ function addActionToForm(action = null) {
         taxonIdInputs.style.display = actionType.value === 'addTaxonId' ? 'block' : 'none';
         qualityMetricInputs.style.display = actionType.value === 'qualityMetric' ? 'block' : 'none';
         copyObservationFieldInputs.style.display = actionType.value === 'copyObservationField' ? 'block' : 'none';
+        addToListInputs.style.display = actionType.value === 'addToList' ? 'block' : 'none';
+        if (actionType.value === 'addToList') {
+            console.log('Add to List selected, refreshing list select');
+            refreshListSelect(listSelect);
+        }
     });
+
+    // Populate list select
+    browserAPI.storage.local.get('customLists', function(data) {
+    const customLists = data.customLists || [];
+    customLists.forEach(list => {
+        const option = document.createElement('option');
+        option.value = list.id;
+        option.textContent = list.name;
+        listSelect.appendChild(option);
+    });
+    });
+
+    if (action && action.type === 'addToList') {
+        console.log('Populating Add to List action:', action);
+        actionType.value = 'addToList';
+        actionType.dispatchEvent(new Event('change'));
+        setTimeout(() => {
+            console.log('Setting list select value to:', action.listId);
+            listSelect.value = action.listId || '';
+        }, 100);
+    }
 
     const fieldNameInput = actionDiv.querySelector('.fieldName');
     const fieldIdInput = actionDiv.querySelector('.fieldId');
@@ -672,9 +769,38 @@ function addActionToForm(action = null) {
                 actionDiv.querySelector('.sourceFieldName').value = action.sourceFieldName;
                 actionDiv.querySelector('.targetFieldId').value = action.targetFieldId;
                 actionDiv.querySelector('.targetFieldName').value = action.targetFieldName;
-                break;                
+                break;     
+            case 'addToList':
+                const listSelect = actionDiv.querySelector('.listSelect');
+                if (listSelect) {
+                    listSelect.value = action.listId;
+                }
+                break;        
         }
     }
+    return actionDiv;  // Make sure to return the actionDiv
+}
+
+function refreshListSelect(selectElement) {
+    console.log('Refreshing list select');
+    browserAPI.storage.local.get('customLists', function(data) {
+        const customLists = data.customLists || [];
+        console.log('Custom lists:', customLists);
+        selectElement.innerHTML = '<option value="">Select a List</option>';
+        customLists.forEach(list => {
+            const option = document.createElement('option');
+            option.value = list.id;
+            option.textContent = list.name;
+            selectElement.appendChild(option);
+        });
+        console.log('List select refreshed with options:', selectElement.innerHTML);
+    });
+}
+
+
+function updateAllListSelects() {
+    const listSelects = document.querySelectorAll('.listSelect');
+    listSelects.forEach(refreshListSelect);
 }
 
 function loadConfigurations() {
@@ -709,7 +835,7 @@ function migrateConfigurations(configs) {
     });
 }
 
-function displayConfigurations() {
+async function displayConfigurations() {
     const container = document.getElementById('buttonConfigs');
     container.innerHTML = '';
 
@@ -729,17 +855,21 @@ function displayConfigurations() {
         });
     }
 
-
-    buttonsToDisplay.filter(config => 
+    for (const config of buttonsToDisplay.filter(config => 
         config.name.toLowerCase().includes(searchTerm) ||
         config.actions.some(action => formatAction(action).toLowerCase().includes(searchTerm))
-    ).forEach((config) => {
+    )) {
         const configDiv = document.createElement('div');
         configDiv.className = 'config-item';
         configDiv.dataset.id = config.id;
-                if (config.configurationDisabled) {
+        if (config.configurationDisabled) {
             configDiv.classList.add('disabled-config');
         }
+
+        const actionsHtml = await Promise.all(config.actions.map(async action => {
+            const formattedAction = await formatAction(action);
+            return `<p>${formattedAction}</p>`;
+        }));
 
         configDiv.innerHTML = `
             <div class="config-header">
@@ -748,8 +878,8 @@ function displayConfigurations() {
                 <span class="toggle-details">&#9660;</span>
             </div>
             <div class="config-details" style="display: none;">
-                ${config.actions.map(action => `<p>${formatAction(action)}</p>`).join('')}
-                 <div class="button-actions">
+                ${actionsHtml.join('')}
+                <div class="button-actions">
                     <label><input type="checkbox" class="hide-button-checkbox" ${config.buttonHidden ? 'checked' : ''}> Hide Button</label>
                     <label><input type="checkbox" class="disable-config-checkbox" ${config.configurationDisabled ? 'checked' : ''}> Disable Configuration</label>
                     <button class="edit-button">Edit</button>
@@ -781,15 +911,15 @@ function displayConfigurations() {
         disableConfigCheckbox.addEventListener('change', (event) => {
             toggleDisableConfiguration(config.id, event.target);
         });
-         editButton.addEventListener('click', () => editConfiguration(config.id));
+
+        editButton.addEventListener('click', () => editConfiguration(config.id));
         deleteButton.addEventListener('click', () => deleteConfiguration(config.id));
         duplicateButton.addEventListener('click', () => duplicateConfiguration(config.id));
 
         container.appendChild(configDiv);
-    });
+    }
 }
-
-function formatAction(action) {
+async function formatAction(action) {
     switch (action.type) {
         case 'observationField':
             let displayValue = action.displayValue || action.fieldValue;
@@ -813,9 +943,22 @@ function formatAction(action) {
             return `Quality Metric: "${metricLabel}" - ${action.vote}`;
         case 'copyObservationField':
             return `Copy value from "${action.sourceFieldName}" to "${action.targetFieldName}"`;
+        case 'addToList':
+            const listName = await getListName(action.listId);
+            return `Add to list: ${listName}`;
         default:
             return 'Unknown action';       
     }
+}
+
+function getListName(listId) {
+    return new Promise((resolve) => {
+        browserAPI.storage.local.get('customLists', function(data) {
+            const customLists = data.customLists || [];
+            const list = customLists.find(l => l.id === listId);
+            resolve(list ? list.name : 'Unknown List');
+        });
+    });
 }
 
 function toggleHideButton(configId, checkbox) {
@@ -1205,3 +1348,98 @@ function loadUndoRecords() {
 
 // Call this function when the options page loads
 document.addEventListener('DOMContentLoaded', loadUndoRecords);
+
+function createList() {
+    const listName = document.getElementById('newListName').value.trim();
+    if (listName) {
+        browserAPI.storage.local.get('customLists', function(data) {
+            const customLists = data.customLists || [];
+            const newList = {
+                id: Date.now().toString(),
+                name: listName,
+                observations: []
+            };
+            customLists.push(newList);
+            browserAPI.storage.local.set({customLists: customLists}, function() {
+                displayLists();
+                updateAllListSelects();
+                document.getElementById('newListName').value = '';
+            });
+        });
+    }
+}
+  
+function displayLists() {
+    const container = document.getElementById('existingLists');
+    container.innerHTML = '';
+    browserAPI.storage.local.get('customLists', function(data) {
+        const customLists = data.customLists || [];
+        customLists.forEach(list => {
+            const listDiv = document.createElement('div');
+            listDiv.className = 'list-item';
+            listDiv.innerHTML = `
+                <div class="list-name">${list.name} (${list.observations.length} observations)</div>
+                <div class="list-actions">
+                    <button class="viewList" data-id="${list.id}">View</button>
+                    <button class="renameList" data-id="${list.id}">Rename</button>
+                    <button class="deleteList" data-id="${list.id}">Delete</button>
+                </div>
+            `;
+            container.appendChild(listDiv);
+        });
+    });
+}
+  
+  // Add event listeners
+  document.getElementById('createList').addEventListener('click', createList);
+  document.addEventListener('DOMContentLoaded', displayLists);
+
+  function renameList(listId) {
+    const newName = prompt("Enter new name for the list:");
+    if (newName) {
+        browserAPI.storage.local.get('customLists', function(data) {
+            const customLists = data.customLists || [];
+            const listIndex = customLists.findIndex(list => list.id === listId);
+            if (listIndex !== -1) {
+                customLists[listIndex].name = newName;
+                browserAPI.storage.local.set({customLists: customLists}, function() {
+                    displayLists();
+                    updateAllListSelects();
+                });
+            }
+        });
+    }
+}
+
+function deleteList(listId) {
+    if (confirm("Are you sure you want to delete this list?")) {
+        browserAPI.storage.local.get('customLists', function(data) {
+            const customLists = data.customLists || [];
+            const updatedLists = customLists.filter(list => list.id !== listId);
+            browserAPI.storage.local.set({customLists: updatedLists}, function() {
+                displayLists();
+                updateAllListSelects();
+            });
+        });
+    }
+}
+  
+  // Add event listeners for rename and delete
+  document.getElementById('existingLists').addEventListener('click', function(e) {
+    if (e.target.classList.contains('viewList')) {
+        viewList(e.target.dataset.id);
+    }  else if (e.target.classList.contains('renameList')) {
+      renameList(e.target.dataset.id);
+    } else if (e.target.classList.contains('deleteList')) {
+      deleteList(e.target.dataset.id);
+    }
+  });
+
+  async function viewList(listId) {
+    const url = await generateListObservationURL(listId);
+    if (url) {
+        window.open(url, '_blank');
+    } else {
+        alert('This list is empty or not found.');
+    }
+}
