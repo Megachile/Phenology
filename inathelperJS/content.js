@@ -174,7 +174,16 @@ function toggleBulkActionVisibility() {
 }
 
 function handleAllShortcuts(event) {
-    // Always allow these shortcuts, even when typing
+    // Check if the active element is an input or textarea
+    const activeElement = document.activeElement;
+    const isTyping = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
+
+    // If user is typing, don't process other shortcuts
+    if (isTyping) {
+        return;
+    }
+
+    // Process shortcuts only if not typing
     if (event.shiftKey && event.key.toLowerCase() === 'b') {
         toggleButtonVisibility();
         return;
@@ -198,17 +207,7 @@ function handleAllShortcuts(event) {
         toggleBulkActionVisibility();
         return;
     }
-
-    // Check if the active element is an input or textarea
-    const activeElement = document.activeElement;
-    const isTyping = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
-
-    // If user is typing, don't process other shortcuts
-    if (isTyping) {
-        return;
-    }
-
-    // Process custom shortcuts only if not typing
+    
     customShortcuts.forEach(shortcut => {
         if (event.key.toLowerCase() === shortcut.key.toLowerCase() &&
             event.ctrlKey === shortcut.ctrlKey &&
