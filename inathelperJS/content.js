@@ -1389,35 +1389,11 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
         case 'qualityMetric':
             return handleQualityMetricAPI(observationId, action.metric, action.vote);
         case 'addToList':
-            return addObservationToList(observationId, action.listId);
+            return addOrRemoveObservationFromList(observationId, action.listId, action.remove);
         default:
             console.warn(`Unknown action type: ${action.type}`);
             return Promise.resolve();
     }
-}
-
-async function addObservationToList(observationId, listId) {
-    return new Promise((resolve, reject) => {
-        browserAPI.storage.local.get('customLists', function(data) {
-            const customLists = data.customLists || [];
-            const listIndex = customLists.findIndex(list => list.id === listId);
-            if (listIndex !== -1) {
-                if (!customLists[listIndex].observations.includes(observationId)) {
-                    customLists[listIndex].observations.push(observationId);
-                    browserAPI.storage.local.set({customLists: customLists}, function() {
-                        console.log(`Observation ${observationId} added to list ${customLists[listIndex].name}`);
-                        resolve({ success: true, message: `Observation added to list: ${customLists[listIndex].name}` });
-                    });
-                } else {
-                    console.log(`Observation ${observationId} already in list ${customLists[listIndex].name}`);
-                    resolve({ success: true, message: 'Observation already in list' });
-                }
-            } else {
-                console.error(`List with ID ${listId} not found`);
-                reject(new Error('List not found'));
-            }
-        });
-    });
 }
 
 async function getCurrentQualityMetricState(observationId) {
@@ -2696,6 +2672,13 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
                         originalValue: preActionStates[observationId].ofvs.find(ofv => ofv.field_id === parseInt(actionItem.targetFieldId))?.value
                     });
                     break;
+                case 'addToList':
+                    undoAction = {
+                        type: 'addToList',
+                        listId: actionItem.listId,
+                        remove: !actionItem.remove // Invert the remove action for undo
+                    };
+                    break;
             }
             if (undoAction) {
                 undoRecord.observations[observationId].undoActions.push(undoAction);
@@ -2777,93 +2760,6 @@ function getQualityMetricName(metric) {
         'subject': 'Subject'
     };
     return metricNames[metric] || metric;
-}
-
-function generateDryRunFile(action, observationIds) {
-    let content = `Dry Run for Action: ${action.name}\n`;
-    content += `Observations: ${observationIds.join(', ')}\n\n`;
-
-    observationIds.forEach(observationId => {
-        content += `For Observation ID ${observationId}:\n`;
-        action.actions.forEach(actionItem => {
-            switch (actionItem.type) {
-                case 'observationField':
-                    content += `POST /observation_field_values\n`;
-                    content += `Body: {"observation_field_value": {"observation_id": ${observationId}, "observation_field_id": ${actionItem.fieldId}, "value": "${actionItem.fieldValue}"}}\n`;
-                    content += `Description: Add observation field "${actionItem.fieldName}" with value "${actionItem.fieldValue}"\n\n`;
-                    break;
-                    case 'annotation':
-                    const attributeId = parseInt(actionItem.annotationField);
-                    const valueId = parseInt(actionItem.annotationValue);
-                    let attributeLabel = 'Unknown';
-                    let valueLabel = 'Unknown';
-
-                    for (const [key, value] of Object.entries(controlledTerms)) {
-                        if (value.id === attributeId) {
-                            attributeLabel = key;
-                            for (const [vKey, vId] of Object.entries(value.values)) {
-                                if (vId === valueId) {
-                                    valueLabel = vKey;
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-
-                    content += `POST /annotations\n`;
-                    content += `Body: {"annotation": {"resource_type": "Observation", "resource_id": ${observationId}, "controlled_attribute_id": ${actionItem.annotationField}, "controlled_value_id": ${actionItem.annotationValue}}}\n`;
-                    content += `Description: Add annotation "${attributeLabel}" with value "${valueLabel}"\n\n`;
-                    break;          
-                    case 'addToProject':
-                    content += `POST /project_observations\n`;
-                    content += `Body: {"project_observation": {"observation_id": ${observationId}, "project_id": ${actionItem.projectId}}}\n`;
-                    content += `Description: Add to project "${actionItem.projectName}"\n\n`;
-                    break;
-                case 'addComment':
-                    content += `POST /comments\n`;
-                    content += `Body: {"comment": {"parent_type": "Observation", "parent_id": ${observationId}, "body": "${actionItem.commentBody}"}}\n`;
-                    content += `Description: Add comment: "${actionItem.commentBody.substring(0, 50)}..."\n\n`;
-                    break;
-                case 'addTaxonId':
-                    content += `POST /identifications\n`;
-                    content += `Body: {"identification": {"observation_id": ${observationId}, "taxon_id": ${actionItem.taxonId}, "body": "${actionItem.comment}"}}\n`;
-                    content += `Description: Add taxon ID for "${actionItem.taxonName}"\n\n`;
-                    break;
-                case 'qualityMetric':
-                    if (actionItem.metric === 'needs_id') {
-                        content += actionItem.vote === 'remove' 
-                            ? `DELETE /votes/unvote/observation/${observationId}?scope=needs_id\n`
-                            : `POST /votes/vote/observation/${observationId}\n`;
-                        content += `Body: {"vote": "${actionItem.vote === 'agree' ? 'yes' : 'no'}", "scope": "needs_id"}\n`;
-                    } else {
-                        content += actionItem.vote === 'remove'
-                            ? `DELETE /observations/${observationId}/quality/${actionItem.metric}\n`
-                            : `POST /observations/${observationId}/quality/${actionItem.metric}\n`;
-                        if (actionItem.vote === 'disagree') {
-                            content += `Body: {"agree": "false"}\n`;
-                        }
-                    }
-                    content += `Description: Set quality metric "${getQualityMetricName(actionItem.metric)}" to ${actionItem.vote}\n\n`;
-                    break;
-                case 'copyObservationField':
-                    content += `GET /observations/${observationId}\n`;
-                    content += `Then: POST /observation_field_values\n`;
-                    content += `Body: {"observation_field_value": {"observation_id": ${observationId}, "observation_field_id": ${actionItem.targetFieldId}, "value": "<value from source field ${actionItem.sourceFieldId}>"}}\n`;
-                    content += `Description: Copy observation field from "${actionItem.sourceFieldName}" to "${actionItem.targetFieldName}"\n\n`;
-                    break;
-            }
-        });
-        content += '\n';
-    });
-
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bulk_action_dry_run.txt';
-    a.click();
-    URL.revokeObjectURL(url);
 }
 
 function showUndoRecordsModal() {

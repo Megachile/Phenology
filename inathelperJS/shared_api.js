@@ -809,6 +809,19 @@ async function performSingleUndoAction(observationId, undoAction) {
                 console.error(`Error in quality metric undo action for ${undoAction.metric}:`, error);
                 return { success: false, error: error.toString() };
             }
+        case 'addToList':
+            try {
+                const result = await addOrRemoveObservationFromList(observationId, undoAction.listId, undoAction.remove);
+                return {
+                    success: true,
+                    action: undoAction.remove ? 'removedFromList' : 'addedToList',
+                    listId: undoAction.listId,
+                    message: result.message
+                };
+            } catch (error) {
+                console.error('Error in undo addToList action:', error);
+                return { success: false, error: error.toString() };
+        }
         default:
             console.warn(`Unknown undo action type: ${undoAction.type}`);
             return Promise.resolve({ success: false, error: 'Unknown undo action type' });
@@ -981,3 +994,41 @@ function generateListObservationURL(listId) {
     });
 }
 
+
+async function addOrRemoveObservationFromList(observationId, listId, isRemove = false) {
+    return new Promise((resolve, reject) => {
+        browserAPI.storage.local.get('customLists', function(data) {
+            const customLists = data.customLists || [];
+            const listIndex = customLists.findIndex(list => list.id === listId);
+            if (listIndex !== -1) {
+                const observationIndex = customLists[listIndex].observations.indexOf(observationId);
+                if (isRemove) {
+                    if (observationIndex !== -1) {
+                        customLists[listIndex].observations.splice(observationIndex, 1);
+                        browserAPI.storage.local.set({customLists: customLists}, function() {
+                            console.log(`Observation ${observationId} removed from list ${customLists[listIndex].name}`);
+                            resolve({ success: true, message: `Observation removed from list: ${customLists[listIndex].name}` });
+                        });
+                    } else {
+                        console.log(`Observation ${observationId} not in list ${customLists[listIndex].name}`);
+                        resolve({ success: true, message: 'Observation not in list' });
+                    }
+                } else {
+                    if (observationIndex === -1) {
+                        customLists[listIndex].observations.push(observationId);
+                        browserAPI.storage.local.set({customLists: customLists}, function() {
+                            console.log(`Observation ${observationId} added to list ${customLists[listIndex].name}`);
+                            resolve({ success: true, message: `Observation added to list: ${customLists[listIndex].name}` });
+                        });
+                    } else {
+                        console.log(`Observation ${observationId} already in list ${customLists[listIndex].name}`);
+                        resolve({ success: true, message: 'Observation already in list' });
+                    }
+                }
+            } else {
+                console.error(`List with ID ${listId} not found`);
+                reject(new Error('List not found'));
+            }
+        });
+    });
+}

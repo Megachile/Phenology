@@ -157,9 +157,9 @@ function extractActionsFromForm() {
                 break;
             case 'addToList':
                 action.listId = actionDiv.querySelector('.listSelect').value;
+                action.remove = actionDiv.querySelector('.removeFromList').checked;
                 break;
         }
-
         return action;
     });
 }
@@ -559,7 +559,7 @@ function addActionToForm(action = null) {
             <option value="addToProject">Add to Project</option>
             <option value="qualityMetric">Data Quality Indicators</option>
             <option value="copyObservationField">Copy Observation Field</option>
-            <option value="addToList">Add Observation To List</option>
+            <option value="addToList">Add/Remove Observation To/From List</option>
         </select>
         <div class="ofInputs">
             <input type="text" class="fieldName" placeholder="Observation Field Name">
@@ -601,9 +601,16 @@ function addActionToForm(action = null) {
             <input type="number" class="targetFieldId" placeholder="Target Field ID" readonly>
         </div>        
         <div class="addToListInputs" style="display:none;">
-        <select class="listSelect">
-            <option value="">Select a List</option>
-        </select>
+            <select class="listSelect">
+                <option value="">Select a List</option>
+            </select>
+            <!-- Add checkbox and label directly here -->
+            <div class="checkboxContainer" style="display: flex; align-items: center; margin-top: 10px;">
+                <input type="checkbox" id="removeFromList-${Date.now()}" class="removeFromList">
+                <label for="removeFromList-${Date.now()}" style="margin-left: 5px; font-size: 14px; cursor: pointer;">
+                    Remove from list instead of adding
+                </label>
+            </div>
         </div>
         <button class="removeActionButton">Remove Action</button>
     `;
@@ -637,7 +644,21 @@ function addActionToForm(action = null) {
         if (actionType.value === 'addToList') {
             console.log('Add to List selected, refreshing list select');
             refreshListSelect(listSelect);
+            
+            // Clear only the list select element, not the entire div
+            const listSelectElement = addToListInputs.querySelector('.listSelect');
+            
+            if (listSelectElement) {
+                addToListInputs.removeChild(listSelectElement); // Remove only the list select element
+            }
+            
+            // Re-append the list select element in the correct order
+            if (!addToListInputs.querySelector('.listSelect')) {
+                addToListInputs.insertBefore(listSelect, addToListInputs.firstChild); // Insert before any existing children
+            }
         }
+              
+        
     });
 
     // Populate list select
@@ -658,6 +679,10 @@ function addActionToForm(action = null) {
         setTimeout(() => {
             console.log('Setting list select value to:', action.listId);
             listSelect.value = action.listId || '';
+            const removeCheckbox = actionDiv.querySelector('.removeFromList');
+            if (removeCheckbox) {
+                removeCheckbox.checked = action.remove || false;
+            }
         }, 100);
     }
 
@@ -945,7 +970,9 @@ async function formatAction(action) {
             return `Copy value from "${action.sourceFieldName}" to "${action.targetFieldName}"`;
         case 'addToList':
             const listName = await getListName(action.listId);
-            return `Add to list: ${listName}`;
+            return action.remove ? 
+                `Remove from list: ${listName}` : 
+                `Add to list: ${listName}`;
         default:
             return 'Unknown action';       
     }
