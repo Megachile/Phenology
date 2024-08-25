@@ -2277,7 +2277,49 @@ async function applyBulkAction() {
         }
         const selectedAction = availableActions.find(button => button.id === actionSelect.value);
         if (selectedAction) {
-            // ... (keep existing confirmation logic)
+            const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
+            const hasTaxonId = selectedAction.actions.some(action => action.type === 'addTaxonId');
+
+            let confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${selectedObservations.size} observation(s)?\n\n`;
+            confirmMessage += "This action includes:\n";
+
+            selectedAction.actions.forEach(action => {
+                switch (action.type) {
+                    case 'observationField':
+                        const displayValue = action.displayValue || action.fieldValue;
+                        confirmMessage += `- Add observation field: ${action.fieldName} = ${displayValue}\n`;
+                        break;
+                    case 'annotation':
+                        const attribute = Object.entries(controlledTerms).find(([_, value]) => value.id === parseInt(action.annotationField));
+                        const attributeName = attribute ? attribute[0] : 'Unknown';
+                        const valueName = attribute ? Object.entries(attribute[1].values).find(([_, id]) => id === parseInt(action.annotationValue))[0] : 'Unknown';
+                        confirmMessage += `- Add annotation: ${attributeName} = ${valueName}\n`;
+                        break;
+                    case 'addToProject':
+                        confirmMessage += `- Add to project: ${action.projectName}\n`;
+                        break;
+                    case 'addComment':
+                        confirmMessage += `- Add comment: "${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}"\n`;
+                        break;
+                    case 'addTaxonId':
+                        confirmMessage += `- Add taxon ID: ${action.taxonName}\n`;
+                        break;
+                    case 'qualityMetric':
+                        const metricName = getQualityMetricName(action.metric);
+                        confirmMessage += `- Set quality metric: ${metricName} to ${action.vote}\n`;
+                        break;
+                    case 'copyObservationField':
+                        confirmMessage += `- Copy field: ${action.sourceFieldName} to ${action.targetFieldName}\n`;
+                        break;
+                }
+            });
+
+            confirmMessage += "\nNote: iNaturalist policy requires that you have individually inspected every observation before you apply this action.";
+
+            if (hasDQIRemoval) {
+                confirmMessage += "\n\nPlease note: Removing DQI votes cannot be undone in bulk due to API limitations.";
+            }
+
 
             if (confirm(confirmMessage)) {
                 await executeBulkAction(selectedAction, modal);
