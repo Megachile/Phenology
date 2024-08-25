@@ -272,7 +272,7 @@ function showUpdateNotification() {
     notification.style.display = 'block';
 }
 
-// Check for updates every 60 seconds
+// Check for updates every 40 seconds
 setInterval(checkForConfigUpdates, 4000);
 
 // Initial check on page load

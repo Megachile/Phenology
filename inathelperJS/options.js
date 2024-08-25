@@ -1204,7 +1204,7 @@ function populateFieldDatalist() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    loadConfigurations();
+    loadConfigurationSets();
     populateFieldDatalist();
     document.getElementById('saveButton').addEventListener('click', saveConfiguration);
     document.getElementById('cancelButton').addEventListener('click', clearForm);
@@ -1435,7 +1435,7 @@ function loadUndoRecords() {
         console.log('Undo records container not found. This is expected if the modal is not open.');
         return;
     }
-    
+
     browserAPI.storage.local.get('undoRecords', function(result) {
         const undoRecords = result.undoRecords || [];
         if (undoRecords.length === 0) {
