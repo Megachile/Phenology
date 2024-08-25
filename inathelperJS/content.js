@@ -295,7 +295,6 @@ function cycleButtonPosition() {
     browserAPI.storage.local.set({buttonPosition: buttonPosition});
 }
 
-
 browserAPI.storage.local.get('buttonPosition', function(data) {
     if (data.buttonPosition) {
         buttonPosition = data.buttonPosition;
@@ -305,8 +304,13 @@ browserAPI.storage.local.get('buttonPosition', function(data) {
 });
 
 function updatePositions() {
+    console.log('Update Positions called');
     const buttonDiv = document.getElementById('custom-extension-container').parentElement;
     const sortButtonContainer = document.getElementById('sort-buttons-container');
+    if (!buttonDiv || !sortButtonContainer) {
+        setTimeout(updatePositions, 1); // Retry after a short delay
+        return;
+    }
     buttonDiv.style.top = buttonDiv.style.left = buttonDiv.style.bottom = buttonDiv.style.right = 'auto';
     sortButtonContainer.style.top = sortButtonContainer.style.left = sortButtonContainer.style.bottom = sortButtonContainer.style.right = 'auto';
     
@@ -572,6 +576,8 @@ buttonContainer.id = 'custom-extension-container';
 
 buttonDiv.appendChild(buttonContainer);
 document.body.appendChild(buttonDiv);
+
+
 
 async function addObservationField(observationId, fieldId, value, button = null) {
         if (!observationId) {
@@ -1805,6 +1811,7 @@ function createDynamicButtons() {
         });
 
         initializeDragAndDrop();
+        updatePositions();
     }
     debugLog('All buttons created. Total buttons:', buttonContainer.children.length);
 }
@@ -2973,14 +2980,13 @@ function getSortButtonText(method) {
     }
 }
 
-
 function loadConfigurationSets() {
     browserAPI.storage.local.get(['configurationSets', 'currentSetName'], function(data) {
         configurationSets = data.configurationSets || [];
         currentSetName = data.currentSetName || (configurationSets[0] && configurationSets[0].name);
         currentSet = configurationSets.find(set => set.name === currentSetName) || configurationSets[0];
-        createSetSwitcher();
         createDynamicButtons();
+        createSetSwitcher();
         updateBulkActionButtons(); // Add this line to update bulk action buttons
     });
 }
@@ -3041,8 +3047,8 @@ function switchConfigurationSet(setName) {
     currentSet = configurationSets.find(set => set.name === setName);
     browserAPI.storage.local.set({ currentSetName: setName }, function() {
         createDynamicButtons();
+        createSetSwitcher();
         updateBulkActionButtons();
-        updatePositions();
     });
 }
 
