@@ -299,7 +299,7 @@ function saveConfiguration() {
         const formData = extractFormData();
         const editIndex = document.getElementById('saveButton').dataset.editIndex;
         
-        const currentSet = configurationSets.find(set => set.name === currentSetName);
+        const currentSet = getCurrentSet();
         if (!currentSet) {
             throw new Error("Current set not found");
         }
@@ -320,11 +320,8 @@ function saveConfiguration() {
 
         updateOrAddConfiguration(newConfig, currentSet);
 
-        browserAPI.storage.local.set({
-            configurationSets: configurationSets,
-            lastConfigUpdate: Date.now(),
-        }, function() {
-            console.log('Configuration and settings saved');
+        saveConfigurationSets(function() {
+            console.log('Configuration saved');
             displayConfigurations();
             clearForm();
         });
@@ -343,52 +340,41 @@ function updateOrAddConfiguration(config, currentSet) {
 }
 
 function editConfiguration(configId) {
-    try {
-        console.log('Editing configuration:', configId);
-        const config = customButtons.find(c => c.id === configId);
-        if (!config) {
-            console.error(`Configuration with id ${configId} not found`);
-            return;
-        }
+    const currentSet = getCurrentSet();
+    if (!currentSet) return;
 
-        console.log('Found configuration:', config);
-
-        document.getElementById('buttonName').value = config.name;
-        
-        if (config.shortcut) {
-            document.getElementById('ctrlKey').checked = config.shortcut.ctrlKey;
-            document.getElementById('shiftKey').checked = config.shortcut.shiftKey;
-            document.getElementById('altKey').checked = config.shortcut.altKey;
-            document.getElementById('shortcut').value = config.shortcut.key;
-        } else {
-            document.getElementById('ctrlKey').checked = false;
-            document.getElementById('shiftKey').checked = false;
-            document.getElementById('altKey').checked = false;
-            document.getElementById('shortcut').value = '';
-        }
-
-        document.getElementById('actionsContainer').innerHTML = '';
-        console.log('Adding actions to form');
-        config.actions.forEach((action, index) => {
-            console.log(`Adding action ${index + 1}:`, action);
-            const actionDiv = addActionToForm(action);
-            
-            // Populate the action inputs after the action div is added to the DOM
-            setTimeout(() => {
-                populateActionInputs(actionDiv, action);
-            }, 0);
-        });
-
-        const saveButton = document.getElementById('saveButton');
-        saveButton.textContent = 'Update Configuration';
-        saveButton.dataset.editIndex = configId;
-
-        window.scrollTo(0, 0);
-        console.log('Configuration loaded for editing');
-    } catch (error) {
-        console.error('Error in editConfiguration:', error);
-        alert(`An error occurred while editing the configuration: ${error.message}\n\nPlease check the console for more details.`);
+    const config = currentSet.buttons.find(c => c.id === configId);
+    if (!config) {
+        console.error(`Configuration with id ${configId} not found`);
+        return;
     }
+
+    // Populate form fields with config data
+    document.getElementById('buttonName').value = config.name;
+    
+    if (config.shortcut) {
+        document.getElementById('ctrlKey').checked = config.shortcut.ctrlKey;
+        document.getElementById('shiftKey').checked = config.shortcut.shiftKey;
+        document.getElementById('altKey').checked = config.shortcut.altKey;
+        document.getElementById('shortcut').value = config.shortcut.key;
+    } else {
+        document.getElementById('ctrlKey').checked = false;
+        document.getElementById('shiftKey').checked = false;
+        document.getElementById('altKey').checked = false;
+        document.getElementById('shortcut').value = '';
+    }
+
+    document.getElementById('actionsContainer').innerHTML = '';
+    config.actions.forEach(action => {
+        const actionDiv = addActionToForm(action);
+        populateActionInputs(actionDiv, action);
+    });
+
+    const saveButton = document.getElementById('saveButton');
+    saveButton.textContent = 'Update Configuration';
+    saveButton.dataset.editIndex = configId;
+
+    window.scrollTo(0, 0);
 }
 
 function populateActionInputs(actionDiv, action) {
@@ -446,28 +432,22 @@ function populateActionInputs(actionDiv, action) {
 }
 
 function duplicateConfiguration(configId) {
-    try {
-        console.log('Duplicating configuration:', configId);
-        const config = customButtons.find(c => c.id === configId);
-        if (!config) {
-            console.error(`Configuration with id ${configId} not found`);
-            return;
-        }
+    const currentSet = getCurrentSet();
+    if (!currentSet) return;
 
-        console.log('Found configuration to duplicate:', config);
-        editConfiguration(configId); // Reuse edit logic
-
-        document.getElementById('buttonName').value = `${config.name} (Copy)`;
-
-        const saveButton = document.getElementById('saveButton');
-        saveButton.textContent = 'Save New Configuration';
-        delete saveButton.dataset.editIndex;
-
-        console.log('Configuration duplicated and ready for editing');
-    } catch (error) {
-        console.error('Error in duplicateConfiguration:', error);
-        alert('An error occurred while duplicating the configuration. Please try again.');
+    const config = currentSet.buttons.find(c => c.id === configId);
+    if (!config) {
+        console.error(`Configuration with id ${configId} not found`);
+        return;
     }
+
+    editConfiguration(configId); // Reuse edit logic to populate form
+
+    document.getElementById('buttonName').value = `${config.name} (Copy)`;
+
+    const saveButton = document.getElementById('saveButton');
+    saveButton.textContent = 'Save New Configuration';
+    delete saveButton.dataset.editIndex;
 }
 
 function mergeConfigurations(importedData) {
@@ -835,11 +815,12 @@ function updateAllListSelects() {
 }
 
 function loadConfigurations() {
-    browserAPI.storage.local.get(['customButtons', 'observationFieldMap'], function(data) {
-        console.log('Loaded data:', data);
-        customButtons = data.customButtons || [];
-        observationFieldMap = data.observationFieldMap || {};
+    browserAPI.storage.local.get(['configurationSets', 'currentSetName'], function(data) {
+        configurationSets = data.configurationSets || [{ name: 'Default Set', buttons: [], observationFieldMap: {} }];
+        currentSetName = data.currentSetName || configurationSets[0].name;
         displayConfigurations();
+        updateSetSelector();
+        updateSetManagementButtons();
     });
 }
 
@@ -870,7 +851,7 @@ async function displayConfigurations() {
     const container = document.getElementById('buttonConfigs');
     container.innerHTML = '';
 
-    const currentSet = configurationSets.find(set => set.name === currentSetName);
+    const currentSet = getCurrentSet();
     if (!currentSet) {
         console.error('Current set not found');
         return;
@@ -1147,13 +1128,13 @@ function toggleHideConfiguration(configId) {
 
 function deleteConfiguration(configId) {
     if (confirm('Are you sure you want to delete this configuration?')) {
-        customButtons = customButtons.filter(c => c.id !== configId);
-        browserAPI.storage.local.set({
-            customButtons: customButtons,
-            lastConfigUpdate: Date.now()
-        }, function() {
-            console.log('Configuration deleted and lastConfigUpdate set');
-            loadConfigurations();
+        const currentSet = getCurrentSet();
+        if (!currentSet) return;
+
+        currentSet.buttons = currentSet.buttons.filter(c => c.id !== configId);
+        saveConfigurationSets(function() {
+            console.log('Configuration deleted');
+            displayConfigurations();
         });
     }
 }
@@ -1680,16 +1661,13 @@ function removeCurrentSet() {
     }
 }
 
-function saveConfigurationSets() {
+function saveConfigurationSets(callback) {
     browserAPI.storage.local.set({ 
         configurationSets: configurationSets,
-        currentSetName: currentSetName,
         lastConfigUpdate: Date.now()
     }, function() {
         console.log('Configuration sets updated');
-        updateSetSelector();
-        displayConfigurations();
-        updateSetManagementButtons();
+        if (callback) callback();
     });
 }
 
@@ -1767,4 +1745,8 @@ function finalizeMerge(existingLists, listsToAdd) {
         updateAllListSelects();
         alert('Import completed successfully. Lists have been merged.');
     });
+}
+
+function getCurrentSet() {
+    return configurationSets.find(set => set.name === currentSetName);
 }
