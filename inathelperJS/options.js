@@ -1258,13 +1258,21 @@ function showUndoRecordsModal() {
 }
 
 function exportConfigurations() {
-    const blob = new Blob([JSON.stringify({ configurationSets, currentSetName }, null, 2)], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `iNaturalist_tool_config_sets_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    browserAPI.storage.local.get(['configurationSets', 'currentSetName', 'customLists'], function(data) {
+        const exportData = {
+            configurationSets: data.configurationSets || [],
+            currentSetName: data.currentSetName || '',
+            customLists: data.customLists || []
+        };
+        
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `iNaturalist_tool_config_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
 }
 
 function importConfigurations(event) {
@@ -1280,6 +1288,9 @@ function importConfigurations(event) {
                 if (importedData.configurationSets) {
                     // New format
                     processImportedSets(importedData.configurationSets);
+                    if (importedData.customLists) {
+                        mergeLists(importedData.customLists);
+                    }
                 } else if (importedData.customButtons) {
                     // Old format
                     const setName = prompt("Enter a name for the imported set:", `Imported Set ${new Date().toLocaleString()}`);
@@ -1679,5 +1690,81 @@ function saveConfigurationSets() {
         updateSetSelector();
         displayConfigurations();
         updateSetManagementButtons();
+    });
+}
+
+function mergeLists(importedLists) {
+    browserAPI.storage.local.get('customLists', function(data) {
+        let existingLists = data.customLists || [];
+        let listsToAdd = [];
+        let listConflicts = [];
+
+        importedLists.forEach(importedList => {
+            const existingListIndex = existingLists.findIndex(list => list.id === importedList.id);
+            if (existingListIndex === -1) {
+                listsToAdd.push(importedList);
+            } else {
+                listConflicts.push({existing: existingLists[existingListIndex], imported: importedList});
+            }
+        });
+
+        if (listConflicts.length > 0) {
+            resolveListConflicts(listConflicts, function(resolvedLists) {
+                existingLists = existingLists.map(list => {
+                    const resolved = resolvedLists.find(r => r.id === list.id);
+                    return resolved || list;
+                });
+                finalizeMerge(existingLists, listsToAdd);
+            });
+        } else {
+            finalizeMerge(existingLists, listsToAdd);
+        }
+    });
+}
+
+function resolveListConflicts(conflicts, callback) {
+    if (conflicts.length === 0) {
+        callback([]);
+        return;
+    }
+
+    const conflict = conflicts.shift();
+    const choice = prompt(
+        `List "${conflict.existing.name}" already exists. Choose an action:\n` +
+        `1. Keep existing\n2. Replace with imported\n3. Merge observations\n\n` +
+        `Enter the number of your choice:`
+    );
+
+    let resolvedList;
+    switch (choice) {
+        case '1':
+            resolvedList = conflict.existing;
+            break;
+        case '2':
+            resolvedList = conflict.imported;
+            break;
+        case '3':
+            resolvedList = {
+                ...conflict.existing,
+                observations: [...new Set([...conflict.existing.observations, ...conflict.imported.observations])]
+            };
+            break;
+        default:
+            alert('Invalid choice. Keeping the existing list.');
+            resolvedList = conflict.existing;
+    }
+
+    resolveListConflicts(conflicts, function(resolvedLists) {
+        callback([resolvedList, ...resolvedLists]);
+    });
+}
+
+function finalizeMerge(existingLists, listsToAdd) {
+    const updatedLists = [...existingLists, ...listsToAdd];
+    browserAPI.storage.local.set({customLists: updatedLists}, function() {
+        console.log('Lists merged successfully');
+        displayLists();
+        updateAllListSelects();
+        alert('Import completed successfully. Lists have been merged.');
     });
 }
