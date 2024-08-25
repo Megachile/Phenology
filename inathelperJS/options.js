@@ -1431,8 +1431,11 @@ function resolveConflicts(conflicts, callback) {
 
 function loadUndoRecords() {
     const container = document.getElementById('undoRecordsContainer');
-    container.innerHTML = ''; // Clear existing content
-
+    if (!container) {
+        console.log('Undo records container not found. This is expected if the modal is not open.');
+        return;
+    }
+    
     browserAPI.storage.local.get('undoRecords', function(result) {
         const undoRecords = result.undoRecords || [];
         if (undoRecords.length === 0) {
