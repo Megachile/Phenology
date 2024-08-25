@@ -332,10 +332,28 @@ button:hover {
   .list-actions button {
     margin-left: 10px;
   }
+  #setManagement {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    }
+    #setSelector {
+        margin-right: 10px;
+    }
+    .set-management-button {
+        margin-right: 5px;
+    }
     </style>
 </head>
 <body>
     <h1>iNaturalist Metadata Tool Configuration</h1>
+    <div id="setManagement">
+        <select id="setSelector"></select>
+        <button id="createSetButton" class="set-management-button">Create New Set</button>
+        <button id="duplicateSetButton" class="set-management-button">Duplicate Set</button>
+        <button id="renameSetButton" class="set-management-button">Rename Set</button>
+        <button id="removeSetButton" class="set-management-button">Remove Set</button>
+    </div>
     <button id="openBulkActionsButton">Open Advanced Filters URL Generator</button>
     <button id="showUndoRecordsButton">Show Bulk Action Records</button>
     <div class="hardcoded-shortcuts">
@@ -346,6 +364,7 @@ button:hover {
             <li>Alt + N: Cycle button position</li>
             <li>Ctrl + Shift + R: Toggle refresh</li>
             <li>Alt + H: Toggle shortcut list on iNaturalist page</li>
+            <li>Alt + S: Cycle button sets on iNaturalist page</li>
         </ul>
     </div>
     <div class="import-export-container">

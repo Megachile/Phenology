@@ -5,6 +5,8 @@ let alphaSortAtoZ = true;
 let lastUsedSort = 'date';
 let searchTerm = '';
 let observationFieldMap = {};
+let configurationSets = [];
+let currentSetName = '';
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
 const iNatSingleKeyPresses = [
@@ -23,7 +25,8 @@ const forbiddenShortcuts = [
     { altKey: true, key: 'N' },    // Toggle button visibility
     { ctrlKey: true, shiftKey: true, key: 'R' },  // Toggle refresh
     { altKey: true, key: 'H' },     // Toggle shortcut list
-    { shiftKey: true, key: 'V' }     // Toggle bulk action box
+    { shiftKey: true, key: 'V' },     // Toggle bulk action box
+    { altKey: true, key: 'S' }     // Cycle button sets
 ];
 
 const qualityMetrics = [
@@ -282,13 +285,18 @@ function validateCommonConfiguration(config) {
     });
 }
 
-async function saveConfiguration() {
+function saveConfiguration() {
     try {
         const formData = extractFormData();
         const editIndex = document.getElementById('saveButton').dataset.editIndex;
         
+        const currentSet = configurationSets.find(set => set.name === currentSetName);
+        if (!currentSet) {
+            throw new Error("Current set not found");
+        }
+
         if (editIndex) {
-            const originalConfig = customButtons.find(c => c.id === editIndex);
+            const originalConfig = currentSet.buttons.find(c => c.id === editIndex);
             validateEditConfiguration(formData, originalConfig);
         } else {
             validateNewConfiguration(formData);
@@ -301,38 +309,27 @@ async function saveConfiguration() {
             configurationDisabled: false
         };
 
-        updateOrAddConfiguration(newConfig);
+        updateOrAddConfiguration(newConfig, currentSet);
 
-        // Update button order
-        let buttonOrder = await browserAPI.storage.local.get('buttonOrder');
-        buttonOrder = buttonOrder.buttonOrder || [];
-        if (!editIndex) {
-            // If it's a new button, add it to the end of the order
-            buttonOrder.push(newConfig.id);
-        }
-
-        await browserAPI.storage.local.set({
-            customButtons: customButtons,
-            observationFieldMap: observationFieldMap,
-            buttonOrder: buttonOrder,
+        browserAPI.storage.local.set({
+            configurationSets: configurationSets,
             lastConfigUpdate: Date.now(),
+        }, function() {
+            console.log('Configuration and settings saved');
+            displayConfigurations();
+            clearForm();
         });
-
-        console.log('Configuration and settings saved');
-        loadConfigurations();
-        clearForm();
     } catch (error) {
         alert(error.message);
     }
 }
 
-
-function updateOrAddConfiguration(config) {
-    const existingIndex = customButtons.findIndex(c => c.id === config.id);
+function updateOrAddConfiguration(config, currentSet) {
+    const existingIndex = currentSet.buttons.findIndex(c => c.id === config.id);
     if (existingIndex !== -1) {
-        customButtons[existingIndex] = config;
+        currentSet.buttons[existingIndex] = config;
     } else {
-        customButtons.push(config);
+        currentSet.buttons.push(config);
     }
 }
 
@@ -864,7 +861,13 @@ async function displayConfigurations() {
     const container = document.getElementById('buttonConfigs');
     container.innerHTML = '';
 
-    let buttonsToDisplay = [...customButtons];
+    const currentSet = configurationSets.find(set => set.name === currentSetName);
+    if (!currentSet) {
+        console.error('Current set not found');
+        return;
+    }
+
+    let buttonsToDisplay = [...currentSet.buttons];
     
     if (lastUsedSort === 'date') {
         buttonsToDisplay.sort((a, b) => {
@@ -944,6 +947,8 @@ async function displayConfigurations() {
         container.appendChild(configDiv);
     }
 }
+
+
 async function formatAction(action) {
     switch (action.type) {
         case 'observationField':
@@ -1218,7 +1223,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('importInput').click();
     });
     document.getElementById('showUndoRecordsButton').addEventListener('click', showUndoRecordsModal);
-
+    document.getElementById('createSetButton').addEventListener('click', createNewSet);
+    document.getElementById('setSelector').addEventListener('change', switchConfigurationSet);
+    document.getElementById('duplicateSetButton').addEventListener('click', duplicateCurrentSet);
+    document.getElementById('renameSetButton').addEventListener('click', renameCurrentSet);
+    document.getElementById('removeSetButton').addEventListener('click', removeCurrentSet);
 });
 
 function showUndoRecordsModal() {
@@ -1239,17 +1248,12 @@ function showUndoRecordsModal() {
     });
 }
 
-
 function exportConfigurations() {
-    const configData = {
-        customButtons: customButtons,
-        observationFieldMap: observationFieldMap
-    };
-    const blob = new Blob([JSON.stringify(configData, null, 2)], {type: 'application/json'});
+    const blob = new Blob([JSON.stringify({ configurationSets, currentSetName }, null, 2)], {type: 'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `iNaturalist_tool_config_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `iNaturalist_tool_config_sets_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -1261,9 +1265,26 @@ function importConfigurations(event) {
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
-                const importedData = JSON.parse(e.target.result);                
+                const importedData = JSON.parse(e.target.result);
                 console.log('Imported data:', importedData);
-                mergeConfigurations(importedData);
+                
+                if (importedData.configurationSets) {
+                    // New format
+                    processImportedSets(importedData.configurationSets);
+                } else if (importedData.customButtons) {
+                    // Old format
+                    const setName = prompt("Enter a name for the imported set:", `Imported Set ${new Date().toLocaleString()}`);
+                    if (setName) {
+                        const newSet = {
+                            name: setName,
+                            buttons: importedData.customButtons,
+                            observationFieldMap: importedData.observationFieldMap || {}
+                        };
+                        processImportedSets([newSet]);
+                    }
+                } else {
+                    throw new Error('Invalid import format');
+                }
             } catch (error) {
                 alert('Error parsing the imported file. Please make sure it\'s a valid JSON file.');
                 console.error('Import error:', error);
@@ -1271,6 +1292,74 @@ function importConfigurations(event) {
         };
         reader.readAsText(file);
     }
+}
+
+function processImportedSets(importedSets) {
+    let setsToAdd = [];
+    let duplicateSets = [];
+
+    importedSets.forEach(importedSet => {
+        const existingSetIndex = configurationSets.findIndex(set => isSetEqual(set, importedSet));
+        if (existingSetIndex === -1) {
+            setsToAdd.push(importedSet);
+        } else {
+            duplicateSets.push(importedSet.name);
+        }
+    });
+
+    if (duplicateSets.length > 0) {
+        alert(`The following sets are exact duplicates and will be skipped: ${duplicateSets.join(', ')}`);
+    }
+
+    if (setsToAdd.length > 0) {
+        configurationSets.push(...setsToAdd);
+        currentSetName = setsToAdd[setsToAdd.length - 1].name;
+        saveConfigurationSets();
+        alert(`Successfully imported ${setsToAdd.length} new configuration set(s).`);
+    } else {
+        alert('No new configuration sets were imported.');
+    }
+}
+
+function isSetEqual(set1, set2) {
+    return JSON.stringify(set1) === JSON.stringify(set2);
+}
+
+function mergeConfigurationSets(importedSets) {
+    importedSets.forEach(importedSet => {
+        const existingSetIndex = configurationSets.findIndex(set => set.name === importedSet.name);
+        if (existingSetIndex !== -1) {
+            // Merge buttons
+            importedSet.buttons.forEach(importedButton => {
+                const existingButtonIndex = configurationSets[existingSetIndex].buttons.findIndex(b => b.name === importedButton.name);
+                if (existingButtonIndex !== -1) {
+                    // Ask user what to do
+                    if (confirm(`Button "${importedButton.name}" already exists in set "${importedSet.name}". Replace it?`)) {
+                        configurationSets[existingSetIndex].buttons[existingButtonIndex] = importedButton;
+                    }
+                } else {
+                    configurationSets[existingSetIndex].buttons.push(importedButton);
+                }
+            });
+            // Merge observationFieldMap
+            configurationSets[existingSetIndex].observationFieldMap = {
+                ...configurationSets[existingSetIndex].observationFieldMap,
+                ...importedSet.observationFieldMap
+            };
+        } else {
+            configurationSets.push(importedSet);
+        }
+    });
+
+    browserAPI.storage.local.set({ 
+        configurationSets: configurationSets,
+        lastConfigUpdate: Date.now()
+    }, function() {
+        console.log('Configuration sets updated');
+        updateSetSelector();
+        displayConfigurations();
+        alert('Import completed successfully.');
+    });
 }
 
 function resolveConflicts(conflicts, callback) {
@@ -1469,4 +1558,114 @@ function deleteList(listId) {
     } else {
         alert('This list is empty or not found.');
     }
+}
+
+function loadConfigurationSets() {
+    browserAPI.storage.local.get(['configurationSets', 'currentSetName'], function(data) {
+        configurationSets = data.configurationSets || [{ name: 'Default Set', buttons: [], observationFieldMap: {} }];
+        currentSetName = data.currentSetName || configurationSets[0].name;
+        updateSetSelector();
+        displayConfigurations();
+        updateSetManagementButtons();
+    });
+}
+
+function updateSetSelector() {
+    const selector = document.getElementById('setSelector');
+    selector.innerHTML = '';
+    configurationSets.forEach(set => {
+        const option = document.createElement('option');
+        option.value = set.name;
+        option.textContent = set.name;
+        selector.appendChild(option);
+    });
+    selector.value = currentSetName;
+}
+
+function switchConfigurationSet() {
+    currentSetName = document.getElementById('setSelector').value;
+    browserAPI.storage.local.set({ currentSetName }, function() {
+        displayConfigurations();
+        updateSetManagementButtons();
+    });
+}
+
+function updateSetManagementButtons() {
+    const disableButtons = configurationSets.length <= 1;
+    document.getElementById('duplicateSetButton').disabled = false;
+    document.getElementById('renameSetButton').disabled = false;
+    document.getElementById('removeSetButton').disabled = disableButtons;
+}
+
+function createNewSet() {
+    const setName = prompt("Enter a name for the new configuration set:");
+    if (setName) {
+        if (configurationSets.some(set => set.name === setName)) {
+            alert("A set with this name already exists. Please choose a different name.");
+            return;
+        }
+        const newSet = { name: setName, buttons: [], observationFieldMap: {} };
+        configurationSets.push(newSet);
+        currentSetName = setName;
+        saveConfigurationSets();
+    }
+}
+
+function duplicateCurrentSet() {
+    const currentSet = configurationSets.find(set => set.name === currentSetName);
+    if (currentSet) {
+        const newSetName = prompt("Enter a name for the duplicated set:", `${currentSet.name} (Copy)`);
+        if (newSetName) {
+            if (configurationSets.some(set => set.name === newSetName)) {
+                alert("A set with this name already exists. Please choose a different name.");
+                return;
+            }
+            const newSet = JSON.parse(JSON.stringify(currentSet));
+            newSet.name = newSetName;
+            configurationSets.push(newSet);
+            currentSetName = newSetName;
+            saveConfigurationSets();
+        }
+    }
+}
+
+function renameCurrentSet() {
+    const currentSet = configurationSets.find(set => set.name === currentSetName);
+    if (currentSet) {
+        const newName = prompt("Enter a new name for the current set:", currentSet.name);
+        if (newName && newName !== currentSet.name) {
+            if (configurationSets.some(set => set.name === newName)) {
+                alert("A set with this name already exists. Please choose a different name.");
+                return;
+            }
+            currentSet.name = newName;
+            currentSetName = newName;
+            saveConfigurationSets();
+        }
+    }
+}
+
+function removeCurrentSet() {
+    if (configurationSets.length > 1) {
+        if (confirm(`Are you sure you want to remove the "${currentSetName}" set?`)) {
+            configurationSets = configurationSets.filter(set => set.name !== currentSetName);
+            currentSetName = configurationSets[0].name;
+            saveConfigurationSets();
+        }
+    } else {
+        alert("You cannot remove the last configuration set.");
+    }
+}
+
+function saveConfigurationSets() {
+    browserAPI.storage.local.set({ 
+        configurationSets: configurationSets,
+        currentSetName: currentSetName,
+        lastConfigUpdate: Date.now()
+    }, function() {
+        console.log('Configuration sets updated');
+        updateSetSelector();
+        displayConfigurations();
+        updateSetManagementButtons();
+    });
 }

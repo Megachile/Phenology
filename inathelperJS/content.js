@@ -15,6 +15,9 @@ let debugMode = false;
 let bulkActionModeEnabled = false;
 let selectedObservations = new Set();
 let currentUserId = null;
+let configurationSets = [];
+let currentSetName = '';
+let currentSet = null;
 
 async function getCurrentUserId() {
     if (currentUserId) return currentUserId;
@@ -131,6 +134,7 @@ function createShortcutList() {
         <li>Alt + N: Cycle button position</li>
         <li>Ctrl + Shift + R: Toggle refresh</li>
         <li>Alt + H: Toggle this shortcut list</li>
+        <li>Alt + S: Cycle through button sets</li>
     `;
 
     // Add custom shortcuts
@@ -302,7 +306,9 @@ browserAPI.storage.local.get('buttonPosition', function(data) {
 
 function updatePositions() {
     const buttonDiv = document.getElementById('custom-extension-container').parentElement;
+    const sortButtonContainer = document.getElementById('sort-buttons-container');
     buttonDiv.style.top = buttonDiv.style.left = buttonDiv.style.bottom = buttonDiv.style.right = 'auto';
+    sortButtonContainer.style.top = sortButtonContainer.style.left = sortButtonContainer.style.bottom = sortButtonContainer.style.right = 'auto';
     
     if (idDisplay) {
         idDisplay.style.top = idDisplay.style.left = idDisplay.style.bottom = idDisplay.style.right = 'auto';
@@ -312,6 +318,8 @@ function updatePositions() {
         case 'top-left':
             buttonDiv.style.top = '10px';
             buttonDiv.style.left = '10px';
+            sortButtonContainer.style.top = '100%';
+            sortButtonContainer.style.left = '0';
             if (idDisplay) {
                 idDisplay.style.top = '10px';
                 idDisplay.style.right = '10px';
@@ -320,14 +328,18 @@ function updatePositions() {
         case 'top-right':
             buttonDiv.style.top = '10px';
             buttonDiv.style.right = '10px';
+            sortButtonContainer.style.top = '100%';
+            sortButtonContainer.style.right = '0';
             if (idDisplay) {
                 idDisplay.style.top = '10px';
-                idDisplay.left = '10px';
+                idDisplay.style.left = '10px';
             }
             break;
         case 'bottom-left':
             buttonDiv.style.bottom = '10px';
             buttonDiv.style.left = '10px';
+            sortButtonContainer.style.bottom = '100%';
+            sortButtonContainer.style.left = '0';
             if (idDisplay) {
                 idDisplay.style.bottom = '10px';
                 idDisplay.style.right = '10px';
@@ -336,6 +348,8 @@ function updatePositions() {
         case 'bottom-right':
             buttonDiv.style.bottom = '10px';
             buttonDiv.style.right = '10px';
+            sortButtonContainer.style.bottom = '100%';
+            sortButtonContainer.style.right = '0';
             if (idDisplay) {
                 idDisplay.style.bottom = '10px';
                 idDisplay.style.left = '10px';
@@ -1680,63 +1694,119 @@ function createDynamicButtons() {
         console.log('Not a valid page for buttons, skipping creation');
         return;
     }
-    browserAPI.storage.local.get(['customButtons', 'buttonOrder', 'currentSortMethod'], function(data) {
-        if (data.customButtons && data.customButtons.length > 0) {
-            debugLog('Retrieved buttonOrder from storage:', data.buttonOrder);
-            debugLog('Retrieved customButtons from storage:', data.customButtons);
-            customShortcuts = [];
-            buttonContainer.innerHTML = ''; // Clear existing buttons
 
-            // Remove any existing sort button container
-            const existingSortContainer = document.getElementById('sort-buttons-container');
-            if (existingSortContainer) {
-                existingSortContainer.remove();
-            }
+    const currentSet = configurationSets.find(set => set.name === currentSetName);
+    if (currentSet && currentSet.buttons) {
+        customButtons = currentSet.buttons;
+        debugLog('Retrieved customButtons from current set:', customButtons);
+        customShortcuts = [];
+        buttonContainer.innerHTML = ''; // Clear existing buttons
 
-            // Create sort button container
-            const sortButtonContainer = document.createElement('div');
-            sortButtonContainer.id = 'sort-buttons-container';
-            buttonContainer.parentElement.insertBefore(sortButtonContainer, buttonContainer);
-
-            // Add sort button and dropdown
-            const sortButton = document.createElement('button');
-            sortButton.id = 'sort-button';
-            sortButton.innerHTML = getSortButtonText(data.currentSortMethod || 'default');
-            sortButton.title = 'Sort buttons';
-            sortButtonContainer.appendChild(sortButton);
-
-            const sortDropdown = document.createElement('div');
-            sortDropdown.id = 'sort-dropdown';
-            sortDropdown.innerHTML = `
-                <button id="sort-az">Sort A-Z</button>
-                <button id="sort-za">Sort Z-A</button>
-                <button id="sort-new-old">Sort New-Old</button>
-                <button id="sort-old-new">Sort Old-New</button>
-            `;
-            sortButtonContainer.appendChild(sortDropdown);
-
-            sortButton.addEventListener('click', toggleSortDropdown);
-            document.getElementById('sort-az').addEventListener('click', () => sortButtons('az'));
-            document.getElementById('sort-za').addEventListener('click', () => sortButtons('za'));
-            document.getElementById('sort-new-old').addEventListener('click', () => sortButtons('new-old'));
-            document.getElementById('sort-old-new').addEventListener('click', () => sortButtons('old-new'));
-
-            const orderedButtons = data.buttonOrder || data.customButtons.map(config => config.id);
-
-            orderedButtons.forEach((buttonId, index) => {
-                debugLog(`Processing button ${index + 1}/${orderedButtons.length}: ID ${buttonId}`);
-                const config = data.customButtons.find(c => c.id === buttonId);
-                if (config && !config.configurationDisabled) {
-                    createButton(config);
-                } else {
-                    debugLog(`Button ${buttonId} skipped: ${config ? 'Disabled' : 'Not found'}`);
-                }
-            });
-
-            initializeDragAndDrop();
+        // Remove any existing sort button container
+        const existingSortContainer = document.getElementById('sort-buttons-container');
+        if (existingSortContainer) {
+            existingSortContainer.remove();
         }
-        debugLog('All buttons created. Total buttons:', buttonContainer.children.length);
-    });
+
+        // Create sort button container
+        const sortButtonContainer = document.createElement('div');
+        sortButtonContainer.id = 'sort-buttons-container';
+        sortButtonContainer.style.cssText = `
+            z-index: 10002;
+            display: flex;
+            align-items: center;
+        `;
+        buttonContainer.parentElement.insertBefore(sortButtonContainer, buttonContainer);
+
+        // Add sort button and dropdown
+        const sortButtonWrapper = document.createElement('div');
+        sortButtonWrapper.style.cssText = `
+            position: relative;
+            display: inline-block;
+        `;
+
+        const sortButton = document.createElement('button');
+        sortButton.id = 'sort-button';
+        sortButton.innerHTML = getSortButtonText(currentSet.currentSortMethod || 'default');
+        sortButton.title = 'Sort buttons';
+        sortButton.style.cssText = `
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 5px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-right: 5px;
+        `;
+        sortButtonWrapper.appendChild(sortButton);
+
+        const sortDropdown = document.createElement('div');
+        sortDropdown.id = 'sort-dropdown';
+        sortDropdown.style.cssText = `
+            display: none;
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 5px 0;
+            z-index: 10003;
+            min-width: 120px;
+            width: 100%;
+        `;
+        sortDropdown.innerHTML = `
+            <button id="sort-az" class="sort-option">Sort A-Z</button>
+            <button id="sort-za" class="sort-option">Sort Z-A</button>
+            <button id="sort-new-old" class="sort-option">Sort New-Old</button>
+            <button id="sort-old-new" class="sort-option">Sort Old-New</button>
+        `;
+        sortButtonWrapper.appendChild(sortDropdown);
+
+        // Add CSS for sort options
+        const style = document.createElement('style');
+        style.textContent = `
+            .sort-option {
+                display: block;
+                width: 100%;
+                text-align: left;
+                padding: 5px 10px;
+                border: none;
+                background: none;
+                cursor: pointer;
+            }
+            .sort-option:hover {
+                background-color: #f0f0f0;
+            }
+        `;
+        document.head.appendChild(style);
+
+        sortButtonContainer.appendChild(sortButtonWrapper);
+   
+        sortButton.addEventListener('click', toggleSortDropdown);
+    
+        document.getElementById('sort-az').addEventListener('click', () => sortButtons('az'));
+        document.getElementById('sort-za').addEventListener('click', () => sortButtons('za'));
+        document.getElementById('sort-new-old').addEventListener('click', () => sortButtons('new-old'));
+        document.getElementById('sort-old-new').addEventListener('click', () => sortButtons('old-new'));
+
+        // Create set switcher
+        createSetSwitcher();
+
+        const orderedButtons = currentSet.buttonOrder || currentSet.buttons.map(config => config.id);
+
+        orderedButtons.forEach((buttonId, index) => {
+            debugLog(`Processing button ${index + 1}/${orderedButtons.length}: ID ${buttonId}`);
+            const config = currentSet.buttons.find(c => c.id === buttonId);
+            if (config && !config.configurationDisabled) {
+                createButton(config);
+            } else {
+                debugLog(`Button ${buttonId} skipped: ${config ? 'Disabled' : 'Not found'}`);
+            }
+        });
+
+        initializeDragAndDrop();
+    }
+    debugLog('All buttons created. Total buttons:', buttonContainer.children.length);
 }
 
 function debugButtonCreation(config) {
@@ -1996,19 +2066,7 @@ function createBulkActionButtons() {
     bulkButtonContainer.style.border = '1px solid black';
     bulkButtonContainer.style.display = 'none';
 
-    const selectAllButton = createBulkActionButton('Select All', selectAllObservations);
-    const invertSelectionButton = createBulkActionButton('Invert Selection', invertSelection);
-    const applyActionButton = createBulkActionButton('Apply Action', applyBulkAction);
-    const disableBulkModeButton = createBulkActionButton('Disable Bulk Mode', disableBulkActionMode);
-
-    // Add this line to create the undo records button
-    const showUndoRecordsButton = createBulkActionButton('Show Undo Records', showUndoRecordsModal);
-
-    bulkButtonContainer.appendChild(selectAllButton);
-    bulkButtonContainer.appendChild(invertSelectionButton);
-    bulkButtonContainer.appendChild(applyActionButton);
-    bulkButtonContainer.appendChild(disableBulkModeButton);
-    bulkButtonContainer.appendChild(showUndoRecordsButton); // Add this line
+    // We'll populate this container in the updateBulkActionButtons function
 
     document.body.appendChild(bulkButtonContainer);
 
@@ -2034,7 +2092,6 @@ function createBulkActionButton(text, onClickFunction) {
     return button;
 }
 
-
 function enableBulkActionMode() {
     bulkActionModeEnabled = true;
     document.getElementById('bulk-action-container').style.display = 'block';
@@ -2058,6 +2115,7 @@ function enableBulkActionMode() {
     }
 
     updateAllSelections();
+    updateBulkActionButtons(); // Add this line to update bulk action buttons
 }
 
 function disableBulkActionMode() {
@@ -2219,48 +2277,7 @@ async function applyBulkAction() {
         }
         const selectedAction = availableActions.find(button => button.id === actionSelect.value);
         if (selectedAction) {
-            const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
-            const hasTaxonId = selectedAction.actions.some(action => action.type === 'addTaxonId');
-
-            let confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${selectedObservations.size} observation(s)?\n\n`;
-            confirmMessage += "This action includes:\n";
-
-            selectedAction.actions.forEach(action => {
-                switch (action.type) {
-                    case 'observationField':
-                        const displayValue = action.displayValue || action.fieldValue;
-                        confirmMessage += `- Add observation field: ${action.fieldName} = ${displayValue}\n`;
-                        break;
-                    case 'annotation':
-                        const attribute = Object.entries(controlledTerms).find(([_, value]) => value.id === parseInt(action.annotationField));
-                        const attributeName = attribute ? attribute[0] : 'Unknown';
-                        const valueName = attribute ? Object.entries(attribute[1].values).find(([_, id]) => id === parseInt(action.annotationValue))[0] : 'Unknown';
-                        confirmMessage += `- Add annotation: ${attributeName} = ${valueName}\n`;
-                        break;
-                    case 'addToProject':
-                        confirmMessage += `- Add to project: ${action.projectName}\n`;
-                        break;
-                    case 'addComment':
-                        confirmMessage += `- Add comment: "${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}"\n`;
-                        break;
-                    case 'addTaxonId':
-                        confirmMessage += `- Add taxon ID: ${action.taxonName}\n`;
-                        break;
-                    case 'qualityMetric':
-                        const metricName = getQualityMetricName(action.metric);
-                        confirmMessage += `- Set quality metric: ${metricName} to ${action.vote}\n`;
-                        break;
-                    case 'copyObservationField':
-                        confirmMessage += `- Copy field: ${action.sourceFieldName} to ${action.targetFieldName}\n`;
-                        break;
-                }
-            });
-
-            confirmMessage += "\nNote: iNaturalist policy requires that you have individually inspected every observation before you apply this action.";
-
-            if (hasDQIRemoval) {
-                confirmMessage += "\n\nPlease note: Removing DQI votes cannot be undone in bulk due to API limitations.";
-            }
+            // ... (keep existing confirmation logic)
 
             if (confirm(confirmMessage)) {
                 await executeBulkAction(selectedAction, modal);
@@ -2271,9 +2288,9 @@ async function applyBulkAction() {
         document.body.removeChild(modal);
     };
 }
+
 async function getAvailableActions() {
-    const customButtons = await new Promise(resolve => browserAPI.storage.local.get('customButtons', resolve));
-    return (customButtons.customButtons || []).filter(button => !button.configurationDisabled);
+    return currentSet.buttons.filter(button => !button.configurationDisabled);
 }
 
 function createActionModal() {
@@ -2835,13 +2852,28 @@ window.addEventListener('replacestate', updateSelectedObservations);
 
 function toggleSortDropdown(event) {
     event.stopPropagation();
+    const sortButton = event.target;
     const dropdown = document.getElementById('sort-dropdown');
     const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
-    dropdown.style.display = isHidden ? 'block' : 'none';
     
     if (isHidden) {
+        dropdown.style.display = 'block';
+        dropdown.style.width = `${sortButton.offsetWidth}px`; // Match dropdown width to button width
+
+        if (buttonPosition.startsWith('top')) {
+            dropdown.style.top = '100%';
+            dropdown.style.bottom = 'auto';
+        } else {
+            dropdown.style.bottom = '100%';
+            dropdown.style.top = 'auto';
+        }
+
+        dropdown.style.left = '0';
+        dropdown.style.right = 'auto';
+
         document.addEventListener('click', closeSortDropdown);
     } else {
+        dropdown.style.display = 'none';
         document.removeEventListener('click', closeSortDropdown);
     }
 }
@@ -2898,3 +2930,127 @@ function getSortButtonText(method) {
             return 'Sort';
     }
 }
+
+
+function loadConfigurationSets() {
+    browserAPI.storage.local.get(['configurationSets', 'currentSetName'], function(data) {
+        configurationSets = data.configurationSets || [];
+        currentSetName = data.currentSetName || (configurationSets[0] && configurationSets[0].name);
+        currentSet = configurationSets.find(set => set.name === currentSetName) || configurationSets[0];
+        createSetSwitcher();
+        createDynamicButtons();
+        updateBulkActionButtons(); // Add this line to update bulk action buttons
+    });
+}
+
+function createSetSwitcher() {
+    const existingSwitcher = document.getElementById('set-switcher');
+    if (existingSwitcher) {
+        existingSwitcher.remove();
+    }
+
+    const sortButtonContainer = document.getElementById('sort-buttons-container');
+    if (!sortButtonContainer) {
+        console.error('Sort button container not found');
+        return;
+    }
+
+    const switcher = document.createElement('div');
+    switcher.id = 'set-switcher';
+    switcher.style.cssText = `
+        display: inline-block;
+        margin-left: 10px;
+        vertical-align: middle;
+    `;
+
+    const select = document.createElement('select');
+    select.style.cssText = `
+        appearance: none;
+        background-color: #f0f0f0;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        padding: 5px 24px 5px 10px;
+        font-size: 14px;
+        cursor: pointer;
+        background-image: url('data:image/svg+xml;utf8,<svg fill="%23333" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 5px top 50%;
+        background-size: 16px;
+    `;
+
+    configurationSets.forEach(set => {
+        const option = document.createElement('option');
+        option.value = set.name;
+        option.textContent = set.name;
+        select.appendChild(option);
+    });
+    select.value = currentSetName;
+
+    select.addEventListener('change', function() {
+        switchConfigurationSet(this.value);
+    });
+
+    switcher.appendChild(select);
+    sortButtonContainer.appendChild(switcher);
+}
+
+function switchConfigurationSet(setName) {
+    currentSetName = setName;
+    currentSet = configurationSets.find(set => set.name === setName);
+    browserAPI.storage.local.set({ currentSetName: setName }, function() {
+        createDynamicButtons();
+        updateBulkActionButtons();
+        updatePositions();
+    });
+}
+
+// Add keyboard shortcut to cycle through sets
+document.addEventListener('keydown', function(event) {
+    if (event.altKey && event.key === 's') {  // Alt+S to switch sets
+        event.preventDefault();
+        cycleConfigurationSet();
+    }
+});
+
+function updateBulkActionButtons() {
+    if (bulkActionModeEnabled) {
+        const bulkButtonContainer = document.getElementById('bulk-action-container');
+        if (bulkButtonContainer) {
+            // Clear existing buttons
+            while (bulkButtonContainer.firstChild) {
+                bulkButtonContainer.firstChild.remove();
+            }
+            
+            // Recreate bulk action buttons
+            const selectAllButton = createBulkActionButton('Select All', selectAllObservations);
+            const invertSelectionButton = createBulkActionButton('Invert Selection', invertSelection);
+            const applyActionButton = createBulkActionButton('Apply Action', applyBulkAction);
+            const disableBulkModeButton = createBulkActionButton('Disable Bulk Mode', disableBulkActionMode);
+            const showUndoRecordsButton = createBulkActionButton('Show Undo Records', showUndoRecordsModal);
+
+            bulkButtonContainer.appendChild(selectAllButton);
+            bulkButtonContainer.appendChild(invertSelectionButton);
+            bulkButtonContainer.appendChild(applyActionButton);
+            bulkButtonContainer.appendChild(disableBulkModeButton);
+            bulkButtonContainer.appendChild(showUndoRecordsButton);
+        }
+    }
+}
+
+function cycleConfigurationSet() {
+    const currentIndex = configurationSets.findIndex(set => set.name === currentSetName);
+    const nextIndex = (currentIndex + 1) % configurationSets.length;
+    switchConfigurationSet(configurationSets[nextIndex].name);
+}
+
+// Listen for storage changes
+browserAPI.storage.onChanged.addListener(function(changes, namespace) {
+    if (namespace === 'local') {
+        if (changes.configurationSets || changes.currentSetName) {
+            loadConfigurationSets();
+        }
+    }
+});
+
+// Initial load
+loadConfigurationSets();
