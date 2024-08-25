@@ -172,10 +172,15 @@ function validateNewConfiguration(config) {
         throw new Error("Please enter a button name.");
     }
 
-    // Check for name duplication
-    const duplicateName = customButtons.find(button => button.name === config.name);
+    const currentSet = configurationSets.find(set => set.name === currentSetName);
+    if (!currentSet) {
+        throw new Error("Current set not found");
+    }
+
+    // Check for name duplication within the current set
+    const duplicateName = currentSet.buttons.find(button => button.name === config.name);
     if (duplicateName) {
-        throw new Error("This button name is already in use. Please choose a different name.");
+        throw new Error("This button name is already in use in the current set. Please choose a different name.");
     }
 
     if (config.shortcut && isShortcutForbidden(config.shortcut)) {
@@ -183,7 +188,7 @@ function validateNewConfiguration(config) {
     }
 
     if (config.shortcut && (config.shortcut.key || config.shortcut.ctrlKey || config.shortcut.shiftKey || config.shortcut.altKey)) {
-        const conflictingShortcut = customButtons.find((button) => {
+        const conflictingShortcut = currentSet.buttons.find((button) => {
             return button.shortcut &&
                    button.shortcut.key === config.shortcut.key &&
                    button.shortcut.ctrlKey === config.shortcut.ctrlKey &&
@@ -192,23 +197,27 @@ function validateNewConfiguration(config) {
         });
 
         if (conflictingShortcut) {
-            throw new Error(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
+            throw new Error(`This shortcut is already used for the button: "${conflictingShortcut.name}" in the current set. Please choose a different shortcut.`);
         }
     }
 
     validateCommonConfiguration(config);
 }
 
-
 function validateEditConfiguration(config, originalConfig) {
     if (!config.name) {
         throw new Error("Please enter a button name.");
     }
 
-    // Check for name duplication, excluding the original config
-    const duplicateName = customButtons.find(button => button.name === config.name && button.id !== originalConfig.id);
+    const currentSet = configurationSets.find(set => set.name === currentSetName);
+    if (!currentSet) {
+        throw new Error("Current set not found");
+    }
+
+    // Check for name duplication within the current set, excluding the original config
+    const duplicateName = currentSet.buttons.find(button => button.name === config.name && button.id !== originalConfig.id);
     if (duplicateName) {
-        throw new Error("This button name is already in use. Please choose a different name.");
+        throw new Error("This button name is already in use in the current set. Please choose a different name.");
     }
 
     if (config.shortcut && isShortcutForbidden(config.shortcut)) {
@@ -216,7 +225,7 @@ function validateEditConfiguration(config, originalConfig) {
     }
 
     if (config.shortcut && (config.shortcut.key || config.shortcut.ctrlKey || config.shortcut.shiftKey || config.shortcut.altKey)) {
-        const conflictingShortcut = customButtons.find((button) => {
+        const conflictingShortcut = currentSet.buttons.find((button) => {
             return button.id !== originalConfig.id && // Ignore the original config
                    button.shortcut &&
                    button.shortcut.key === config.shortcut.key &&
@@ -226,7 +235,7 @@ function validateEditConfiguration(config, originalConfig) {
         });
 
         if (conflictingShortcut) {
-            throw new Error(`This shortcut is already used for the button: "${conflictingShortcut.name}". Please choose a different shortcut.`);
+            throw new Error(`This shortcut is already used for the button: "${conflictingShortcut.name}" in the current set. Please choose a different shortcut.`);
         }
     }
 
