@@ -2389,7 +2389,7 @@ function createModalControls(availableActions) {
     });
 
     const applyButton = document.createElement('button');
-    applyButton.textContent = 'Select and Apply Action';
+    applyButton.textContent = 'Apply Action';
 
     const cancelButton = document.createElement('button');
     cancelButton.textContent = 'Cancel';
@@ -3072,7 +3072,7 @@ function updateBulkActionButtons() {
             // Recreate bulk action buttons
             const selectAllButton = createBulkActionButton('Select All', selectAllObservations);
             const invertSelectionButton = createBulkActionButton('Invert Selection', invertSelection);
-            const applyActionButton = createBulkActionButton('Apply Action', applyBulkAction);
+            const applyActionButton = createBulkActionButton('Select and Apply Action', applyBulkAction);
             const disableBulkModeButton = createBulkActionButton('Disable Bulk Mode', disableBulkActionMode);
             const showUndoRecordsButton = createBulkActionButton('Show Undo Records', showUndoRecordsModal);
 
