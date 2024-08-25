@@ -2389,7 +2389,7 @@ function createModalControls(availableActions) {
     });
 
     const applyButton = document.createElement('button');
-    applyButton.textContent = 'Apply Action';
+    applyButton.textContent = 'Select and Apply Action';
 
     const cancelButton = document.createElement('button');
     cancelButton.textContent = 'Cancel';
