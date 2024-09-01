@@ -2459,17 +2459,35 @@ async function executeBulkAction(selectedAction, modal) {
     
     const results = [];
     const skippedObservations = [];
+    const errorMessages = [];
 
-    for (const observationId of observationIds) {
-        for (const action of selectedAction.actions) {
-            await executeAction(action, observationId, preActionStates, preliminaryUndoRecord, results, skippedObservations);
+    const batchSize = 30;
+    const delayBetweenBatches = 5000; // 5 seconds
+
+    for (let i = 0; i < observationIds.length; i += batchSize) {
+        const batch = observationIds.slice(i, i + batchSize);
+        
+        for (const observationId of batch) {
+            for (const action of selectedAction.actions) {
+                try {
+                    await executeAction(action, observationId, preActionStates, preliminaryUndoRecord, results, skippedObservations);
+                } catch (error) {
+                    console.error(`Error executing action for observation ${observationId}:`, error);
+                    errorMessages.push(`Error for observation ${observationId}: ${error.message}`);
+                }
+            }
+            processedObservations++;
+            await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
         }
-        processedObservations++;
-        await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
+
+        if (i + batchSize < observationIds.length) {
+            await delay(delayBetweenBatches);
+        }
     }
+
     await updateProgressBar(progressFill, 100);
     await new Promise(resolve => setTimeout(resolve, 300));
-    await handleActionResults(results, skippedObservations, preliminaryUndoRecord);
+    await handleActionResults(results, skippedObservations, preliminaryUndoRecord, errorMessages);
 }
 
 async function executeAction(action, observationId, preActionStates, preliminaryUndoRecord, results, skippedObservations) {
@@ -2561,18 +2579,22 @@ function handleActionResult(result, action, observationId, preliminaryUndoRecord
     results.push({ observationId, action: action.type, success: result.success, error: result.error });
 }
 
-async function handleActionResults(results, skippedObservations, preliminaryUndoRecord) {
+async function handleActionResults(results, skippedObservations, preliminaryUndoRecord, errorMessages) {
     const successCount = results.filter(r => r.success).length;
     const totalActions = results.length;
     const skippedCount = skippedObservations.length;
+    const errorCount = errorMessages.length;
+    
+    let message = `Bulk action applied: ${successCount} out of ${totalActions} actions completed successfully.`;
     
     if (skippedCount > 0) {
         const skippedURL = generateObservationURL(skippedObservations);
         console.log('Generated URL for skipped observations:', skippedURL);
-        createSkippedActionsModal(skippedCount, skippedURL);
+        createSkippedActionsModal(skippedCount, skippedURL, errorMessages);
+    } else if (errorCount > 0) {
+        createErrorModal(errorMessages);
     } else {
-        console.log('No skipped actions to report');
-        alert(`Bulk action applied: ${successCount} out of ${totalActions} actions completed successfully.`);
+        alert(message);
     }
     
     const successfulResults = results.filter(r => r.success);
@@ -2642,15 +2664,28 @@ function downloadTextFile(content, filename) {
 
 async function generatePreActionStates(observationIds) {
     const preActionStates = {};
-    for (const id of observationIds) {
-        try {
-            const response = await fetch(`https://api.inaturalist.org/v1/observations/${id}`);
-            const data = await response.json();
-            preActionStates[id] = data.results[0];  // Store the entire observation object
-        } catch (error) {
-            console.error(`Failed to fetch pre-action state for observation ${id}:`, error);
+    const batchSize = 30;
+    const delayBetweenRequests = 200; // 200ms between requests
+
+    for (let i = 0; i < observationIds.length; i += batchSize) {
+        const batch = observationIds.slice(i, i + batchSize);
+        
+        await Promise.all(batch.map(async (id, index) => {
+            try {
+                await delay(index * delayBetweenRequests);
+                const response = await fetch(`https://api.inaturalist.org/v1/observations/${id}`);
+                const data = await response.json();
+                preActionStates[id] = data.results[0];
+            } catch (error) {
+                console.error(`Failed to fetch pre-action state for observation ${id}:`, error);
+            }
+        }));
+
+        if (i + batchSize < observationIds.length) {
+            await delay(5000); // 5 second delay between batches
         }
     }
+    
     return preActionStates;
 }
 
@@ -2853,7 +2888,7 @@ function showUndoRecordsModal() {
     });
 }
 
-function createSkippedActionsModal(skippedCount, skippedURL) {
+function createSkippedActionsModal(skippedCount, skippedURL, errorMessages) {
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed;
@@ -2878,12 +2913,25 @@ function createSkippedActionsModal(skippedCount, skippedURL) {
         overflow-y: auto;
     `;
 
-    modalContent.innerHTML = `
+    let contentHTML = `
         <h2>Bulk Action Results</h2>
         <p>${skippedCount} actions were skipped due to existing values or user permissions.</p>
         <p>View skipped observations: <a class="modal-link" href="${skippedURL}" target="_blank">${skippedURL}</a></p>
-        <button id="closeModal" class="modal-button">Close</button>
     `;
+
+    if (errorMessages.length > 0) {
+        contentHTML += `
+            <h3>Errors</h3>
+            <p>${errorMessages.length} errors occurred during execution:</p>
+            <ul>
+                ${errorMessages.map(error => `<li>${error}</li>`).join('')}
+            </ul>
+        `;
+    }
+
+    contentHTML += `<button id="closeModal" class="modal-button">Close</button>`;
+
+    modalContent.innerHTML = contentHTML;
 
     modal.appendChild(modalContent);
 
@@ -3102,3 +3150,52 @@ browserAPI.storage.onChanged.addListener(function(changes, namespace) {
 
 // Initial load
 loadConfigurationSets();
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function createErrorModal(errorMessages) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        max-width: 80%;
+        max-height: 80%;
+        overflow-y: auto;
+    `;
+
+    let contentHTML = `
+        <h2>Bulk Action Errors</h2>
+        <p>${errorMessages.length} errors occurred during execution:</p>
+        <ul>
+            ${errorMessages.map(error => `<li>${error}</li>`).join('')}
+        </ul>
+        <button id="closeModal" class="modal-button">Close</button>
+    `;
+
+    modalContent.innerHTML = contentHTML;
+
+    modal.appendChild(modalContent);
+
+    document.body.appendChild(modal);
+
+    document.getElementById('closeModal').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+}
