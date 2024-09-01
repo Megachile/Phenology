@@ -29,30 +29,30 @@ eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 ann <- get_annotation_codes()
 
 ## input iNat code or GF code for a taxon you want to pull data for
-spcode <- "1042625"
-
-#generate an API call URL for that code, after last fetched date for that code
+spcode <- "495742"
+# 
+# #generate an API call URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
 
 ## limit to only observations with plant phenology (for plant observations only)
 # url <- paste0(url, "&term_id=12")
 
 ## create an API call for observations from a specific user (current settings get RG of any cynipini observations)
-user_id <- "leah_r"
-url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&user_id=", user_id, "&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775")
+# user_id <- "leah_r"
+# url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&user_id=", user_id, "&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775")
 
 ## create an API call for all RG cynipini marked by a given phenophase
-phenophase <- "maturing" 
-url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field%3AGall+phenophase=", phenophase)
+# phenophase <- "maturing" 
+# url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field%3AGall+phenophase=", phenophase)
 
 ## create an API call for all RG cynipini marked viable
 # Define the rearing viability as a variable
-rearing_viability <- "viable" 
-url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field:Rearing%20viability=", rearing_viability)
-
-## create an API call for only free-living adults of a given taxon
-taxon <- "1089396"
-url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=", taxon, "&term_id=1&term_value_id=2&without_field=Gall+phenophase")
+# rearing_viability <- "viable" 
+# url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field:Rearing%20viability=", rearing_viability)
+# 
+# ## create an API call for only free-living adults of a given taxon
+# taxon <- "205775"
+# url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=", taxon, "&term_id=1&term_value_id=2&without_field=Gall+phenophase")
 
 
 ## iNat API call to pull a dataframe of all matching observations. This iterates in batches of 200 at a time. 
@@ -60,7 +60,7 @@ obs <- iNatCall(url)
 #Once you fetch this, check the dataframe for species you don't expect, missing data, etc
 
 ## removes any observations that aren't ID'd exactly to species; this may or may not be desirable depending on your context
-# obs <- obs %>% filter(nchar(obs$taxon.name) - nchar(gsub(" ", "", obs$taxon.name)) + 1 == 2)
+obs <- obs %>% filter(nchar(obs$taxon.name) - nchar(gsub(" ", "", obs$taxon.name)) + 1 == 2)
 
 ## remove any observations missing date and observations that are marked senescent
 obs <- obs[!(obs$observed_on==""),]
@@ -69,7 +69,6 @@ if("Gall_phenophase" %in% names(obs)) {
   # Filter out rows where Gall_phenophase is "senescent"
   obs <- obs[!(obs$Gall_phenophase == "senescent"),]
 }
-
 
 # remove any rows with IDs in the baddata table or already present in the observations table. Eliminates any records that are not new. 
 # only works for iNat inputs, do not run on other data!
@@ -84,9 +83,9 @@ for (i in 1:20){
 
 # some code to help manually correct issues that can't be fixed or it isn't convenient to fix on the iNat side. 
 # inat observation ID of a problematic record
-prob <- "156651973"
-
-# new <- new[new$id != prob, ]
+# prob <- "214630323"
+# 
+# # new <- new[new$id != prob, ]
 # new[new$id==prob,"Life_Stage"] <- NA
 # new[new$id==prob,"Gall_phenophase"] <- "dormant"
 # new[new$id==prob,"Gall_generation"] <- "bisexual"
@@ -117,7 +116,6 @@ new <- new[!(new$Gall_generation==""),]
 
 #remove and add columns to match database table
 toappend <- new
-
 toappend <- clean_and_transform(toappend)
 toappend <- separate_taxon_name(toappend)
 
@@ -129,6 +127,9 @@ toappend <- separate_taxon_name(toappend)
 
 toappend <- assign_host_id_verbose(toappend, gallphen)
 toappend <- assign_gall_id_verbose(toappend, gallphen)
+
+# toappend$genus <- gsub("Cynips", "Antron", toappend$genus)
+
 
 # check what the records are if any gall ids weren't able to match. 
 # This usually means iNat and GF have different names and one of them needs to be corrected

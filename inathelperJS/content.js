@@ -2517,9 +2517,9 @@ function determineIfActionShouldExecute(action, observationId, preActionStates, 
                 console.log(`Observation ${observationId}: Existing value matches desired value - silently skipping`);
                 return false;
             } else {
-                console.log(`Observation ${observationId}: Existing value differs from desired value - skipping and adding to skipped list`);
-                skippedObservations.push(observationId);
-                return false;
+/*                 console.log(`Observation ${observationId}: Existing value differs from desired value - skipping and adding to skipped list`);
+                skippedObservations.push(observationId); */
+                return true;
             }
         }
     }

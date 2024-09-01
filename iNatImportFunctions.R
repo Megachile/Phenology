@@ -17,7 +17,7 @@ urlMaker <- function(code) {
     
     url <-
       str_interp(
-        "https://api.inaturalist.org/v1/observations?quality_grade=any&verifiable=true&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&any&field%3Agallformers%2Bcode=${code}"
+        "https://api.inaturalist.org/v1/observations?quality_grade=research&verifiable=true&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&any&field%3Agallformers%2Bcode=${code}"
       )
   } else {
     #checks to see if the code matches anything in the db
@@ -28,7 +28,7 @@ urlMaker <- function(code) {
       
       url <-
         str_interp(
-          "https://api.inaturalist.org/v1/observations?quality_grade=any&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=${code}"
+          "https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=${code}"
         )  
     }
   }

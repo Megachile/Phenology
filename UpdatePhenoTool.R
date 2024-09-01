@@ -2,7 +2,9 @@ library(rsconnect)
 library(pracma)
 library(solrad)
 library(DBI)
-
+library(httr)
+library(curl)
+options(rsconnect.packrat = TRUE)
 wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
@@ -20,8 +22,8 @@ observations[observations$lifestage == "Adult"&observations$phenophase== "","phe
 dbDisconnect(gallphen)
 #write the new data into the necessary folder
 write.csv(observations, file = paste0(wd, "/doyCalc/observations.csv"), row.names = FALSE)
-beep()
-#connect to the hosting service and upload the new info. You need to press Y to begin the process.
+# beep()
+#connect to the hosting service and upload the new info. 
 rsconnect::setAccountInfo(name='megachile', token='E0503725A47C8E1AA250F80A49C2A015', secret='vqQZJcHij1sJHt+8LtDwrCfLZURzoiSDyqzmXNdT')
 rsconnect::deployApp(paste0(wd, '/doyCalc'))
 

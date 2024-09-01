@@ -327,3 +327,50 @@ is.data.frame(only_sexgen)
 mapply(process_specid, only_sexgen$inatcode, 'bisexual')
 
 
+
+
+## new code to do phenophase in month batches
+
+# Updated URL Maker Function
+urlMakerRG <- function(code, month) {
+  url <- str_interp(
+    "https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&without_field=Gall%20phenophase&order=desc&order_by=created_at&taxon_id=${code}&month=${month}"
+  )  
+  return(url)
+}
+
+# Process Observations for a Specific Month and Specid
+process_specid_month <- function(specid, month, phenophase) {
+  site <- "https://api.inaturalist.org"
+  phenophase_field_id <- 15121 # ID for Gall phenophase field
+  
+  # Create the URL with month filter
+  url <- urlMakerRG(specid, month)
+  
+  # Get the observations
+  obs <- iNatCall_refactored(url)
+  
+  # Check if obs is NULL
+  if (is.null(obs)) {
+    warning(sprintf("No observations fetched for specid: %s in month: %s. Skipping processing.", specid, month))
+    return(NULL)
+  }
+  
+  print(obs$taxon.name[1])
+  
+  # Add observation fields for each ID
+  for(obsid in obs$id) {
+    # Rate limiter
+    Sys.sleep(1)
+    
+    # Add Gall phenophase observation field
+    add_observation_field(site, obsid, phenophase_field_id, phenophase, token)
+  }
+}
+
+# Example usage for a specific species and month
+# Replace <specid>, <month>, and <phenophase> with appropriate values
+process_specid_month(123900, 4, 'developing')
+
+
+
