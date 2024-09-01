@@ -230,7 +230,7 @@ function handleAllShortcuts(event) {
 
 document.addEventListener('keydown', handleAllShortcuts);
 
-function checkForConfigUpdates() {
+/* function checkForConfigUpdates() {
     browserAPI.storage.local.get(['lastConfigUpdate'], function(result) {
         if (result.lastConfigUpdate) {
             if (lastKnownUpdate === 0) {
@@ -241,12 +241,12 @@ function checkForConfigUpdates() {
                 showUpdateNotification();
                 lastKnownUpdate = result.lastConfigUpdate;
             }
-/*             debugLog('Checking for config updates. Current lastKnownUpdate:', lastKnownUpdate);
-            debugLog('Storage lastConfigUpdate:', result.lastConfigUpdate); */
+            debugLog('Checking for config updates. Current lastKnownUpdate:', lastKnownUpdate);
+            debugLog('Storage lastConfigUpdate:', result.lastConfigUpdate); 
         }
         // If lastConfigUpdate doesn't exist, do nothing
     });
-}
+} 
 
 function showUpdateNotification() {
     let notification = document.getElementById('config-update-notification');
@@ -273,10 +273,10 @@ function showUpdateNotification() {
 }
 
 // Check for updates every 40 seconds
-setInterval(checkForConfigUpdates, 4000);
+setInterval(checkForConfigUpdates, 4000); 
 
 // Initial check on page load
-document.addEventListener('DOMContentLoaded', checkForConfigUpdates);
+document.addEventListener('DOMContentLoaded', checkForConfigUpdates); */
 
 const positions = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
 let currentPositionIndex = 0;

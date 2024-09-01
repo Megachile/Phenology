@@ -1115,9 +1115,9 @@ function setupMapObserver() {
 function updateBoundingBoxInputs(bounds) {
     clearInputs();
     document.getElementById('nelat').value = bounds.getNorthEast().lat.toFixed(6);
-    document.getElementById('nelng').value = bounds.getNorthEast().lng.toFixed(6);
+    document.getElementById('nelng').value = normalizeLongitude(bounds.getNorthEast().lng).toFixed(6);
     document.getElementById('swlat').value = bounds.getSouthWest().lat.toFixed(6);
-    document.getElementById('swlng').value = bounds.getSouthWest().lng.toFixed(6);
+    document.getElementById('swlng').value = normalizeLongitude(bounds.getSouthWest().lng).toFixed(6);
     document.getElementById('boundingBoxInputs').style.display = 'block';
     document.getElementById('circleInputs').style.display = 'none';
     document.getElementById('boundingBox').checked = true;
@@ -1127,7 +1127,7 @@ function updateBoundingBoxInputs(bounds) {
 function updateCircleInputs(center, radius) {
     clearInputs();
     document.getElementById('lat').value = center.lat.toFixed(6);
-    document.getElementById('lng').value = center.lng.toFixed(6);
+    document.getElementById('lng').value = normalizeLongitude(center.lng).toFixed(6);
     document.getElementById('radius').value = (radius / 1000).toFixed(2);
     document.getElementById('boundingBoxInputs').style.display = 'none';
     document.getElementById('circleInputs').style.display = 'block';
@@ -1279,3 +1279,13 @@ document.querySelectorAll('#observationSources input[type="checkbox"]').forEach(
     document.execCommand('copy');
     alert('URL copied to clipboard!');
 });
+
+function normalizeLongitude(lng) {
+    while (lng > 180) {
+        lng -= 360;
+    }
+    while (lng < -180) {
+        lng += 360;
+    }
+    return lng;
+}
