@@ -18,6 +18,7 @@ let currentUserId = null;
 let configurationSets = [];
 let currentSetName = '';
 let currentSet = null;
+let currentAvailableActions = [];
 
 async function getCurrentUserId() {
     if (currentUserId) return currentUserId;
@@ -2191,6 +2192,7 @@ function toggleSelection(element) {
     }
     updateVisualSelection();
     updateBulkActionButtons();
+    updateModalTitle();
 }
 
 function updateVisualSelection() {
@@ -2220,6 +2222,7 @@ function selectAllObservations() {
     getObservationElements().forEach(obs => obs.classList.add('selected'));
     updateAllSelections();
     updateBulkActionButtons();
+    updateModalTitle();
 }
 
 function invertSelection() {
@@ -2227,6 +2230,7 @@ function invertSelection() {
     getObservationElements().forEach(obs => obs.classList.toggle('selected'));
     updateAllSelections();
     updateBulkActionButtons();
+    updateModalTitle();
 }
 
 document.body.addEventListener('click', (e) => {
@@ -2262,31 +2266,55 @@ function updateSelectedObservations() {
 }
 
 async function applyBulkAction() {
-    console.log('Applying bulk action');
-    const availableActions = await getAvailableActions();
-    if (availableActions.length === 0) {
+    console.log('Opening Select and Apply Action box');
+
+    if (currentAvailableActions.length === 0 && currentSet) {
+        currentAvailableActions = currentSet.buttons.filter(button => !button.configurationDisabled);
+    }
+
+    if (currentAvailableActions.length === 0) {
         alert('No available actions found. Please configure some actions first.');
         return;
     }
 
     const modal = createActionModal();
-    const { actionSelect, applyButton, cancelButton } = createModalControls(availableActions);
-    modal.appendChild(actionSelect);
+    updateModalTitle();
+
+    const actionSelect = document.createElement('select');
+    actionSelect.id = 'bulk-action-select';
+    actionSelect.style.marginBottom = '10px';
+    modal.insertBefore(actionSelect, modal.querySelector('#action-description'));
+
+    updateBulkActionDropdown(actionSelect, currentAvailableActions);
+
+    const applyButton = document.createElement('button');
+    applyButton.textContent = 'Apply Action';
+    applyButton.style.marginRight = '10px';
+
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+
     modal.appendChild(applyButton);
     modal.appendChild(cancelButton);
 
     document.body.appendChild(modal);
 
-    setupTitleUpdater(modal);
     setupModalCloseHandler(cancelButton, modal);
 
+    actionSelect.onchange = () => updateActionDescription(actionSelect);
+
     applyButton.onclick = async () => {
+        if (selectedObservations.size === 0) {
+            alert('Please select at least one observation before applying an action.');
+            return;
+        }
         if (!actionSelect.value) {
             alert('Please select an action before applying.');
             return;
         }
-        const selectedAction = availableActions.find(button => button.id === actionSelect.value);
+        const selectedAction = currentAvailableActions.find(button => button.id === actionSelect.value);
         if (selectedAction) {
+   
             const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
             const hasTaxonId = selectedAction.actions.some(action => action.type === 'addTaxonId');
 
@@ -2361,8 +2389,21 @@ function createActionModal() {
         max-height: 80%;
         overflow-y: auto;
     `;
+    
+    const title = document.createElement('h2');
+    title.id = 'action-selection-title';
+    title.textContent = `Select Action for ${selectedObservations.size} Observations`;
+    modal.appendChild(title);
+
     const progressBar = createProgressBar();
     modal.appendChild(progressBar);
+
+    // We'll add the select element here in applyBulkAction
+
+    const descriptionArea = document.createElement('p');
+    descriptionArea.id = 'action-description';
+    descriptionArea.style.marginBottom = '10px';
+    modal.appendChild(descriptionArea);
 
     const disclaimer = document.createElement('p');
     disclaimer.id = 'action-disclaimer';
@@ -2457,20 +2498,23 @@ async function executeBulkAction(selectedAction, modal) {
     const progressFill = modal.querySelector('.progress-fill');
     progressFill.style.width = '0%';
 
-    const preActionStates = await generatePreActionStates(observationIds);
-    const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedAction, observationIds, preActionStates);  
-    
-    const results = [];
-    const skippedObservations = [];
-    const errorMessages = [];
+    const statusElement = document.createElement('p');
+    statusElement.id = 'bulk-action-status';
+    modal.appendChild(statusElement);
 
-    const batchSize = 30;
-    const delayBetweenBatches = 5000; // 5 seconds
-
-    for (let i = 0; i < observationIds.length; i += batchSize) {
-        const batch = observationIds.slice(i, i + batchSize);
+    try {
+        statusElement.textContent = 'Fetching observation data...';
+        const preActionStates = await generatePreActionStates(observationIds);
         
-        for (const observationId of batch) {
+        statusElement.textContent = 'Preparing undo record...';
+        const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedAction, observationIds, preActionStates);  
+        
+        const results = [];
+        const skippedObservations = [];
+        const errorMessages = [];
+
+        statusElement.textContent = 'Applying actions...';
+        for (const observationId of observationIds) {
             for (const action of selectedAction.actions) {
                 try {
                     await executeAction(action, observationId, preActionStates, preliminaryUndoRecord, results, skippedObservations);
@@ -2483,14 +2527,15 @@ async function executeBulkAction(selectedAction, modal) {
             await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
         }
 
-        if (i + batchSize < observationIds.length) {
-            await delay(delayBetweenBatches);
-        }
+        statusElement.textContent = 'Finalizing...';
+        await updateProgressBar(progressFill, 100);
+        await handleActionResults(results, skippedObservations, preliminaryUndoRecord, errorMessages);
+    } catch (error) {
+        console.error('Error in bulk action execution:', error);
+        alert(`An error occurred during bulk action execution: ${error.message}`);
+    } finally {
+        modal.removeChild(statusElement);
     }
-
-    await updateProgressBar(progressFill, 100);
-    await new Promise(resolve => setTimeout(resolve, 300));
-    await handleActionResults(results, skippedObservations, preliminaryUndoRecord, errorMessages);
 }
 
 async function executeAction(action, observationId, preActionStates, preliminaryUndoRecord, results, skippedObservations) {
@@ -2667,25 +2712,54 @@ function downloadTextFile(content, filename) {
 
 async function generatePreActionStates(observationIds) {
     const preActionStates = {};
-    const batchSize = 30;
-    const delayBetweenRequests = 200; // 200ms between requests
+    const batchSize = 20; // Increased batch size
+    const maxRetries = 3;
+    const baseDelay = 200; // 200ms base delay
+
+    async function fetchWithRetry(url, retries = 0) {
+        try {
+            const response = await fetch(url);
+            if (response.status === 429) { // Too Many Requests
+                if (retries < maxRetries) {
+                    const delay = baseDelay * Math.pow(2, retries);
+                    console.log(`Rate limited, retrying after ${delay}ms`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchWithRetry(url, retries + 1);
+                } else {
+                    throw new Error('Max retries reached');
+                }
+            }
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error(`Error fetching ${url}:`, error);
+            throw error;
+        }
+    }
 
     for (let i = 0; i < observationIds.length; i += batchSize) {
         const batch = observationIds.slice(i, i + batchSize);
         
-        await Promise.all(batch.map(async (id, index) => {
+        const batchStart = Date.now();
+        await Promise.all(batch.map(async (id) => {
             try {
-                await delay(index * delayBetweenRequests);
-                const response = await fetch(`https://api.inaturalist.org/v1/observations/${id}`);
-                const data = await response.json();
+                const data = await fetchWithRetry(`https://api.inaturalist.org/v1/observations/${id}`);
                 preActionStates[id] = data.results[0];
             } catch (error) {
                 console.error(`Failed to fetch pre-action state for observation ${id}:`, error);
             }
         }));
+        const batchDuration = Date.now() - batchStart;
 
-        if (i + batchSize < observationIds.length) {
-            await delay(5000); // 5 second delay between batches
+        // Provide progress update
+        const progress = Math.min(100, ((i + batchSize) / observationIds.length) * 100);
+        updateProgressBar(document.querySelector('.progress-fill'), progress);
+
+        // Add a delay only if we processed this batch faster than 1 second
+        if (batchDuration < 1000 && i + batchSize < observationIds.length) {
+            await delay(1000 - batchDuration);
         }
     }
     
@@ -2706,6 +2780,11 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
     };
 
     for (const observationId of observationIds) {
+        if (!preActionStates[observationId]) {
+            console.warn(`No pre-action state found for observation ${observationId}`);
+            continue;
+        }
+
         undoRecord.observations[observationId] = {
             undoActions: []
         };
@@ -2717,7 +2796,7 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
                     undoAction = {
                         type: 'updateObservationField',
                         fieldId: actionItem.fieldId,
-                        originalValue: preActionStates[observationId].ofvs.find(ofv => ofv.field_id === parseInt(actionItem.fieldId))?.value
+                        originalValue: preActionStates[observationId].ofvs?.find(ofv => ofv.field_id === parseInt(actionItem.fieldId))?.value
                     };
                     break;
                 case 'annotation':
@@ -3036,9 +3115,13 @@ function loadConfigurationSets() {
         configurationSets = data.configurationSets || [];
         currentSetName = data.currentSetName || (configurationSets[0] && configurationSets[0].name);
         currentSet = configurationSets.find(set => set.name === currentSetName) || configurationSets[0];
+        
+        // Initialize currentAvailableActions
+        currentAvailableActions = currentSet ? currentSet.buttons.filter(button => !button.configurationDisabled) : [];
+        
         createDynamicButtons();
         createSetSwitcher();
-        updateBulkActionButtons(); // Add this line to update bulk action buttons
+        updateBulkActionButtons();
     });
 }
 
@@ -3096,11 +3179,92 @@ function createSetSwitcher() {
 function switchConfigurationSet(setName) {
     currentSetName = setName;
     currentSet = configurationSets.find(set => set.name === setName);
+    currentAvailableActions = currentSet.buttons.filter(button => !button.configurationDisabled);
+    
     browserAPI.storage.local.set({ currentSetName: setName }, function() {
         createDynamicButtons();
         createSetSwitcher();
         updateBulkActionButtons();
+        
+        // Update the dropdown if the bulk action modal is open
+        const actionSelect = document.getElementById('bulk-action-select');
+        if (actionSelect) {
+            updateBulkActionDropdown(actionSelect, currentAvailableActions);
+        }
     });
+}
+
+function updateBulkActionDropdown(actionSelect, availableActions) {
+    console.log('Updating bulk action dropdown. Available actions:', availableActions);
+    if (actionSelect) {
+        // Save the current selection
+        const currentSelection = actionSelect.value;
+        
+        // Clear existing options
+        actionSelect.innerHTML = '';
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.textContent = "Select an action";
+        defaultOption.disabled = true;
+        defaultOption.selected = true;
+        actionSelect.appendChild(defaultOption);
+        
+        // Add options for each available action
+        availableActions.forEach(button => {
+            const option = document.createElement('option');
+            option.value = button.id;
+            option.textContent = button.name;
+            actionSelect.appendChild(option);
+        });
+        
+        // Restore the previous selection if it still exists
+        if (Array.from(actionSelect.options).some(option => option.value === currentSelection)) {
+            actionSelect.value = currentSelection;
+        } else {
+            actionSelect.value = ""; // Reset to default if the previous selection is no longer available
+        }
+        
+        // Update the action description
+        updateActionDescription(actionSelect);
+    }
+}
+
+function updateActionDescription(actionSelect) {
+    const descriptionElement = document.getElementById('action-description');
+    if (actionSelect && descriptionElement) {
+        const selectedAction = currentSet.buttons.find(button => button.id === actionSelect.value);
+        if (selectedAction) {
+            let description = '';
+            selectedAction.actions.forEach(action => {
+                switch(action.type) {
+                    case 'observationField':
+                        description += `Add field: ${action.fieldName} = ${action.fieldValue}\n`;
+                        break;
+                    case 'annotation':
+                        description += `Add annotation: ${action.annotationField} = ${action.annotationValue}\n`;
+                        break;
+                    case 'addToProject':
+                        description += `Add to project: ${action.projectName}\n`;
+                        break;
+                    case 'addComment':
+                        description += `Add comment: ${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}\n`;
+                        break;
+                    case 'addTaxonId':
+                        description += `Add taxon ID: ${action.taxonName}\n`;
+                        break;
+                    case 'qualityMetric':
+                        description += `Set quality metric: ${action.metric} to ${action.vote}\n`;
+                        break;
+                    // Add more cases as needed for other action types
+                }
+            });
+            descriptionElement.textContent = description || 'No actions specified.';
+        } else {
+            descriptionElement.textContent = '';
+        }
+    }
 }
 
 // Add keyboard shortcut to cycle through sets
@@ -3137,7 +3301,6 @@ function updateBulkActionButtons() {
 
             // Update button states based on selection
             clearSelectionButton.disabled = selectedObservations.size === 0;
-            applyActionButton.disabled = selectedObservations.size === 0;
         }
     }
 }
@@ -3213,6 +3376,17 @@ function clearSelection() {
     selectedObservations.clear();
     getObservationElements().forEach(obs => obs.classList.remove('selected'));
     updateBulkActionButtons();
+    updateModalTitle();
     console.log('Selection cleared');
 }
 
+function updateModalTitle() {
+    const title = document.getElementById('action-selection-title');
+    if (title) {
+        if (selectedObservations.size > 0) {
+            title.textContent = `Select Action for ${selectedObservations.size} Observation${selectedObservations.size > 1 ? 's' : ''}`;
+        } else {
+            title.textContent = 'Select Action (No Observations Selected)';
+        }
+    }
+}
