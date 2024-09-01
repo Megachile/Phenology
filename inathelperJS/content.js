@@ -2190,6 +2190,7 @@ function toggleSelection(element) {
         }
     }
     updateVisualSelection();
+    updateBulkActionButtons();
 }
 
 function updateVisualSelection() {
@@ -2218,12 +2219,14 @@ function selectAllObservations() {
     console.log('Selecting all observations');
     getObservationElements().forEach(obs => obs.classList.add('selected'));
     updateAllSelections();
+    updateBulkActionButtons();
 }
 
 function invertSelection() {
     console.log('Inverting selection');
     getObservationElements().forEach(obs => obs.classList.toggle('selected'));
     updateAllSelections();
+    updateBulkActionButtons();
 }
 
 document.body.addEventListener('click', (e) => {
@@ -3120,15 +3123,21 @@ function updateBulkActionButtons() {
             // Recreate bulk action buttons
             const selectAllButton = createBulkActionButton('Select All', selectAllObservations);
             const invertSelectionButton = createBulkActionButton('Invert Selection', invertSelection);
+            const clearSelectionButton = createBulkActionButton('Clear Selection', clearSelection);
             const applyActionButton = createBulkActionButton('Select and Apply Action', applyBulkAction);
             const disableBulkModeButton = createBulkActionButton('Disable Bulk Mode', disableBulkActionMode);
             const showUndoRecordsButton = createBulkActionButton('Show Undo Records', showUndoRecordsModal);
 
             bulkButtonContainer.appendChild(selectAllButton);
             bulkButtonContainer.appendChild(invertSelectionButton);
+            bulkButtonContainer.appendChild(clearSelectionButton);
             bulkButtonContainer.appendChild(applyActionButton);
             bulkButtonContainer.appendChild(disableBulkModeButton);
             bulkButtonContainer.appendChild(showUndoRecordsButton);
+
+            // Update button states based on selection
+            clearSelectionButton.disabled = selectedObservations.size === 0;
+            applyActionButton.disabled = selectedObservations.size === 0;
         }
     }
 }
@@ -3199,3 +3208,11 @@ function createErrorModal(errorMessages) {
         document.body.removeChild(modal);
     });
 }
+
+function clearSelection() {
+    selectedObservations.clear();
+    getObservationElements().forEach(obs => obs.classList.remove('selected'));
+    updateBulkActionButtons();
+    console.log('Selection cleared');
+}
+
