@@ -136,7 +136,27 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    // Load saved inputs when the page loads
+    loadInputs();
 
+    // Save inputs when the page is about to unload
+    window.addEventListener('beforeunload', saveInputs);
+
+    // Add event listener for the reset button
+    const resetButton = document.getElementById('resetButton');
+    if (resetButton) {
+        resetButton.addEventListener('click', function(e) {
+            e.preventDefault(); // Prevent form submission
+            resetForm();
+        });
+    } else {
+        console.error('Reset button not found');
+    }
+       
+    // Add event listeners to save state when inputs change  
+    document.querySelectorAll('input, select, textarea').forEach(input => {
+        input.addEventListener('change', saveInputs);
+    });
 });
 
 function toggleGeoInputs() {
@@ -347,7 +367,10 @@ function addField(type) {
     fieldGroup.querySelector('.negationCheckbox').addEventListener('change', toggleNegation);
 
     console.log(`Field added: `, fieldGroup);
+    saveInputs();
 }
+
+document.getElementById('actionsContainer').addEventListener('change', saveInputs);
 
 function setupAutocomplete(type, index) {
     let input = document.getElementById(`${type}${index}`);
@@ -1106,7 +1129,8 @@ function setupMapObserver() {
   
     observer.observe(geographicFieldset, { attributes: true, attributeFilter: ['style'] });
   }
-  function clearInputs() {
+
+function clearInputs() {
     ['nelat', 'nelng', 'swlat', 'swlng', 'lat', 'lng', 'radius'].forEach(id => {
         document.getElementById(id).value = '';
     });
@@ -1288,4 +1312,256 @@ function normalizeLongitude(lng) {
         lng += 360;
     }
     return lng;
+}
+
+function saveInputs() {
+    const savedState = {
+        inputs: {},
+        dynamicFields: [],
+        qualityGrade: [],
+        reviewedStatus: '',
+        searchOn: '',
+        licenses: {
+            photo: [],
+            sound: []
+        },
+        observationSources: [],
+        geographicBoundingBox: {}
+    };
+
+    // Save static inputs (existing code)
+    document.querySelectorAll('input, select, textarea').forEach(input => {
+        if (input.id) {
+            if (input.type === 'checkbox' || input.type === 'radio') {
+                savedState.inputs[input.id] = input.checked;
+            } else {
+                savedState.inputs[input.id] = input.value;
+            }
+        }
+    });
+
+    // Save quality grade checkboxes (existing code)
+    document.querySelectorAll('input[name="quality_grade"]:checked').forEach(checkbox => {
+        savedState.qualityGrade.push(checkbox.value);
+    });
+
+    // Save reviewed status
+    const reviewedStatus = document.querySelector('input[name="reviewed"]:checked');
+    if (reviewedStatus) {
+        savedState.reviewedStatus = reviewedStatus.value;
+    }
+
+    // Save "search on" toggle
+    const searchOn = document.querySelector('input[name="searchOn"]:checked');
+    if (searchOn) {
+        savedState.searchOn = searchOn.value;
+    }
+
+    // Save licenses
+    document.querySelectorAll('#photoLicenses input:checked').forEach(checkbox => {
+        savedState.licenses.photo.push(checkbox.value);
+    });
+    document.querySelectorAll('#soundLicenses input:checked').forEach(checkbox => {
+        savedState.licenses.sound.push(checkbox.value);
+    });
+
+    // Save observation sources
+    document.querySelectorAll('#observationSources input:checked').forEach(checkbox => {
+        savedState.observationSources.push(checkbox.value);
+    });
+
+    // Save geographic bounding box
+    const boundingBoxInputs = ['nelat', 'nelng', 'swlat', 'swlng'];
+    boundingBoxInputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            savedState.geographicBoundingBox[id] = input.value;
+        }
+    });
+
+    // Save dynamic fields (existing code)
+    const actionsContainer = document.getElementById('actionsContainer');
+    if (actionsContainer) {
+        actionsContainer.querySelectorAll('.action-box').forEach(actionBox => {
+            const actionType = actionBox.querySelector('.action-type').textContent.toLowerCase();
+            const inputs = Array.from(actionBox.querySelectorAll('input, select')).map(input => {
+                return {
+                    type: input.type,
+                    value: input.type === 'checkbox' ? input.checked : input.value,
+                    id: input.id,
+                    className: input.className
+                };
+            });
+            savedState.dynamicFields.push({ type: actionType, inputs });
+        });
+    }
+
+    localStorage.setItem('urlGenState', JSON.stringify(savedState));
+}
+
+function loadInputs() {
+    const savedState = JSON.parse(localStorage.getItem('urlGenState'));
+    if (savedState) {
+        // Load static inputs (existing code)
+        Object.keys(savedState.inputs || {}).forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                if (element.type === 'checkbox' || element.type === 'radio') {
+                    element.checked = savedState.inputs[id];
+                } else {
+                    element.value = savedState.inputs[id];
+                }
+            }
+        });
+
+        // Load quality grade checkboxes (existing code)
+        (savedState.qualityGrade || []).forEach(value => {
+            const checkbox = document.querySelector(`input[name="quality_grade"][value="${value}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+
+        // Load reviewed status
+        if (savedState.reviewedStatus) {
+            const reviewedStatus = document.querySelector(`input[name="reviewed"][value="${savedState.reviewedStatus}"]`);
+            if (reviewedStatus) reviewedStatus.checked = true;
+        }
+
+        // Load "search on" toggle
+        if (savedState.searchOn) {
+            const searchOn = document.querySelector(`input[name="searchOn"][value="${savedState.searchOn}"]`);
+            if (searchOn) searchOn.checked = true;
+        }
+
+        // Load licenses
+        if (savedState.licenses) {
+            (savedState.licenses.photo || []).forEach(license => {
+                const checkbox = document.querySelector(`#photoLicenses input[value="${license}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+            (savedState.licenses.sound || []).forEach(license => {
+                const checkbox = document.querySelector(`#soundLicenses input[value="${license}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+        }
+
+        // Load observation sources
+        const anySourceCheckbox = document.querySelector('#observationSources input[value="any"]');
+        let specificSourceSelected = false;
+        (savedState.observationSources || []).forEach(source => {
+            const checkbox = document.querySelector(`#observationSources input[value="${source}"]`);
+            if (checkbox) {
+                checkbox.checked = true;
+                if (source !== 'any') {
+                    specificSourceSelected = true;
+                }
+            }
+        });
+
+        // Adjust the "Any" checkbox based on other selections
+        if (anySourceCheckbox) {
+            anySourceCheckbox.checked = !specificSourceSelected;
+        }
+
+        // Load geographic bounding box
+        Object.keys(savedState.geographicBoundingBox || {}).forEach(id => {
+            const input = document.getElementById(id);
+            if (input) {
+                input.value = savedState.geographicBoundingBox[id];
+            }
+        });
+
+        // Load dynamic fields (existing code)
+        const actionsContainer = document.getElementById('actionsContainer');
+        if (actionsContainer && savedState.dynamicFields) {
+            savedState.dynamicFields.forEach(field => {
+                addField(field.type);
+                const lastActionBox = actionsContainer.lastElementChild;
+                field.inputs.forEach(inputData => {
+                    let input;
+                    if (inputData.id && inputData.id.trim() !== '') {
+                        input = lastActionBox.querySelector(`#${inputData.id}`);
+                    }
+                    if (!input && inputData.className && inputData.className.trim() !== '') {
+                        input = lastActionBox.querySelector(`.${inputData.className}`);
+                    }
+                    if (input) {
+                        if (input.type === 'checkbox') {
+                            input.checked = inputData.value;
+                        } else {
+                            input.value = inputData.value;
+                        }
+                    }
+                });
+            });
+        }
+    }
+    generateURL(); // Regenerate the URL after loading inputs
+}
+
+function resetForm() {
+    // Reset static inputs
+    document.querySelectorAll('input, select, textarea').forEach(input => {
+        if (input.type === 'checkbox' || input.type === 'radio') {
+            input.checked = input.defaultChecked;
+        } else if (input.type === 'select-one' || input.type === 'select-multiple') {
+            Array.from(input.options).forEach(option => {
+                option.selected = option.defaultSelected;
+            });
+        } else {
+            input.value = input.defaultValue;
+        }
+    });
+
+    // Reset quality grade checkboxes
+    document.querySelectorAll('input[name="quality_grade"]').forEach(checkbox => {
+        checkbox.checked = checkbox.defaultChecked;
+    });
+
+    // Clear dynamic fields
+    const actionsContainer = document.getElementById('actionsContainer');
+    if (actionsContainer) {
+        actionsContainer.innerHTML = '';
+    }
+
+    // Reset map
+    if (map && searchLayer) {
+        map.removeLayer(searchLayer);
+        searchLayer = L.layerGroup().addTo(map);
+        map.setView([0, 0], 2);
+    }
+
+    // Reset specific elements to their default states
+    resetSpecificElements();
+
+    // Clear localStorage
+    localStorage.removeItem('urlGenState');
+
+    // Regenerate the URL after resetting inputs
+    generateURL();
+}
+
+function resetSpecificElements() {
+    // Reset date selectors
+    ['observed', 'added'].forEach(type => {
+        document.querySelector(`input[name="${type}DateType"][value="any"]`).checked = true;
+        document.getElementById(`${type}ExactDateContainer`).style.display = 'none';
+        document.getElementById(`${type}RangeDateContainer`).style.display = 'none';
+        document.getElementById(`${type}MonthsContainer`).style.display = 'none';
+        document.getElementById(`${type}YearsContainer`).style.display = 'none';
+    });
+
+    // Reset geographic selectors
+    document.getElementById('boundingBoxInputs').style.display = 'none';
+    document.getElementById('circleInputs').style.display = 'none';
+    document.querySelector('input[name="geoSearchType"][value="boundingBox"]').checked = true;
+    clearInputs(); // Call the original clearInputs function to clear geographic inputs
+
+    // Reset observation sources
+    document.querySelector('#observationSources input[value="any"]').checked = true;
+    document.querySelectorAll('#observationSources input:not([value="any"])').forEach(cb => {
+        cb.checked = false;
+    });
+
+    // Reset other specific elements as needed
+    // ...
 }
