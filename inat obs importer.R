@@ -54,6 +54,9 @@ url <- urlMaker(spcode)
 # taxon <- "205775"
 # url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=", taxon, "&term_id=1&term_value_id=2&without_field=Gall+phenophase")
 
+## paste in a URL string to generate an API call (must include per_page=200)
+end <- "quality_grade=research&reviewed=any&taxon_id=885733&term_id=1&term_value_id=2&per_page=200"
+url <- paste0("https://api.inaturalist.org/v1/observations?", end)
 
 ## iNat API call to pull a dataframe of all matching observations. This iterates in batches of 200 at a time. 
 obs <- iNatCall(url)

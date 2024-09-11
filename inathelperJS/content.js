@@ -3236,35 +3236,58 @@ function updateActionDescription(actionSelect) {
     if (actionSelect && descriptionElement) {
         const selectedAction = currentSet.buttons.find(button => button.id === actionSelect.value);
         if (selectedAction) {
-            let description = '';
+            let descriptionHTML = '<ul style="list-style-type: none; padding-left: 0; margin: 0;">';
             selectedAction.actions.forEach(action => {
+                let actionDescription = '';
                 switch(action.type) {
                     case 'observationField':
-                        description += `Add field: ${action.fieldName} = ${action.fieldValue}\n`;
+                        actionDescription = `Add field: ${action.fieldName} = ${action.fieldValue}`;
                         break;
                     case 'annotation':
-                        description += `Add annotation: ${action.annotationField} = ${action.annotationValue}\n`;
+                        const attribute = Object.entries(controlledTerms).find(([_, value]) => value.id === parseInt(action.annotationField));
+                        const attributeName = attribute ? attribute[0] : 'Unknown';
+                        const valueName = attribute ? Object.entries(attribute[1].values).find(([_, id]) => id === parseInt(action.annotationValue))[0] : 'Unknown';
+                        actionDescription = `Add annotation: ${attributeName} = ${valueName}`;
                         break;
                     case 'addToProject':
-                        description += `Add to project: ${action.projectName}\n`;
+                        actionDescription = `Add to project: ${action.projectName}`;
                         break;
                     case 'addComment':
-                        description += `Add comment: ${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}\n`;
+                        actionDescription = `Add comment: ${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}`;
                         break;
                     case 'addTaxonId':
-                        description += `Add taxon ID: ${action.taxonName}\n`;
+                        actionDescription = `Add taxon ID: ${action.taxonName}`;
                         break;
                     case 'qualityMetric':
-                        description += `Set quality metric: ${action.metric} to ${action.vote}\n`;
+                        const metricName = getQualityMetricName(action.metric);
+                        actionDescription = `Set quality metric: ${metricName} to ${action.vote}`;
+                        break;
+                    case 'copyObservationField':
+                        actionDescription = `Copy field: ${action.sourceFieldName} to ${action.targetFieldName}`;
                         break;
                     // Add more cases as needed for other action types
                 }
+                descriptionHTML += `<li>${actionDescription}</li>`;
             });
-            descriptionElement.textContent = description || 'No actions specified.';
+            descriptionHTML += '</ul>';
+            descriptionElement.innerHTML = descriptionHTML || 'No actions specified.';
         } else {
-            descriptionElement.textContent = '';
+            descriptionElement.innerHTML = '';
         }
     }
+}
+
+function getQualityMetricName(metric) {
+    const metricNames = {
+        'needs_id': 'Needs ID',
+        'date': 'Date',
+        'location': 'Location',
+        'wild': 'Wild',
+        'evidence': 'Evidence',
+        'recent': 'Recent',
+        'subject': 'Subject'
+    };
+    return metricNames[metric] || metric;
 }
 
 // Add keyboard shortcut to cycle through sets

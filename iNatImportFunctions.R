@@ -410,11 +410,24 @@ assign_host_id_verbose <- function(df, gallphen) {
 }
 
 assign_gall_id_verbose <- function(df, gallphen) {
-  # Preprocess Gall_generation
-  if (!is.null(df$Gall_generation)) {
-    df$Gall_generation <- gsub("unisexual", "agamic", df$Gall_generation)
-    df$Gall_generation <- gsub("bisexual", "sexgen", df$Gall_generation)
+  # Check if required columns exist
+  required_columns <- c("genus", "species")
+  missing_columns <- setdiff(required_columns, names(df))
+  
+  if (length(missing_columns) > 0) {
+    stop("Required column(s) missing from dataframe: ", paste(missing_columns, collapse = ", "))
   }
+  
+  # Check if Gall_generation column exists, if not, create it with NA values
+  if (!"Gall_generation" %in% names(df)) {
+    warning("Gall_generation column not found. Creating it with NA values.")
+    df$Gall_generation <- NA
+  }
+  
+  # Preprocess Gall_generation
+  df$Gall_generation <- ifelse(is.na(df$Gall_generation), "", as.character(df$Gall_generation))
+  df$Gall_generation <- gsub("unisexual", "agamic", df$Gall_generation)
+  df$Gall_generation <- gsub("bisexual", "sexgen", df$Gall_generation)
   
   # Extract unique combinations
   unique_combinations <- unique(df[, c("genus", "species", "Gall_generation")])
@@ -425,12 +438,18 @@ assign_gall_id_verbose <- function(df, gallphen) {
   # Query database for each unique combination
   for (i in 1:nrow(unique_combinations)) {
     row <- unique_combinations[i, ]
-    gall_id_query <- if (!is.na(row$Gall_generation) && row$Gall_generation != "") {
+    gall_id_query <- if (row$Gall_generation != "") {
       str_interp("SELECT species_id FROM species WHERE genus = '${row$genus}' AND species LIKE '%${row$species}%' AND generation LIKE '%${row$Gall_generation}%'")
     } else {
       str_interp("SELECT species_id FROM species WHERE genus = '${row$genus}' AND species = '${row$species}'")
     }
-    result <- dbGetQuery(gallphen, gall_id_query)
+    result <- tryCatch(
+      dbGetQuery(gallphen, gall_id_query),
+      error = function(e) {
+        warning("Database query failed for ", paste(row, collapse = " "), ": ", e$message)
+        return(data.frame(species_id = numeric(0)))
+      }
+    )
     if (nrow(result) > 0) {
       key <- paste(row$genus, row$species, row$Gall_generation, sep = "_")
       gall_id_results[[key]] <- as.numeric(result$species_id[1])
