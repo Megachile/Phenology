@@ -31,10 +31,6 @@ singlesi <- function(doy, lat){
   trapz(seq(1,doy),(pos_part(eq(seq(1,doy),lat))))/trapz(seq(1,(365)),(pos_part(eq(seq(1,(365)),lat))))
 }
 
-eas <- read.csv("phenogrid.csv")
-y <- eas %>% select(-longitude)
-y <- distinct(y)
-observations <- read.csv("observations.csv")
 
 # species_limits <- observations %>%
 #   select(binom, latitude, longitude) %>%
@@ -43,115 +39,6 @@ observations <- read.csv("observations.csv")
 #             max_lat = max(latitude),
 #             min_long = min(longitude),
 #             max_long = max(longitude))
-
-lineCalc <- function(side, var, thr){
-  tf <- y[which(between(y[[var]],(side-thr),(side+thr)  )),]
-  tf <- unique(tf)
-  tf <- tf %>% group_by(latitude)
-  if (length(tf$doy) > 0) {
-    tf <- tf %>% filter(doy == min(doy))
-  } else {
-    tf <- NULL
-  }  
-  if (is_true(dim(tf)[1]>2)){
-    mod <- lm(tf$latitude~tf$doy)
-    param <- coefficients(mod)
-  } else {
-    param <- c(-9999,0)
-  }
-  return(param)
-}
-
-doyLatCalc <- function (df){
-  if (dim(df)[1]>0){
-    print(paste("Range is", max(df$seasind)-min(df$seasind)))
-    print(paste("min Seasind is", min(df$seasind)))
-     if ((max(df$seasind)-min(df$seasind)<0.07)&&min(df$seasind)<0.94){
-      print("Narrow range corrected")
-      if (max(df$doy)>171){
-        print("seasind")
-      left <- 0.85*mean(df$seasind)
-      right <- ifelse(1.15 * mean(df$seasind)> 1, 1, 1.15 * mean(df$seasind))
-      var <- "seasind"
-      thr <- 0.02
-      } else {
-        var <- "acchours"
-        if (mean(df$acchours)>0){
-        left <- 0.8*mean(df$acchours)
-        right <- 1.2*mean(df$acchours)
-        } else {
-          left <- 0
-          right <- 1000
-        }
-        thr <- ((left+right)/2)*0.12
-      }
-    }
-    
-    else {
-      doy <- sort(df$doy)
-      diffs <- diff(doy)
-      max_diff <- max(diffs)
-
-      # range <- max(df$doy, na.rm=TRUE) - min(df$doy, na.rm=TRUE)
-
-      if (max_diff>85|min(df$doy)>171){
-
-        # Find the index of the element that precedes the largest gap
-        split_index <- which(diffs == max_diff)
-
-        # Divide the dataset into two subsets based on the split index
-        spring <- df[df$doy <= doy[split_index], ]
-        fall <- df[df$doy > doy[split_index], ]
-
-        var <- "seasind"
-        thr <- 0.02
-
-        left <- mean(unique(spring[spring$doy==max(spring$doy),"seasind"]))
-        right <- mean(unique(fall[fall$doy==min(fall$doy),"seasind"]))
-
-      }
-      else {
-        # if (range>35){
-        var <- "acchours"
-        left <-  min(df$acchours)
-        right <-  max(df$acchours)
-
-        thr <- ((left+right)/2)*0.12
-      # }
-    # else {
-    #   var <- "seasind"
-    #   left <- min(df$seasind)
-    #   right <- max(df$seasind)
-    #   thr <- 0.02
-    # }
-    }
-    }
-
-    low <- lineCalc(left, var, thr)
-    high <- lineCalc(right, var, thr)
-
-  } else {
-    low <- c(-9999,0)
-    high <- c(-9999,0)
-  }
-
-  coef <- rbind(low,high)
-
-  lowslope <- coef[1,2]
-  lowyint <- coef[1,1]
-  highslope <- coef[2,2]
-  highyint <- coef[2,1]
-
-  if ((lowslope<0&&highslope<0)&&abs(lowslope-highslope)<0.05) {
-    print("Fixing similar slopes")
-    highslope <- 10^10
-    highyint <- -10^10*365 
-  }
-  
-  param <- as.data.frame(t(c(lowslope,lowyint,highslope,highyint)))
-  colnames(param) <- c("lowslope","lowyint","highslope","highyint")
-  return(param)
-}
 
 dateText <- function (df, lat, string){
   if (!(df$highslope==0|df$lowslope==0)){
@@ -176,8 +63,10 @@ ui <- fluidPage(
   titlePanel("When does a species emerge?"),
   sidebarLayout(
     sidebarPanel(
-     textInput("species",label="Search by genus, species, or gallformers code", value = "Dryocosmus quercuspalustris"),
-     radioButtons("gen",label="Filter by generation:", choices = c("sexgen","agamic","all"),selected = "all"),
+      textInput("species", 
+                label="Search by genus, species, or gallformers code (comma-separated for multiple)", 
+                value = "Dryocosmus quercuspalustris"),  # Default search string
+      radioButtons("gen",label="Filter by generation:", choices = c("sexgen","agamic","all"),selected = "all"),
    tags$button(
        "Key",
        `data-toggle` = "popover",
@@ -273,6 +162,64 @@ $(function () {
 )
 
 server <- function(input, output, session) {
+  # Function to determine if the app is running locally or on shinyapps.io
+  is_local <- function() {
+    Sys.getenv('SHINY_PORT') == ""
+  }
+  # Load data based on environment
+  load_data <- function() {
+    if (is_local()) {
+      # Get the directory where the app script is located
+      app_dir <- normalizePath("C:/Users/adam/Documents/GitHub/Phenology/doyCalc/")
+      
+      # Construct paths relative to the app directory
+      observations_path <- file.path(app_dir, "observations.csv")
+      eas_path <- file.path(app_dir, "phenogrid.csv")
+      
+      # Read the files
+      observations <- read.csv(observations_path)
+      eas <- read.csv(eas_path)
+    } else {
+      # shinyapps.io path (remains unchanged)
+      observations <- read.csv("observations.csv")
+      eas <- read.csv("phenogrid.csv")
+    }
+    
+    list(observations = observations, eas = eas)
+  }
+  
+  # Load the data
+  data <- load_data()
+  observations <- data$observations
+  eas <- data$eas
+  y <- reactive({
+    eas %>% select(-longitude) %>% distinct()
+  })
+  
+  # Initialize inputs based on URL parameters
+  observe({
+    query <- parseQueryString(session$clientData$url_search)
+    
+    if (!is.null(query[['search']])) {
+      # Decode the entire search string
+      search_string <- URLdecode(query[['search']])
+      
+      # Split the search string by commas, trim whitespace, and recombine
+      search_terms <- strsplit(search_string, ",")[[1]]
+      search_terms <- trimws(search_terms)  # Remove leading/trailing whitespace
+      search_string <- paste(search_terms, collapse = ", ")
+      
+      updateTextInput(session, "species", value = search_string)
+    }
+    # Note: If query[['search']] is NULL, we don't update the input,
+    # thus preserving the default value set in the UI
+    
+    if (!is.null(query[['gen']])) {
+      updateRadioButtons(session, "gen", selected = query[['gen']])
+    }
+  }, priority = 1000)  # High priority ensures this runs before other observers
+  
+  
   # output$map <- renderLeaflet({
   #   leaflet() %>% addTiles() %>%
   #     setView(lng = -101, lat = 47, zoom = 3)
@@ -344,13 +291,15 @@ server <- function(input, output, session) {
   })
   
   match <- reactive({
-  if(input$gen %in% c("sexgen", "agamic")) {
-    filtered_observations <- observations %>%
-      filter(grepl(escapeRegex(input$species), binom, ignore.case = TRUE) & generation == input$gen)
-  } else {
-    filtered_observations <- observations %>%
-      filter(grepl(escapeRegex(input$species), binom, ignore.case = TRUE))
-  }
+    search_terms <- unlist(strsplit(input$species, ",\\s*"))
+    
+    if(input$gen %in% c("sexgen", "agamic")) {
+      filtered_observations <- observations %>%
+        filter(grepl(paste(sapply(search_terms, escapeRegex), collapse="|"), binom, ignore.case = TRUE) & generation == input$gen)
+    } else {
+      filtered_observations <- observations %>%
+        filter(grepl(paste(sapply(search_terms, escapeRegex), collapse="|"), binom, ignore.case = TRUE))
+    }
   
   # filtered_species_limits <- species_limits %>%
   #   filter(min_lat >= min(input$latrange) & max_lat <= max(input$latrange)) %>%
@@ -375,23 +324,136 @@ output$no_data <- renderText({
   else {""}
 })
 
+lineCalc <- reactive({
+  function(side, var, thr){
+    tf <- y()[which(between(y()[[var]], (side-thr), (side+thr))),]
+    tf <- unique(tf)
+    tf <- tf %>% group_by(latitude)
+    if (length(tf$doy) > 0) {
+      tf <- tf %>% filter(doy == min(doy))
+    } else {
+      tf <- NULL
+    }  
+    if (is_true(dim(tf)[1]>2)){
+      mod <- lm(tf$latitude~tf$doy)
+      param <- coefficients(mod)
+    } else {
+      param <- c(-9999,0)
+    }
+    return(param)
+  }
+})
+
+doyLatCalc <- reactive({
+  function (df){
+    if (dim(df)[1]>0){
+      print(paste("Range is", max(df$seasind)-min(df$seasind)))
+      print(paste("min Seasind is", min(df$seasind)))
+      if ((max(df$seasind)-min(df$seasind)<0.07)&&min(df$seasind)<0.94){
+        print("Narrow range corrected")
+        if (max(df$doy)>171){
+          print("seasind")
+          left <- 0.85*mean(df$seasind)
+          right <- ifelse(1.15 * mean(df$seasind)> 1, 1, 1.15 * mean(df$seasind))
+          var <- "seasind"
+          thr <- 0.02
+        } else {
+          var <- "acchours"
+          if (mean(df$acchours)>0){
+            left <- 0.8*mean(df$acchours)
+            right <- 1.2*mean(df$acchours)
+          } else {
+            left <- 0
+            right <- 1000
+          }
+          thr <- ((left+right)/2)*0.12
+        }
+      }
+      
+      else {
+        doy <- sort(df$doy)
+        diffs <- diff(doy)
+        max_diff <- max(diffs)
+        
+        # range <- max(df$doy, na.rm=TRUE) - min(df$doy, na.rm=TRUE)
+        
+        if (max_diff>85|min(df$doy)>171){
+          
+          # Find the index of the element that precedes the largest gap
+          split_index <- which(diffs == max_diff)
+          
+          # Divide the dataset into two subsets based on the split index
+          spring <- df[df$doy <= doy[split_index], ]
+          fall <- df[df$doy > doy[split_index], ]
+          
+          var <- "seasind"
+          thr <- 0.02
+          
+          left <- mean(unique(spring[spring$doy==max(spring$doy),"seasind"]))
+          right <- mean(unique(fall[fall$doy==min(fall$doy),"seasind"]))
+          
+        }
+        else {
+          # if (range>35){
+          var <- "acchours"
+          left <-  min(df$acchours)
+          right <-  max(df$acchours)
+          
+          thr <- ((left+right)/2)*0.12
+          # }
+          # else {
+          #   var <- "seasind"
+          #   left <- min(df$seasind)
+          #   right <- max(df$seasind)
+          #   thr <- 0.02
+          # }
+        }
+      }
+      
+      low <- lineCalc()(left, var, thr)
+      high <- lineCalc()(right, var, thr)
+      
+    } else {
+      low <- c(-9999,0)
+      high <- c(-9999,0)
+    }
+    
+    coef <- rbind(low,high)
+    
+    lowslope <- coef[1,2]
+    lowyint <- coef[1,1]
+    highslope <- coef[2,2]
+    highyint <- coef[2,1]
+    
+    if ((lowslope<0&&highslope<0)&&abs(lowslope-highslope)<0.05) {
+      print("Fixing similar slopes")
+      highslope <- 10^10
+      highyint <- -10^10*365 
+    }
+    
+    param <- as.data.frame(t(c(lowslope,lowyint,highslope,highyint)))
+    colnames(param) <- c("lowslope","lowyint","highslope","highyint")
+    return(param)
+  }
+})
+
 P <- reactive({
-req(nrow(plotted())>0)
-select <- match()
-
-sexrear <- filter(select, viability == "viable" & generation == "sexgen")
-sexem <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & generation == "sexgen")
-agrear <- filter(select, viability == "viable" & generation == "agamic")
-agem <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & generation == "agamic")
-rear <- filter(select, viability == "viable" & (is.na(generation) | generation == "NA"))
-em <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & (is.na(generation)|generation == "NA"))
-
-sexrearparam <- doyLatCalc(sexrear)
-sexemparam <- doyLatCalc(sexem)
-agrearparam <- doyLatCalc(agrear)
-agemparam <- doyLatCalc(agem)
-rearparam <- doyLatCalc(rear)
-emparam <- doyLatCalc(em)
+  req(nrow(plotted())>0)
+  select <- match()
+  
+  sexrear <- filter(select, viability == "viable" & generation == "sexgen")
+  sexem <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & generation == "sexgen")
+  agrear <- filter(select, viability == "viable" & generation == "agamic")
+  agem <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & generation == "agamic")
+  rear <- filter(select, viability == "viable" & (is.na(generation) | generation == "NA"))
+  em <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & (is.na(generation)|generation == "NA"))
+  
+  sexrearparam <- doyLatCalc()(sexrear)
+  sexemparam <- doyLatCalc()(sexem)
+  agrearparam <- doyLatCalc()(agrear)
+  agemparam <- doyLatCalc()(agem)
+  rearparam <- doyLatCalc()(rear)
+  emparam <- doyLatCalc()(em)
 
 plotted <- plotted()
 
