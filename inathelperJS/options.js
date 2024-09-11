@@ -1588,10 +1588,7 @@ function updateSetSelector() {
 
 function switchConfigurationSet() {
     currentSetName = document.getElementById('setSelector').value;
-    browserAPI.storage.local.set({ currentSetName }, function() {
-        displayConfigurations();
-        updateSetManagementButtons();
-    });
+    saveConfigurationSets();
 }
 
 function updateSetManagementButtons() {
@@ -1664,9 +1661,13 @@ function removeCurrentSet() {
 function saveConfigurationSets(callback) {
     browserAPI.storage.local.set({ 
         configurationSets: configurationSets,
+        currentSetName: currentSetName,
         lastConfigUpdate: Date.now()
     }, function() {
         console.log('Configuration sets updated');
+        updateSetSelector();
+        displayConfigurations();
+        updateSetManagementButtons();
         if (callback) callback();
     });
 }
