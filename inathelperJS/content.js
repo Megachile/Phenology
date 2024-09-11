@@ -19,6 +19,7 @@ let configurationSets = [];
 let currentSetName = '';
 let currentSet = null;
 let currentAvailableActions = [];
+let onMouseDown;
 
 async function getCurrentUserId() {
     if (currentUserId) return currentUserId;
@@ -230,54 +231,6 @@ function handleAllShortcuts(event) {
 }
 
 document.addEventListener('keydown', handleAllShortcuts);
-
-/* function checkForConfigUpdates() {
-    browserAPI.storage.local.get(['lastConfigUpdate'], function(result) {
-        if (result.lastConfigUpdate) {
-            if (lastKnownUpdate === 0) {
-                // First time checking, just update lastKnownUpdate without showing notification
-                lastKnownUpdate = result.lastConfigUpdate;
-            } else if (result.lastConfigUpdate > lastKnownUpdate) {
-                // Configuration has been updated since last check
-                showUpdateNotification();
-                lastKnownUpdate = result.lastConfigUpdate;
-            }
-            debugLog('Checking for config updates. Current lastKnownUpdate:', lastKnownUpdate);
-            debugLog('Storage lastConfigUpdate:', result.lastConfigUpdate); 
-        }
-        // If lastConfigUpdate doesn't exist, do nothing
-    });
-} 
-
-function showUpdateNotification() {
-    let notification = document.getElementById('config-update-notification');
-    if (!notification) {
-        notification = document.createElement('div');
-        notification.id = 'config-update-notification';
-        notification.style.cssText = `
-            position: fixed;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #ffff00;
-            color: #000;
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 10001;
-            cursor: pointer;
-        `;
-        notification.textContent = 'Configuration updated. Click here to refresh.';
-        notification.addEventListener('click', () => location.reload());
-        document.body.appendChild(notification);
-    }
-    notification.style.display = 'block';
-}
-
-// Check for updates every 40 seconds
-setInterval(checkForConfigUpdates, 4000); 
-
-// Initial check on page load
-document.addEventListener('DOMContentLoaded', checkForConfigUpdates); */
 
 const positions = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
 let currentPositionIndex = 0;
@@ -1006,6 +959,30 @@ function animateButtonResult(button, success) {
 }
 const style = document.createElement('style');
 style.textContent = `
+ #custom-extension-container.edit-mode .button-ph {
+        cursor: move;
+        box-shadow: 0 0 3px rgba(0,0,0,0.3);
+        transition: transform 0.1s ease-in-out;
+    }
+    #custom-extension-container.edit-mode .button-ph:hover {
+        transform: scale(1.05);
+    }
+    #custom-extension-container.edit-mode .button-ph.dragging {
+        opacity: 0.8;
+        transform: scale(1.05);
+        transition: none;
+        pointer-events: none;
+    }
+    .button-placeholder {
+        border: 2px dashed #ccc;
+        background-color: #f0f0f0;
+        opacity: 0.6;
+        transition: all 0.2s ease-in-out;
+    }
+@keyframes clickPulse {
+    0% { transform: scale(0.95); opacity: 1; }
+    100% { transform: scale(1.05); opacity: 0; }
+}
   #observation-id-display {
     position: fixed;
     background-color: rgba(0, 0, 0, 0.7);
@@ -1715,7 +1692,7 @@ function createDynamicButtons() {
             existingSortContainer.remove();
         }
 
-        // Create sort button container
+         // Create sort button container
         const sortButtonContainer = document.createElement('div');
         sortButtonContainer.id = 'sort-buttons-container';
         sortButtonContainer.style.cssText = `
@@ -1769,6 +1746,9 @@ function createDynamicButtons() {
         `;
         sortButtonWrapper.appendChild(sortDropdown);
 
+        // Add Edit Layout button
+        createEditLayoutButton();
+
         // Add CSS for sort options
         const style = document.createElement('style');
         style.textContent = `
@@ -1784,6 +1764,22 @@ function createDynamicButtons() {
             .sort-option:hover {
                 background-color: #f0f0f0;
             }
+                #custom-extension-container.edit-mode .button-ph {
+        cursor: move;
+        box-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+        #custom-extension-container.edit-mode .button-ph:hover {
+            transform: scale(1.05);
+            transition: transform 0.1s ease-in-out;
+        }
+        .button-placeholder {
+            border: 2px dashed #ccc;
+            background-color: #f0f0f0;
+            min-width: 100px;
+            flex-grow: 1;
+            margin: 3px;
+            border-radius: 5px;
+        }
         `;
         document.head.appendChild(style);
 
@@ -1856,6 +1852,49 @@ function debugButtonCreation(config) {
     debugLog("Debug: Button Creation End for", config.name);
 }
 
+function createEditLayoutButton() {
+    const sortButtonContainer = document.getElementById('sort-buttons-container');
+    if (!sortButtonContainer) return;
+
+    const editLayoutButton = document.createElement('button');
+    editLayoutButton.id = 'edit-layout-button';
+    editLayoutButton.textContent = 'Edit Layout';
+    editLayoutButton.style.cssText = `
+        background-color: #f0f0f0;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        padding: 5px 10px;
+        font-size: 14px;
+        cursor: pointer;
+        margin-left: 10px;
+    `;
+    editLayoutButton.onclick = toggleEditMode;
+    sortButtonContainer.appendChild(editLayoutButton);
+}
+
+let editModeEnabled = false;
+
+function toggleEditMode() {
+    editModeEnabled = !editModeEnabled;
+    const editLayoutButton = document.getElementById('edit-layout-button');
+    const container = document.getElementById('custom-extension-container');
+
+    if (editModeEnabled) {
+        editLayoutButton.textContent = 'Save Layout';
+        editLayoutButton.style.backgroundColor = '#4CAF50';
+        editLayoutButton.style.color = 'white';
+        container.classList.add('edit-mode');
+        initializeDragAndDrop();
+    } else {
+        editLayoutButton.textContent = 'Edit Layout';
+        editLayoutButton.style.backgroundColor = '#f0f0f0';
+        editLayoutButton.style.color = 'black';
+        container.classList.remove('edit-mode');
+        disableDragAndDrop();
+        saveButtonOrder();
+    }
+}
+
 function createButton(config) {
     debugButtonCreation(config);
 
@@ -1870,7 +1909,6 @@ function createButton(config) {
 
     let button = document.createElement('button');
     button.classList.add('button-ph');
-    button.draggable = true;
     button.dataset.buttonId = config.id;
     button.innerText = config.name;
     
@@ -1883,24 +1921,21 @@ function createButton(config) {
     }
     
     button.onclick = function(e) {
-        if (!hasMoved) {  // Only trigger click if not dragging
-            animateButton(this);
-            performActions(config.actions)
-                .then((results) => {
-                    // Ensure results is always an array
-                    const resultsArray = Array.isArray(results) ? results : [results];
-                    const allSuccessful = resultsArray.every(r => r.success);
-                    animateButtonResult(this, allSuccessful);
-                    if (!allSuccessful) {
-                        console.error('Some actions failed:', resultsArray.filter(r => !r.success));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error performing actions:', error);
-                    animateButtonResult(this, false);
-                });
-        }
-        hasMoved = false; // Reset hasMoved after the click event
+        animateButton(this);
+        performActions(config.actions)
+            .then((results) => {
+                // Ensure results is always an array
+                const resultsArray = Array.isArray(results) ? results : [results];
+                const allSuccessful = resultsArray.every(r => r.success);
+                animateButtonResult(this, allSuccessful);
+                if (!allSuccessful) {
+                    console.error('Some actions failed:', resultsArray.filter(r => !r.success));
+                }
+            })
+            .catch(error => {
+                console.error('Error performing actions:', error);
+                animateButtonResult(this, false);
+            });
     };
     
     button.style.display = config.buttonHidden ? 'none' : 'inline-block';
@@ -1938,85 +1973,148 @@ window.addEventListener('error', function(event) {
 });
 
 function initializeDragAndDrop() {
+    if (!editModeEnabled) return;
+
     const container = document.getElementById('custom-extension-container');
     let draggingElement = null;
     let placeholder = null;
     let dragStartX, dragStartY;
-    const moveThreshold = 5; // pixels
+    let buttonPositions = [];
 
-    container.addEventListener('mousedown', (e) => {
+    onMouseDown = function(e) {
         if (e.target.classList.contains('button-ph')) {
             draggingElement = e.target;
             const rect = draggingElement.getBoundingClientRect();
             dragStartX = e.clientX - rect.left;
             dragStartY = e.clientY - rect.top;
-            hasMoved = false; // Reset hasMoved when starting a drag
 
-            // Store original container dimensions
-            container.style.setProperty('--original-height', `${container.offsetHeight}px`);
-            container.style.setProperty('--original-width', `${container.offsetWidth}px`);
+            // Create placeholder
+            placeholder = draggingElement.cloneNode(true);
+            placeholder.classList.add('button-placeholder');
+            placeholder.style.visibility = 'hidden';
+            draggingElement.parentNode.insertBefore(placeholder, draggingElement);
+
+            // Set dragging styles
+            draggingElement.classList.add('dragging');
+            draggingElement.style.width = `${rect.width}px`;
+            draggingElement.style.height = `${rect.height}px`;
+            draggingElement.style.position = 'fixed';
+            draggingElement.style.zIndex = '1000';
+
+            // Calculate button positions
+            buttonPositions = Array.from(container.querySelectorAll('.button-ph:not(.dragging)'))
+                .map(button => {
+                    const r = button.getBoundingClientRect();
+                    return {
+                        element: button,
+                        left: r.left,
+                        top: r.top,
+                        right: r.right,
+                        bottom: r.bottom
+                    };
+                });
 
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
             
             e.preventDefault();
         }
-    });
+        container.addEventListener('mousedown', onMouseDown);
+    }
 
     function onMouseMove(e) {
         if (draggingElement) {
-            const deltaX = e.clientX - dragStartX - draggingElement.offsetLeft;
-            const deltaY = e.clientY - dragStartY - draggingElement.offsetTop;
+            // Move the dragging element
+            draggingElement.style.left = `${e.clientX - dragStartX}px`;
+            draggingElement.style.top = `${e.clientY - dragStartY}px`;
             
-            if (!hasMoved && (Math.abs(deltaX) > moveThreshold || Math.abs(deltaY) > moveThreshold)) {
-                hasMoved = true; // Set hasMoved to true when movement threshold is exceeded
-                placeholder = document.createElement('div');
-                placeholder.classList.add('button-placeholder');
-                placeholder.style.width = `${draggingElement.offsetWidth}px`;
-                placeholder.style.height = `${draggingElement.offsetHeight}px`;
-                draggingElement.parentNode.insertBefore(placeholder, draggingElement.nextSibling);
-                draggingElement.classList.add('dragging');
-                container.classList.add('dragging');
-            }
-
-            if (hasMoved) {
-                draggingElement.style.left = `${e.clientX - dragStartX}px`;
-                draggingElement.style.top = `${e.clientY - dragStartY}px`;
+            // Find the closest button
+            const closestButton = buttonPositions.reduce((closest, position) => {
+                const dx = e.clientX - (position.left + (position.right - position.left) / 2);
+                const dy = e.clientY - (position.top + (position.bottom - position.top) / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
                 
-                const closestButton = getClosestButton(container, e.clientX, e.clientY);
-                if (closestButton && closestButton !== placeholder) {
-                    if (isBeforeButton(e.clientY, closestButton)) {
-                        closestButton.parentNode.insertBefore(placeholder, closestButton);
-                    } else {
-                        closestButton.parentNode.insertBefore(placeholder, closestButton.nextSibling);
-                    }
+                return distance < closest.distance ? { distance, element: position.element } : closest;
+            }, { distance: Infinity, element: null }).element;
+
+            if (closestButton && closestButton !== placeholder) {
+                const parent = closestButton.parentNode;
+                if (Array.from(parent.children).indexOf(placeholder) > Array.from(parent.children).indexOf(closestButton)) {
+                    parent.insertBefore(placeholder, closestButton);
+                } else {
+                    parent.insertBefore(placeholder, closestButton.nextSibling);
                 }
+                placeholder.style.visibility = 'visible';
             }
         }
     }
 
     function onMouseUp() {
         if (draggingElement) {
+            // Place the dragging element in its new position
+            placeholder.parentNode.insertBefore(draggingElement, placeholder);
+            placeholder.remove();
+
+            // Reset dragging element styles
             draggingElement.classList.remove('dragging');
+            draggingElement.style.removeProperty('position');
             draggingElement.style.removeProperty('left');
             draggingElement.style.removeProperty('top');
-            container.classList.remove('dragging');
-            if (placeholder) {
-                placeholder.parentNode.insertBefore(draggingElement, placeholder);
-                placeholder.remove();
-            }
-            if (hasMoved) {
-                saveButtonOrder();
-            }
+            draggingElement.style.removeProperty('width');
+            draggingElement.style.removeProperty('height');
+            draggingElement.style.removeProperty('z-index');
         }
         
         draggingElement = null;
         placeholder = null;
+        buttonPositions = [];
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
     }
+
+    container.addEventListener('mousedown', onMouseDown);
 }
 
+function disableDragAndDrop() {
+    const container = document.getElementById('custom-extension-container');
+    if (onMouseDown) {
+        container.removeEventListener('mousedown', onMouseDown);
+        onMouseDown = null; // Clear the reference
+    }
+    // Remove any leftover dragging classes or placeholders
+    const draggingElement = container.querySelector('.button-ph.dragging');
+    if (draggingElement) {
+        draggingElement.classList.remove('dragging');
+        draggingElement.style.removeProperty('position');
+        draggingElement.style.removeProperty('left');
+        draggingElement.style.removeProperty('top');
+        draggingElement.style.removeProperty('width');
+        draggingElement.style.removeProperty('height');
+        draggingElement.style.removeProperty('z-index');
+    }
+    const placeholder = container.querySelector('.button-placeholder');
+    if (placeholder) {
+        placeholder.remove();
+    }
+}
+
+function showClickFeedback(button) {
+    const feedback = document.createElement('div');
+    feedback.className = 'click-feedback';
+    feedback.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.5);
+        border-radius: 5px;
+        pointer-events: none;
+        animation: clickPulse 0.3s ease-out;
+    `;
+    button.appendChild(feedback);
+    setTimeout(() => feedback.remove(), 300);
+}
 
 function getClosestButton(container, x, y) {
     const buttons = Array.from(container.querySelectorAll('.button-ph:not(.dragging), .button-placeholder'));
