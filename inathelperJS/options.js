@@ -322,7 +322,6 @@ function saveConfiguration() {
 
         saveConfigurationSets(function() {
             console.log('Configuration saved');
-            displayConfigurations();
             clearForm();
         });
     } catch (error) {
@@ -1134,7 +1133,6 @@ function deleteConfiguration(configId) {
         currentSet.buttons = currentSet.buttons.filter(c => c.id !== configId);
         saveConfigurationSets(function() {
             console.log('Configuration deleted');
-            displayConfigurations();
         });
     }
 }
