@@ -442,158 +442,178 @@ function removeUndoRecord(id, callback) {
             callback();
         });
     });
-}function createUndoRecordsModal(undoRecords, onUndoClick) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10002;
-    `;
-
-    const modalContent = document.createElement('div');
-    modalContent.style.cssText = `
-        background-color: white;
-        border-radius: 5px;
-        width: 80%;
-        max-width: 600px;
-        max-height: 80vh;
-        display: flex;
-        flex-direction: column;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    `;
-
-    const headerSection = document.createElement('div');
-    headerSection.style.cssText = `
-        position: sticky;
-        top: 0;
-        background-color: white;
-        padding: 20px;
-        border-bottom: 1px solid #ccc;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        z-index: 1;
-    `;
-    const title = document.createElement('h2');
-    title.textContent = 'Undo Records';
-    title.style.margin = '0';
-
-    const closeButton = document.createElement('button');
-    closeButton.textContent = '\u2715';
-    closeButton.style.cssText = `
-        font-size: 16px;
-        background: #f0f0f0;
-        border: 1px solid #ccc;
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        color: #333;
-        padding: 0;
-        line-height: 1;
-    `;
-    closeButton.onclick = () => document.body.removeChild(overlay);
-
-    const contentSection = document.createElement('div');
-    contentSection.style.cssText = `
-        padding: 20px;
-        overflow-y: auto;
-        flex-grow: 1;
-    `;
-    
-    headerSection.appendChild(title);
-    headerSection.appendChild(closeButton);
-    modalContent.appendChild(headerSection);
-    const progressBar = createProgressBar();
-    modalContent.appendChild(progressBar);
-    modalContent.appendChild(contentSection);
-
-    undoRecords.forEach((record, index) => {
-        const recordDiv = document.createElement('div');
-        recordDiv.style.cssText = `
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: ${index < undoRecords.length - 1 ? '15px' : '0'};
-            ${record.undone ? 'text-decoration: line-through;' : ''}
+}
+function createUndoRecordsModal(undoRecords, onUndoClick) {
+    try {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10002;
         `;
 
-        const actionInfo = document.createElement('p');
-        actionInfo.textContent = `${record.action} - ${new Date(record.timestamp).toLocaleString()}`;
-        actionInfo.style.margin = '0 0 10px 0';
-        recordDiv.appendChild(actionInfo);
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background-color: white;
+            border-radius: 5px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        `;
 
-        // Add disclaimers
-        const disclaimers = [];
-                
-        // Check for DQI removal actions
-        if (Object.values(record.observations).some(obs => obs.undoActions.some(action => action.type === 'qualityMetric' && action.vote === 'remove'))) {
-            disclaimers.push("Note: Removed DQI votes cannot be restored due to API limitations.");
-        }
+        const headerSection = document.createElement('div');
+        headerSection.style.cssText = `
+            position: sticky;
+            top: 0;
+            background-color: white;
+            padding: 20px;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1;
+        `;
+        const title = document.createElement('h2');
+        title.textContent = 'Undo Records';
+        title.style.margin = '0';
 
-        if (disclaimers.length > 0) {
-            const disclaimerParagraph = document.createElement('p');
-            disclaimerParagraph.style.color = 'red';
-            disclaimerParagraph.style.fontStyle = 'italic';
-            disclaimerParagraph.style.fontSize = '0.9em';
-            disclaimerParagraph.textContent = disclaimers.join(' ');
-            recordDiv.appendChild(disclaimerParagraph);
-        }
+        const closeButton = document.createElement('button');
+        closeButton.textContent = '\u2715';
+        closeButton.style.cssText = `
+            font-size: 16px;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #333;
+            padding: 0;
+            line-height: 1;
+        `;
+        closeButton.onclick = () => document.body.removeChild(overlay);
 
-        const observationIds = Object.keys(record.observations);
-        const observationUrl = generateObservationURL(observationIds);
+        const contentSection = document.createElement('div');
+        contentSection.style.cssText = `
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+        `;
+        
+        headerSection.appendChild(title);
+        headerSection.appendChild(closeButton);
+        modalContent.appendChild(headerSection);
+        const progressBar = createProgressBar();
+        modalContent.appendChild(progressBar);
+        modalContent.appendChild(contentSection);
 
-        const linkParagraph = document.createElement('a');
-        linkParagraph.href = observationUrl;
-        linkParagraph.textContent = `View ${record.affectedObservationsCount} affected observation${record.affectedObservationsCount !== 1 ? 's' : ''}`;
-        linkParagraph.target = '_blank';
-        linkParagraph.style.display = 'block';
-        linkParagraph.style.marginBottom = '10px';
-        recordDiv.appendChild(linkParagraph);
-
-        const undoButton = document.createElement('button');
-        undoButton.textContent = record.undone ? 'Undone' : 'Undo';
-        undoButton.disabled = record.undone;
-        undoButton.onclick = async function() {
-            progressBar.style.display = 'block'; // Show progress bar
-            const progressFill = progressBar.querySelector('.progress-fill');
+        undoRecords.forEach((record, index) => {
             try {
-                const result = await performUndoActions(record, progressFill);
-                await updateProgressBar(progressFill, 100);
-                await new Promise(resolve => setTimeout(resolve, 300));
-                if (result.success) {
-                    markRecordAsUndone(record.id);
-                    undoButton.textContent = 'Undone';
-                    undoButton.disabled = true;
-                    recordDiv.style.textDecoration = 'line-through';
-                    console.log('All undo actions completed successfully:', result.results);
-                } else {
-                    console.error('Some undo actions failed:', result.results);
-                    alert('Some undo actions failed. Please check the console for details.');
-                }
-            } catch (error) {
-                console.error('Error in performUndoActions:', error);
-                alert(`Error performing undo actions: ${error.message}`);
-            } finally {
-                progressBar.style.display = 'none'; // Hide progress bar after completion
-            }
-        };
-        recordDiv.appendChild(undoButton);
-        contentSection.appendChild(recordDiv);
-    });
+                const recordDiv = document.createElement('div');
+                recordDiv.style.cssText = `
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                    padding: 15px;
+                    margin-bottom: ${index < undoRecords.length - 1 ? '15px' : '0'};
+                    ${record.undone ? 'text-decoration: line-through;' : ''}
+                `;
 
-    overlay.appendChild(modalContent);
-    return overlay;
+                const actionInfo = document.createElement('p');
+                actionInfo.textContent = `${record.action} - ${new Date(record.timestamp).toLocaleString()}`;
+                actionInfo.style.margin = '0 0 10px 0';
+                recordDiv.appendChild(actionInfo);
+
+                // Add disclaimers
+                const disclaimers = [];
+                        
+                // Check for DQI removal actions with robust error handling
+                if (record && record.observations && Object.values(record.observations).some(obs => 
+                    obs && Array.isArray(obs.undoActions) && obs.undoActions.some(action => 
+                        action && action.type === 'qualityMetric' && action.vote === 'remove'
+                    )
+                )) {
+                    disclaimers.push("Note: Removed DQI votes cannot be restored due to API limitations.");
+                }
+
+                if (disclaimers.length > 0) {
+                    const disclaimerParagraph = document.createElement('p');
+                    disclaimerParagraph.style.color = 'red';
+                    disclaimerParagraph.style.fontStyle = 'italic';
+                    disclaimerParagraph.style.fontSize = '0.9em';
+                    disclaimerParagraph.textContent = disclaimers.join(' ');
+                    recordDiv.appendChild(disclaimerParagraph);
+                }
+
+                const observationIds = Object.keys(record.observations);
+                const observationUrl = generateObservationURL(observationIds);
+
+                const linkParagraph = document.createElement('a');
+                linkParagraph.href = observationUrl;
+                linkParagraph.textContent = `View ${record.affectedObservationsCount} affected observation${record.affectedObservationsCount !== 1 ? 's' : ''}`;
+                linkParagraph.target = '_blank';
+                linkParagraph.style.display = 'block';
+                linkParagraph.style.marginBottom = '10px';
+                recordDiv.appendChild(linkParagraph);
+
+                const undoButton = document.createElement('button');
+                undoButton.textContent = record.undone ? 'Undone' : 'Undo';
+                undoButton.disabled = record.undone;
+                undoButton.onclick = async function() {
+                    progressBar.style.display = 'block'; // Show progress bar
+                    const progressFill = progressBar.querySelector('.progress-fill');
+                    try {
+                        const result = await performUndoActions(record, progressFill);
+                        await updateProgressBar(progressFill, 100);
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        if (result.success) {
+                            markRecordAsUndone(record.id);
+                            undoButton.textContent = 'Undone';
+                            undoButton.disabled = true;
+                            recordDiv.style.textDecoration = 'line-through';
+                            console.log('All undo actions completed successfully:', result.results);
+                        } else {
+                            console.error('Some undo actions failed:', result.results);
+                            alert('Some undo actions failed. Please check the console for details.');
+                        }
+                    } catch (error) {
+                        console.error('Error in performUndoActions:', error);
+                        alert(`Error performing undo actions: ${error.message}`);
+                    } finally {
+                        progressBar.style.display = 'none'; // Hide progress bar after completion
+                    }
+                };
+                recordDiv.appendChild(undoButton);
+                contentSection.appendChild(recordDiv);
+            } catch (error) {
+                console.error('Error processing undo record:', error);
+                // Optionally, add an error message to the modal
+                const errorDiv = document.createElement('div');
+                errorDiv.textContent = `Error processing undo record: ${error.message}`;
+                errorDiv.style.color = 'red';
+                contentSection.appendChild(errorDiv);
+            }
+        });
+
+        overlay.appendChild(modalContent);
+        return overlay;
+    } catch (error) {
+        console.error('Error creating undo records modal:', error);
+        alert('An error occurred while creating the undo records modal. Please check the console for more details.');
+        return null;
+    }
 }
 
 function getUndoRecords(callback) {

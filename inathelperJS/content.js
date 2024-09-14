@@ -2385,21 +2385,34 @@ async function applyBulkAction() {
 
     updateBulkActionDropdown(actionSelect, currentAvailableActions);
 
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.marginTop = '20px';
+
     const applyButton = document.createElement('button');
     applyButton.textContent = 'Apply Action';
+    applyButton.classList.add('modal-button');
     applyButton.style.marginRight = '10px';
 
     const cancelButton = document.createElement('button');
     cancelButton.textContent = 'Cancel';
+    cancelButton.classList.add('modal-button');
+    cancelButton.style.marginRight = '10px';
+    cancelButton.disabled = true;
 
-    modal.appendChild(applyButton);
-    modal.appendChild(cancelButton);
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.classList.add('modal-button');
+
+    buttonContainer.appendChild(applyButton);
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(closeButton);
+
+    modal.appendChild(buttonContainer);
 
     document.body.appendChild(modal);
 
-    setupModalCloseHandler(cancelButton, modal);
-
-    actionSelect.onchange = () => updateActionDescription(actionSelect);
+    let isCancelled = false;
+    let undoRecord = null;
 
     applyButton.onclick = async () => {
         if (selectedObservations.size === 0) {
@@ -2410,61 +2423,42 @@ async function applyBulkAction() {
             alert('Please select an action before applying.');
             return;
         }
+
+        applyButton.disabled = true;
+        cancelButton.disabled = false;
+        actionSelect.disabled = true;
+
         const selectedAction = currentAvailableActions.find(button => button.id === actionSelect.value);
         if (selectedAction) {
-   
-            const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
-            const hasTaxonId = selectedAction.actions.some(action => action.type === 'addTaxonId');
-
-            let confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${selectedObservations.size} observation(s)?\n\n`;
-            confirmMessage += "This action includes:\n";
-
-            selectedAction.actions.forEach(action => {
-                switch (action.type) {
-                    case 'observationField':
-                        const displayValue = action.displayValue || action.fieldValue;
-                        confirmMessage += `- Add observation field: ${action.fieldName} = ${displayValue}\n`;
-                        break;
-                    case 'annotation':
-                        const attribute = Object.entries(controlledTerms).find(([_, value]) => value.id === parseInt(action.annotationField));
-                        const attributeName = attribute ? attribute[0] : 'Unknown';
-                        const valueName = attribute ? Object.entries(attribute[1].values).find(([_, id]) => id === parseInt(action.annotationValue))[0] : 'Unknown';
-                        confirmMessage += `- Add annotation: ${attributeName} = ${valueName}\n`;
-                        break;
-                    case 'addToProject':
-                        confirmMessage += `- Add to project: ${action.projectName}\n`;
-                        break;
-                    case 'addComment':
-                        confirmMessage += `- Add comment: "${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}"\n`;
-                        break;
-                    case 'addTaxonId':
-                        confirmMessage += `- Add taxon ID: ${action.taxonName}\n`;
-                        break;
-                    case 'qualityMetric':
-                        const metricName = getQualityMetricName(action.metric);
-                        confirmMessage += `- Set quality metric: ${metricName} to ${action.vote}\n`;
-                        break;
-                    case 'copyObservationField':
-                        confirmMessage += `- Copy field: ${action.sourceFieldName} to ${action.targetFieldName}\n`;
-                        break;
-                }
-            });
-
-            confirmMessage += "\nNote: iNaturalist policy requires that you have individually inspected every observation before you apply this action.";
-
-            if (hasDQIRemoval) {
-                confirmMessage += "\n\nPlease note: Removing DQI votes cannot be undone in bulk due to API limitations.";
-            }
-
-
-            if (confirm(confirmMessage)) {
-                await executeBulkAction(selectedAction, modal);
+            try {
+                undoRecord = await executeBulkAction(selectedAction, modal, () => isCancelled);
+            } catch (error) {
+                console.error('Error in bulk action execution:', error);
+                alert(`An error occurred during bulk action execution: ${error.message}`);
+            } finally {
+                applyButton.disabled = false;
+                cancelButton.disabled = true;
+                actionSelect.disabled = false;
             }
         } else {
             alert('Selected action not found.');
         }
+    };
+
+    cancelButton.onclick = () => {
+        isCancelled = true;
+        cancelButton.disabled = true;
+    };
+
+    closeButton.onclick = async () => {
+        if (undoRecord && undoRecord.affectedObservationsCount > 0) {
+            await storeUndoRecord(undoRecord);
+            console.log('Undo record stored:', undoRecord);
+        }
         document.body.removeChild(modal);
     };
+
+    actionSelect.onchange = () => updateActionDescription(actionSelect);
 }
 
 async function getAvailableActions() {
@@ -2495,8 +2489,6 @@ function createActionModal() {
 
     const progressBar = createProgressBar();
     modal.appendChild(progressBar);
-
-    // We'll add the select element here in applyBulkAction
 
     const descriptionArea = document.createElement('p');
     descriptionArea.id = 'action-description';
@@ -2589,7 +2581,7 @@ function setupModalCloseHandler(cancelButton, modal) {
     cancelButton.onclick = () => document.body.removeChild(modal);
 }
 
-async function executeBulkAction(selectedAction, modal) {
+async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
     const observationIds = Array.from(selectedObservations);
     const totalObservations = observationIds.length;
     let processedObservations = 0;
@@ -2613,6 +2605,11 @@ async function executeBulkAction(selectedAction, modal) {
 
         statusElement.textContent = 'Applying actions...';
         for (const observationId of observationIds) {
+            if (isCancelledFunc()) {
+                statusElement.textContent = 'Action cancelled. Processing completed actions...';
+                break;
+            }
+
             for (const action of selectedAction.actions) {
                 try {
                     await executeAction(action, observationId, preActionStates, preliminaryUndoRecord, results, skippedObservations);
@@ -2627,10 +2624,15 @@ async function executeBulkAction(selectedAction, modal) {
 
         statusElement.textContent = 'Finalizing...';
         await updateProgressBar(progressFill, 100);
-        await handleActionResults(results, skippedObservations, preliminaryUndoRecord, errorMessages);
+        
+        const finalUndoRecord = generateUndoRecord(preliminaryUndoRecord, results);
+        handleActionResults(results, skippedObservations, finalUndoRecord, errorMessages);
+
+        return finalUndoRecord;
     } catch (error) {
         console.error('Error in bulk action execution:', error);
         alert(`An error occurred during bulk action execution: ${error.message}`);
+        return null;
     } finally {
         modal.removeChild(statusElement);
     }
@@ -2725,7 +2727,7 @@ function handleActionResult(result, action, observationId, preliminaryUndoRecord
     results.push({ observationId, action: action.type, success: result.success, error: result.error });
 }
 
-async function handleActionResults(results, skippedObservations, preliminaryUndoRecord, errorMessages) {
+function handleActionResults(results, skippedObservations, undoRecord, errorMessages) {
     const successCount = results.filter(r => r.success).length;
     const totalActions = results.length;
     const skippedCount = skippedObservations.length;
@@ -2741,15 +2743,6 @@ async function handleActionResults(results, skippedObservations, preliminaryUndo
         createErrorModal(errorMessages);
     } else {
         alert(message);
-    }
-    
-    const successfulResults = results.filter(r => r.success);
-    const undoRecord = generateUndoRecord(preliminaryUndoRecord, successfulResults);
-    if (undoRecord.affectedObservationsCount > 0) {
-        await storeUndoRecord(undoRecord);
-        console.log('Undo record stored:', undoRecord);
-    } else {
-        console.log('No actions to undo, undo record not stored');
     }
 
     console.log('Bulk action results:', results);
