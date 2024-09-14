@@ -2414,6 +2414,8 @@ async function applyBulkAction() {
     let isCancelled = false;
     let undoRecord = null;
 
+    actionSelect.onchange = () => updateActionDescription(actionSelect);
+
     applyButton.onclick = async () => {
         if (selectedObservations.size === 0) {
             alert('Please select at least one observation before applying an action.');
@@ -2424,21 +2426,66 @@ async function applyBulkAction() {
             return;
         }
 
-        applyButton.disabled = true;
-        cancelButton.disabled = false;
-        actionSelect.disabled = true;
-
         const selectedAction = currentAvailableActions.find(button => button.id === actionSelect.value);
         if (selectedAction) {
-            try {
-                undoRecord = await executeBulkAction(selectedAction, modal, () => isCancelled);
-            } catch (error) {
-                console.error('Error in bulk action execution:', error);
-                alert(`An error occurred during bulk action execution: ${error.message}`);
-            } finally {
-                applyButton.disabled = false;
-                cancelButton.disabled = true;
-                actionSelect.disabled = false;
+            const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
+            const hasTaxonId = selectedAction.actions.some(action => action.type === 'addTaxonId');
+
+            let confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${selectedObservations.size} observation(s)?\n\n`;
+            confirmMessage += "This action includes:\n";
+
+            selectedAction.actions.forEach(action => {
+                switch (action.type) {
+                    case 'observationField':
+                        const displayValue = action.displayValue || action.fieldValue;
+                        confirmMessage += `- Add observation field: ${action.fieldName} = ${displayValue}\n`;
+                        break;
+                    case 'annotation':
+                        const attribute = Object.entries(controlledTerms).find(([_, value]) => value.id === parseInt(action.annotationField));
+                        const attributeName = attribute ? attribute[0] : 'Unknown';
+                        const valueName = attribute ? Object.entries(attribute[1].values).find(([_, id]) => id === parseInt(action.annotationValue))[0] : 'Unknown';
+                        confirmMessage += `- Add annotation: ${attributeName} = ${valueName}\n`;
+                        break;
+                    case 'addToProject':
+                        confirmMessage += `- Add to project: ${action.projectName}\n`;
+                        break;
+                    case 'addComment':
+                        confirmMessage += `- Add comment: "${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}"\n`;
+                        break;
+                    case 'addTaxonId':
+                        confirmMessage += `- Add taxon ID: ${action.taxonName}\n`;
+                        break;
+                    case 'qualityMetric':
+                        const metricName = getQualityMetricName(action.metric);
+                        confirmMessage += `- Set quality metric: ${metricName} to ${action.vote}\n`;
+                        break;
+                    case 'copyObservationField':
+                        confirmMessage += `- Copy field: ${action.sourceFieldName} to ${action.targetFieldName}\n`;
+                        break;
+                }
+            });
+
+            confirmMessage += "\nNote: iNaturalist policy requires that you have individually inspected every observation before you apply this action.";
+
+            if (hasDQIRemoval) {
+                confirmMessage += "\n\nPlease note: Removing DQI votes cannot be undone in bulk due to API limitations.";
+            }
+
+            if (confirm(confirmMessage)) {
+                applyButton.disabled = true;
+                cancelButton.disabled = false;
+                actionSelect.disabled = true;
+
+                try {
+                    undoRecord = await executeBulkAction(selectedAction, modal, () => isCancelled);
+                } catch (error) {
+                    console.error('Error in bulk action execution:', error);
+                    alert(`An error occurred during bulk action execution: ${error.message}`);
+                } finally {
+                    applyButton.disabled = false;
+                    cancelButton.disabled = true;
+                    actionSelect.disabled = false;
+                }
             }
         } else {
             alert('Selected action not found.');
@@ -2457,8 +2504,6 @@ async function applyBulkAction() {
         }
         document.body.removeChild(modal);
     };
-
-    actionSelect.onchange = () => updateActionDescription(actionSelect);
 }
 
 async function getAvailableActions() {
@@ -3327,12 +3372,14 @@ function updateActionDescription(actionSelect) {
     if (actionSelect && descriptionElement) {
         const selectedAction = currentSet.buttons.find(button => button.id === actionSelect.value);
         if (selectedAction) {
-            let descriptionHTML = '<ul style="list-style-type: none; padding-left: 0; margin: 0;">';
+            let descriptionHTML = '<strong>This action includes:</strong><ul style="list-style-type: none; padding-left: 0; margin: 10px 0;">';
+
             selectedAction.actions.forEach(action => {
                 let actionDescription = '';
                 switch(action.type) {
                     case 'observationField':
-                        actionDescription = `Add field: ${action.fieldName} = ${action.fieldValue}`;
+                        const displayValue = action.displayValue || action.fieldValue;
+                        actionDescription = `Add observation field: ${action.fieldName} = ${displayValue}`;
                         break;
                     case 'annotation':
                         const attribute = Object.entries(controlledTerms).find(([_, value]) => value.id === parseInt(action.annotationField));
@@ -3344,7 +3391,7 @@ function updateActionDescription(actionSelect) {
                         actionDescription = `Add to project: ${action.projectName}`;
                         break;
                     case 'addComment':
-                        actionDescription = `Add comment: ${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}`;
+                        actionDescription = `Add comment: "${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}"`;
                         break;
                     case 'addTaxonId':
                         actionDescription = `Add taxon ID: ${action.taxonName}`;
@@ -3356,16 +3403,31 @@ function updateActionDescription(actionSelect) {
                     case 'copyObservationField':
                         actionDescription = `Copy field: ${action.sourceFieldName} to ${action.targetFieldName}`;
                         break;
-                    // Add more cases as needed for other action types
                 }
-                descriptionHTML += `<li>${actionDescription}</li>`;
+                descriptionHTML += `<li>- ${actionDescription}</li>`;
             });
+
             descriptionHTML += '</ul>';
-            descriptionElement.innerHTML = descriptionHTML || 'No actions specified.';
+
+            const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
+            if (hasDQIRemoval) {
+                descriptionHTML += '<p><strong>Please note:</strong> Removing DQI votes cannot be undone in bulk due to API limitations.</p>';
+            }
+
+            descriptionElement.innerHTML = descriptionHTML;
         } else {
-            descriptionElement.innerHTML = '';
+            descriptionElement.innerHTML = 'No action selected.';
         }
     }
+}
+
+async function fetchTaxonData(taxonId) {
+    const response = await fetch(`https://api.inaturalist.org/v1/taxa/${taxonId}`);
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.results[0];
 }
 
 function getQualityMetricName(metric) {
