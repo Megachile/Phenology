@@ -203,7 +203,13 @@
 
         <div class="collapsible-container">
             <button id="toggleAdditionalParams" class="collapse-toggle">Additional Search Parameters ▼</button>
-            <fieldset id="additionalParams" class="collapsed">              
+            <fieldset id="additionalParams" class="collapsed">    
+              <div id="customListSelector">
+                <label>Select Custom Lists:</label>
+                <div id="customListsContainer">
+                  <!-- Checkboxes will be populated dynamically -->
+                </div>
+              </div>  
               <div>
                 <label for="listIdInput" data-tooltip="Restrict search to taxa in a specific iNaturalist list">List ID:</label>
                 <input type="text" id="listIdInput" placeholder="Enter List ID">

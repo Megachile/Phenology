@@ -498,3 +498,18 @@ input:checked + .slider:before {
 #exploreButton {
   background-color: #4CAF50;
 }
+
+#customListsContainer {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  padding: 10px;
+}
+
+.custom-list-checkbox {
+  margin-bottom: 5px;
+}
+
+.custom-list-checkbox label {
+  margin-left: 5px;
+}

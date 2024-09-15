@@ -1,6 +1,7 @@
 let map;
 let activeDrawTool = null;
 let tooltipsEnabled = false;
+const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 document.addEventListener('DOMContentLoaded', function() {
     const addTaxonButton = document.getElementById('addTaxonButton');
     const addUserButton = document.getElementById('addUserButton');
@@ -13,6 +14,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setupDateSelector('observed');
     setupDateSelector('added');
 
+    populateCustomLists();
+  
     // Check if all buttons are found
     if (!addTaxonButton) console.error('addTaxonButton not found');
     if (!addUserButton) console.error('addUserButton not found');
@@ -484,7 +487,7 @@ function safeEncode(str) {
     return encodeURIComponent(decodedStr);
 }
 
-function generateURL() {
+async function generateURL() {
     console.log('Generating URL...');
     let url = 'https://www.inaturalist.org/observations/identify?';
     let params = [];
@@ -505,6 +508,11 @@ function generateURL() {
 
     // Handle toggles
     const toggles = ['captive', 'sounds', 'photos', 'threatened', 'introduced', 'native', 'popular', 'identified', 'description', 'tags', 'geo', 'mappable'];
+
+    const selectedObservations = await getSelectedObservations();
+    if (selectedObservations.length > 0) {
+        params.push(`id=${selectedObservations.join(',')}`);
+    }
 
     toggles.forEach(toggle => {
         const selectedValue = document.querySelector(`input[name="${toggle}"]:checked`).value;
@@ -1329,6 +1337,10 @@ function saveInputs() {
         geographicBoundingBox: {}
     };
 
+    const container = document.getElementById('customListsContainer');
+    const selectedCheckboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+    savedState.selectedCustomLists = Array.from(selectedCheckboxes).map(checkbox => checkbox.value);
+  
     // Save static inputs (existing code)
     document.querySelectorAll('input, select, textarea').forEach(input => {
         if (input.id) {
@@ -1413,6 +1425,16 @@ function loadInputs() {
                 }
             }
         });
+
+        if (savedState.selectedCustomLists) {
+            const container = document.getElementById('customListsContainer');
+            savedState.selectedCustomLists.forEach(listId => {
+              const checkbox = container.querySelector(`input[value="${listId}"]`);
+              if (checkbox) {
+                checkbox.checked = true;
+              }
+            });
+          }
 
         // Load quality grade checkboxes (existing code)
         (savedState.qualityGrade || []).forEach(value => {
@@ -1562,6 +1584,49 @@ function resetSpecificElements() {
         cb.checked = false;
     });
 
-    // Reset other specific elements as needed
-    // ...
 }
+
+function populateCustomLists() {
+    const container = document.getElementById('customListsContainer');
+    container.innerHTML = ''; // Clear existing checkboxes
+  
+    browserAPI.storage.local.get('customLists', function(data) {
+      const customLists = data.customLists || [];
+      customLists.forEach(list => {
+        const checkboxDiv = document.createElement('div');
+        checkboxDiv.className = 'custom-list-checkbox';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `list-${list.id}`;
+        checkbox.value = list.id;
+        
+        const label = document.createElement('label');
+        label.htmlFor = `list-${list.id}`;
+        label.textContent = `${list.name} (${list.observations.length} observations)`;
+        
+        checkboxDiv.appendChild(checkbox);
+        checkboxDiv.appendChild(label);
+        container.appendChild(checkboxDiv);
+  
+        checkbox.addEventListener('change', generateURL);
+      });
+    });
+  }
+  
+function getSelectedObservations() {
+    return new Promise((resolve) => {
+      const container = document.getElementById('customListsContainer');
+      const selectedCheckboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+      const selectedListIds = Array.from(selectedCheckboxes).map(checkbox => checkbox.value);
+  
+      browserAPI.storage.local.get('customLists', function(data) {
+        const customLists = data.customLists || [];
+        const selectedObservations = customLists
+          .filter(list => selectedListIds.includes(list.id))
+          .flatMap(list => list.observations);
+  
+        resolve(selectedObservations);
+      });
+    });
+  }
