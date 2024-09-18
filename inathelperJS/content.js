@@ -3262,15 +3262,10 @@ function loadConfigurationSets() {
 }
 
 function createSetSwitcher() {
+    // Remove existing switcher if it exists
     const existingSwitcher = document.getElementById('set-switcher');
     if (existingSwitcher) {
         existingSwitcher.remove();
-    }
-
-    const sortButtonContainer = document.getElementById('sort-buttons-container');
-    if (!sortButtonContainer) {
-        console.error('Sort button container not found');
-        return;
     }
 
     const switcher = document.createElement('div');
@@ -3279,37 +3274,119 @@ function createSetSwitcher() {
         display: inline-block;
         margin-left: 10px;
         vertical-align: middle;
+        position: relative;
     `;
 
-    const select = document.createElement('select');
-    select.style.cssText = `
-        appearance: none;
+    const currentSet = document.createElement('div');
+    currentSet.id = 'current-set';
+    currentSet.textContent = currentSetName;
+    currentSet.style.cssText = `
         background-color: #f0f0f0;
         border: 1px solid #ccc;
         border-radius: 3px;
         padding: 5px 24px 5px 10px;
         font-size: 14px;
         cursor: pointer;
-        background-image: url('data:image/svg+xml;utf8,<svg fill="%23333" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
-        background-repeat: no-repeat;
-        background-position: right 5px top 50%;
-        background-size: 16px;
+        user-select: none;
+        position: relative;
+    `;
+
+    // Add a dropdown arrow
+    const arrow = document.createElement('span');
+    arrow.textContent = '▼';
+    arrow.style.cssText = `
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 10px;
+    `;
+    currentSet.appendChild(arrow);
+
+    const dropdown = document.createElement('div');
+    dropdown.id = 'set-switcher-dropdown';
+    dropdown.style.cssText = `
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 10002;
+        min-width: 100%;
     `;
 
     configurationSets.forEach(set => {
-        const option = document.createElement('option');
-        option.value = set.name;
+        const option = document.createElement('div');
         option.textContent = set.name;
-        select.appendChild(option);
+        option.style.cssText = `
+            padding: 5px 10px;
+            cursor: pointer;
+            white-space: nowrap;
+        `;
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            switchConfigurationSet(set.name);
+            currentSet.textContent = set.name;
+            currentSet.appendChild(arrow);
+            dropdown.style.display = 'none';
+        });
+        option.addEventListener('mouseover', () => {
+            option.style.backgroundColor = '#f0f0f0';
+        });
+        option.addEventListener('mouseout', () => {
+            option.style.backgroundColor = 'white';
+        });
+        dropdown.appendChild(option);
     });
-    select.value = currentSetName;
 
-    select.addEventListener('change', function() {
-        switchConfigurationSet(this.value);
+    currentSet.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
     });
 
-    switcher.appendChild(select);
-    sortButtonContainer.appendChild(switcher);
+    document.addEventListener('click', () => {
+        dropdown.style.display = 'none';
+    });
+
+    switcher.appendChild(currentSet);
+    switcher.appendChild(dropdown);
+
+    const sortButtonContainer = document.getElementById('sort-buttons-container');
+    if (sortButtonContainer) {
+        sortButtonContainer.appendChild(switcher);
+    }
+
+    // Ensure the dropdown is positioned correctly
+    function positionDropdown() {
+        const rect = currentSet.getBoundingClientRect();
+        dropdown.style.minWidth = `${rect.width}px`;
+        
+        // Check if dropdown would go off the bottom of the screen
+        if (rect.bottom + dropdown.offsetHeight > window.innerHeight) {
+            dropdown.style.top = 'auto';
+            dropdown.style.bottom = '100%';
+        } else {
+            dropdown.style.top = '100%';
+            dropdown.style.bottom = 'auto';
+        }
+    }
+
+    // Position the dropdown when it's displayed
+    new MutationObserver(() => {
+        if (dropdown.style.display === 'block') {
+            positionDropdown();
+        }
+    }).observe(dropdown, { attributes: true, attributeFilter: ['style'] });
+
+    // Reposition on window resize
+    window.addEventListener('resize', () => {
+        if (dropdown.style.display === 'block') {
+            positionDropdown();
+        }
+    });
 }
 
 function switchConfigurationSet(setName) {
