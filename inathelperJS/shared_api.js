@@ -1,3 +1,5 @@
+
+const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 const controlledTerms = {
     "Alive or Dead": {
       id: 17,
@@ -971,12 +973,12 @@ async function getJWT() {
     
     currentJWT = getJWTFromPage();
     if (currentJWT) {
-        chrome.storage.local.set({jwt: currentJWT});
+        browserAPI.storage.local.set({jwt: currentJWT});
         return currentJWT;
     }
     
     // If not on page, try to get from storage
-    const stored = await chrome.storage.local.get('jwt');
+    const stored = await browserAPI.storage.local.get('jwt');
     if (stored.jwt) {
         currentJWT = stored.jwt;
         return currentJWT;
