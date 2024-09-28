@@ -957,14 +957,14 @@ function animateButtonResult(button, success) {
     }, 1200); 
 }
 const style = document.createElement('style');
-style.textContent = `
- #custom-extension-container.edit-mode .button-ph {
+style.textContent += `
+    #custom-extension-container.edit-mode .button-ph {
         cursor: move;
         box-shadow: 0 0 3px rgba(0,0,0,0.3);
-        transition: transform 0.1s ease-in-out;
     }
     #custom-extension-container.edit-mode .button-ph:hover {
         transform: scale(1.05);
+        transition: transform 0.1s ease-in-out;
     }
     #custom-extension-container.edit-mode .button-ph.dragging {
         opacity: 0.8;
@@ -1025,24 +1025,34 @@ style.textContent = `
     width: var(--original-width);
   }
   .button-ph {
-    font-size: 14px;
-    padding: 5px 10px;
-    margin: 3px;
-    flex-grow: 1;
-    min-width: 100px;
-    background-color: rgba(0, 0, 0, 0.5);
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    position: relative;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  .button-ph:hover {
-      background-color: rgba(0, 0, 0, 0.7);
-  }
+        position: relative;
+        margin: 3px;
+        flex-grow: 1;
+        min-width: 100px;
+    }
+    .button-ph button:hover {
+        background-color: rgba(0, 0, 0, 0.7) !important;
+    }
+    .button-ph .tooltip {
+        visibility: hidden;
+        background-color: black;
+        color: white;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px;
+        position: absolute;
+        z-index: 10002;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+    }
+    .button-ph:hover .tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
   .button-ph.dragging {
     opacity: 0.5;
     position: fixed;
@@ -1059,26 +1069,6 @@ style.textContent = `
   }
   #custom-extension-input {
       width: 120px;
-  }
-  .button-ph .tooltip {
-    visibility: visible;
-    background-color: black;
-    color: white;
-    text-align: center;
-    border-radius: 6px;
-    padding: 5px;
-    position: absolute;
-    z-index: 10002;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .button-ph:hover .tooltip {
-    visibility: visible;
-    opacity: 1;
-    pointer-events: auto;
   }
   #custom-extension-input:focus + .tooltip {
       display: block;
@@ -1896,7 +1886,6 @@ function toggleEditMode() {
 
 function createButton(config) {
     debugButtonCreation(config);
-
     function hasNonASCII(str) {
         return /[^\u0000-\u007f]/.test(str);
     }
@@ -1906,24 +1895,36 @@ function createButton(config) {
         debugLog('Shortcut key contains non-ASCII:', hasNonASCII(config.shortcut.key));
     }
 
+    let buttonWrapper = document.createElement('div');
+    buttonWrapper.classList.add('button-ph');
+    buttonWrapper.dataset.buttonId = config.id;
+    
     let button = document.createElement('button');
-    button.classList.add('button-ph');
-    button.dataset.buttonId = config.id;
     button.innerText = config.name;
+    button.style.width = '100%';
+    button.style.height = '100%';
+    button.style.border = 'none';
+    button.style.borderRadius = '5px';
+    button.style.background = 'rgba(0, 0, 0, 0.5)';
+    button.style.color = 'white';
+    button.style.cursor = 'pointer';
+    button.style.padding = '5px 10px';
+    button.style.fontSize = '14px';
+    button.style.transition = 'background-color 0.3s ease';
+    buttonWrapper.appendChild(button);
     
     // Create tooltip if shortcut exists
     if (config.shortcut && config.shortcut.key) {
         let tooltip = document.createElement('span');
         tooltip.classList.add('tooltip');
         tooltip.textContent = formatShortcut(config.shortcut);
-        button.appendChild(tooltip);
+        buttonWrapper.appendChild(tooltip);
     }
     
     button.onclick = function(e) {
         animateButton(this);
         performActions(config.actions)
             .then((results) => {
-                // Ensure results is always an array
                 const resultsArray = Array.isArray(results) ? results : [results];
                 const allSuccessful = resultsArray.every(r => r.success);
                 animateButtonResult(this, allSuccessful);
@@ -1937,8 +1938,8 @@ function createButton(config) {
             });
     };
     
-    button.style.display = config.buttonHidden ? 'none' : 'inline-block';
-    buttonContainer.appendChild(button);
+    buttonWrapper.style.display = config.buttonHidden ? 'none' : 'inline-block';
+    buttonContainer.appendChild(buttonWrapper);
     if (config.shortcut) {
         customShortcuts.push({
             name: config.name,
@@ -1946,11 +1947,10 @@ function createButton(config) {
             ctrlKey: config.shortcut.ctrlKey,
             shiftKey: config.shortcut.shiftKey,
             altKey: config.shortcut.altKey,
-            button: button  // Store the button element itself
+            button: button
         });
     }
-
-    debugLog("Button created and added to DOM:", button.outerHTML);
+    debugLog("Button created and added to DOM:", buttonWrapper.outerHTML);
 }
 
 function formatShortcut(shortcut) {
@@ -1981,8 +1981,10 @@ function initializeDragAndDrop() {
     let buttonPositions = [];
 
     onMouseDown = function(e) {
-        if (e.target.classList.contains('button-ph')) {
-            draggingElement = e.target;
+        // Check if the clicked element is the button or its wrapper
+        const buttonWrapper = e.target.closest('.button-ph');
+        if (buttonWrapper) {
+            draggingElement = buttonWrapper;
             const rect = draggingElement.getBoundingClientRect();
             dragStartX = e.clientX - rect.left;
             dragStartY = e.clientY - rect.top;
@@ -2151,7 +2153,7 @@ function loadButtonOrder() {
             debugLog('Stored button order:', data.buttonOrder);
             const container = document.getElementById('custom-extension-container');
             data.buttonOrder.forEach(buttonId => {
-                const button = container.querySelector(`[data-button-id="${buttonId}"]`);
+                const button = container.querySelector(`.button-ph[data-button-id="${buttonId}"]`);
                 if (button) container.appendChild(button);
             });
         }
