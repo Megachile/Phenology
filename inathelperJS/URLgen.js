@@ -1,7 +1,7 @@
 let map;
 let activeDrawTool = null;
 let tooltipsEnabled = false;
-const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+
 document.addEventListener('DOMContentLoaded', function() {
     const addTaxonButton = document.getElementById('addTaxonButton');
     const addUserButton = document.getElementById('addUserButton');

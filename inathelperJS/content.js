@@ -1,5 +1,4 @@
 console.log("Content script loaded. URL:", window.location.href);
-const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 let buttonPosition = 'bottom-right'; // Default position
 let idDisplay;
 let refreshEnabled = true;

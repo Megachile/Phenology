@@ -1,3 +1,4 @@
+const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
 const controlledTerms = {
     "Alive or Dead": {
