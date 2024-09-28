@@ -956,11 +956,76 @@ async function makeAPIRequest(endpoint, options = {}) {
         } else {
             console.log('JWT is invalid, will try to get a new one on next API call');
             currentJWT = null;
+            if (isOptionsPage()) {
+                showJWTAlert();
+            }
         }
     } else {
         console.log('No JWT found');
+        if (isOptionsPage()) {
+            showJWTAlert();
+        }
     }
 })();
+
+function isOptionsPage() {
+    return window.location.pathname.endsWith('options.html');
+}
+
+function showJWTAlert() {
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.4);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    `;
+
+    // Create modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background-color: #fefefe;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 5px;
+        text-align: center;
+    `;
+
+    // Add message and link
+    modalContent.innerHTML = `
+        <h2 style="margin-top: 0;">JWT Required</h2>
+        <p>To use this extension, you need to log in and open an iNaturalist Identify page first.</p>
+        <a href="https://www.inaturalist.org/observations/identify" target="_blank" style="color: blue; text-decoration: underline;">Open Identify Page</a>
+        <button id="closeJWTAlert" style="display: block; margin: 20px auto 0; padding: 10px 20px;">Close</button>
+    `;
+
+    // Append modal content to modal container
+    modal.appendChild(modalContent);
+
+    // Append modal to body
+    document.body.appendChild(modal);
+
+    // Close modal when close button is clicked
+    document.getElementById('closeJWTAlert').onclick = function() {
+        document.body.removeChild(modal);
+    };
+
+    // Close modal when clicking outside of it
+    modal.onclick = function(event) {
+        if (event.target == modal) {
+            document.body.removeChild(modal);
+        }
+    };
+}
 
 
 function getJWTFromPage() {
