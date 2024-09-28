@@ -7,9 +7,8 @@ let searchTerm = '';
 let observationFieldMap = {};
 let configurationSets = [];
 let currentSetName = '';
-if (typeof browserAPI === 'undefined') {
-    const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
-  }
+const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+
 const iNatSingleKeyPresses = [
     'x', 'r', 'c', 'a', 'i', 'f', 'z', 'space', 'left', 'right', 'up', 'down', '?',
     'e', 'l', 's', 'p'
