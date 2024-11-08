@@ -1729,12 +1729,23 @@ function createDynamicButtons() {
             min-width: 120px;
             width: 100%;
         `;
-        sortDropdown.innerHTML = `
+
+        // Build dropdown HTML including custom option if it exists
+        let dropdownHTML = `
             <button id="sort-az" class="sort-option">Sort A-Z</button>
             <button id="sort-za" class="sort-option">Sort Z-A</button>
             <button id="sort-new-old" class="sort-option">Sort New-Old</button>
             <button id="sort-old-new" class="sort-option">Sort Old-New</button>
         `;
+        // Check for both customOrder and buttonOrder
+        if (currentSet.customOrder || currentSet.buttonOrder) {
+            dropdownHTML = `
+                <button id="sort-custom" class="sort-option">Return to Custom</button>
+                <div class="sort-divider"></div>
+            ` + dropdownHTML;
+        }
+        sortDropdown.innerHTML = dropdownHTML;
+
         sortButtonWrapper.appendChild(sortDropdown);
 
         // Add Edit Layout button
@@ -1754,6 +1765,11 @@ function createDynamicButtons() {
             }
             .sort-option:hover {
                 background-color: #f0f0f0;
+            }
+            .sort-divider {
+                height: 1px;
+                background-color: #ccc;
+                margin: 5px 0;
             }
             #custom-extension-container.edit-mode .button-ph {
                 cursor: move;
@@ -1778,10 +1794,11 @@ function createDynamicButtons() {
    
         sortButton.addEventListener('click', toggleSortDropdown);
     
-        document.getElementById('sort-az').addEventListener('click', () => sortButtons('az'));
-        document.getElementById('sort-za').addEventListener('click', () => sortButtons('za'));
-        document.getElementById('sort-new-old').addEventListener('click', () => sortButtons('new-old'));
-        document.getElementById('sort-old-new').addEventListener('click', () => sortButtons('old-new'));
+        document.getElementById('sort-az')?.addEventListener('click', () => sortButtons('az'));
+        document.getElementById('sort-za')?.addEventListener('click', () => sortButtons('za'));
+        document.getElementById('sort-new-old')?.addEventListener('click', () => sortButtons('new-old'));
+        document.getElementById('sort-old-new')?.addEventListener('click', () => sortButtons('old-new'));
+        document.getElementById('sort-custom')?.addEventListener('click', () => sortButtons('custom'));
 
         // Create set switcher
         createSetSwitcher();
@@ -1789,11 +1806,14 @@ function createDynamicButtons() {
         // Determine how to arrange buttons
         let orderedButtons = [];
         
-        if (currentSet.buttonOrder) {
-            // Use saved custom order
-            orderedButtons = currentSet.buttonOrder.map(buttonId => 
-                currentSet.buttons.find(c => c.id === buttonId)
-            ).filter(Boolean);
+        if (currentSet.sortMethod === 'custom') {
+            // Use saved custom order (check both customOrder and buttonOrder)
+            const savedOrder = currentSet.customOrder || currentSet.buttonOrder;
+            if (savedOrder) {
+                orderedButtons = savedOrder.map(buttonId => 
+                    currentSet.buttons.find(c => c.id === buttonId)
+                ).filter(Boolean);
+            }
         } else if (currentSet.sortMethod && currentSet.sortMethod !== 'custom') {
             // Use sort method
             orderedButtons = currentSet.buttons.slice();
@@ -2172,14 +2192,14 @@ function saveButtonOrder() {
         const setIndex = sets.findIndex(set => set.name === currentSetName);
         
         if (setIndex !== -1) {
-            sets[setIndex].buttonOrder = order;
+            sets[setIndex].customOrder = order;  // Save as customOrder instead of buttonOrder
             sets[setIndex].sortMethod = 'custom';
             
             browserAPI.storage.local.set({ configurationSets: sets }, function() {
-                debugLog('Button order saved for set:', currentSetName, order);
+                debugLog('Custom button order saved for set:', currentSetName, order);
                 
                 // Update current set in memory
-                currentSet.buttonOrder = order;
+                currentSet.customOrder = order;
                 currentSet.sortMethod = 'custom';
                 
                 // Update sort button text
@@ -3262,36 +3282,42 @@ function closeSortDropdown(event) {
 function sortButtons(method) {
     const buttons = Array.from(buttonContainer.querySelectorAll('.button-ph'));
     
-    buttons.sort((a, b) => {
-        switch (method) {
-            case 'az':
-                return a.innerText.localeCompare(b.innerText);
-            case 'za':
-                return b.innerText.localeCompare(a.innerText);
-            case 'new-old':
-                return b.dataset.buttonId.localeCompare(a.dataset.buttonId);
-            case 'old-new':
-                return a.dataset.buttonId.localeCompare(b.dataset.buttonId);
-        }
-    });
+    if (method === 'custom' && currentSet.customOrder) {
+        // Reorder according to saved custom order
+        const customOrder = currentSet.customOrder;
+        buttons.sort((a, b) => {
+            return customOrder.indexOf(a.dataset.buttonId) - customOrder.indexOf(b.dataset.buttonId);
+        });
+    } else {
+        buttons.sort((a, b) => {
+            switch (method) {
+                case 'az':
+                    return a.innerText.localeCompare(b.innerText);
+                case 'za':
+                    return b.innerText.localeCompare(a.innerText);
+                case 'new-old':
+                    return b.dataset.buttonId.localeCompare(a.dataset.buttonId);
+                case 'old-new':
+                    return a.dataset.buttonId.localeCompare(b.dataset.buttonId);
+            }
+        });
+    }
 
     buttons.forEach(button => buttonContainer.appendChild(button));
     
     const sortButton = document.getElementById('sort-button');
     sortButton.innerHTML = getSortButtonText(method);
     
-    // Save sort method and new order
     browserAPI.storage.local.get('configurationSets', function(data) {
         const sets = data.configurationSets || [];
         const setIndex = sets.findIndex(set => set.name === currentSetName);
         if (setIndex !== -1) {
             sets[setIndex].sortMethod = method;
-            sets[setIndex].buttonOrder = null; // Clear custom order when sorting
+            // Note: We don't clear customOrder here anymore
             browserAPI.storage.local.set({ configurationSets: sets }, function() {
                 debugLog('Sort method saved for set:', currentSetName, method);
                 // Update current set in memory
                 currentSet.sortMethod = method;
-                currentSet.buttonOrder = null;
             });
         }
     });
