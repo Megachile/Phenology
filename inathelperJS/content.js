@@ -3283,10 +3283,13 @@ function sortButtons(method) {
     const buttons = Array.from(buttonContainer.querySelectorAll('.button-ph'));
     
     if (method === 'custom' && currentSet.customOrder) {
-        // Reorder according to saved custom order
-        const customOrder = currentSet.customOrder;
+        // Ensure custom order is up to date before sorting
+        updateCustomOrderForSet(currentSet);
+        
+        // Sort buttons according to custom order
         buttons.sort((a, b) => {
-            return customOrder.indexOf(a.dataset.buttonId) - customOrder.indexOf(b.dataset.buttonId);
+            return currentSet.customOrder.indexOf(a.dataset.buttonId) - 
+                   currentSet.customOrder.indexOf(b.dataset.buttonId);
         });
     } else {
         buttons.sort((a, b) => {
@@ -3303,19 +3306,29 @@ function sortButtons(method) {
         });
     }
 
+    // Reorder buttons in the container
     buttons.forEach(button => buttonContainer.appendChild(button));
     
+    // Update sort button text
     const sortButton = document.getElementById('sort-button');
-    sortButton.innerHTML = getSortButtonText(method);
+    if (sortButton) {
+        sortButton.innerHTML = getSortButtonText(method);
+    }
     
+    // Save the updated configuration
     browserAPI.storage.local.get('configurationSets', function(data) {
         const sets = data.configurationSets || [];
         const setIndex = sets.findIndex(set => set.name === currentSetName);
         if (setIndex !== -1) {
             sets[setIndex].sortMethod = method;
-            // Note: We don't clear customOrder here anymore
+            if (method === 'custom') {
+                sets[setIndex].customOrder = currentSet.customOrder;
+            }
             browserAPI.storage.local.set({ configurationSets: sets }, function() {
-                debugLog('Sort method saved for set:', currentSetName, method);
+                debugLog('Sort method and custom order saved for set:', currentSetName, {
+                    method,
+                    customOrder: method === 'custom' ? currentSet.customOrder : undefined
+                });
                 // Update current set in memory
                 currentSet.sortMethod = method;
             });
@@ -3342,13 +3355,71 @@ function getSortButtonText(method) {
     }
 }
 
+function updateCustomOrderForSet(set) {
+    if (!set.customOrder || !set.buttons) return false;
+
+    const allButtonIds = new Set(set.buttons.map(button => button.id));
+    const originalOrder = [...set.customOrder];
+
+    // Remove non-existent buttons
+    set.customOrder = set.customOrder.filter(id => allButtonIds.has(id));
+
+    // Add new buttons to the end
+    const missingButtons = Array.from(allButtonIds).filter(id => !set.customOrder.includes(id));
+    if (missingButtons.length > 0) {
+        set.customOrder = [...set.customOrder, ...missingButtons];
+    }
+
+    // Return true if the order changed
+    return JSON.stringify(originalOrder) !== JSON.stringify(set.customOrder);
+}
+
+browserAPI.storage.onChanged.addListener(function(changes, namespace) {
+    if (namespace === 'local' && changes.configurationSets) {
+        const updatedSets = changes.configurationSets.newValue;
+        if (updatedSets) {
+            // Update custom orders before loading
+            let needsUpdate = false;
+            updatedSets.forEach(set => {
+                if (updateCustomOrderForSet(set)) {
+                    needsUpdate = true;
+                }
+            });
+
+            if (needsUpdate) {
+                browserAPI.storage.local.set({ configurationSets: updatedSets }, function() {
+                    debugLog('Updated custom orders after storage change');
+                    loadConfigurationSets();
+                });
+            } else {
+                loadConfigurationSets();
+            }
+        }
+    }
+});
+
 function loadConfigurationSets() {
     browserAPI.storage.local.get(['configurationSets', 'currentSetName'], function(data) {
         configurationSets = data.configurationSets || [];
         currentSetName = data.currentSetName || (configurationSets[0] && configurationSets[0].name);
-        currentSet = configurationSets.find(set => set.name === currentSetName) || configurationSets[0];
         
-        // Initialize currentAvailableActions
+        // Update custom orders for all sets before proceeding
+        let needsUpdate = false;
+        configurationSets.forEach(set => {
+            if (updateCustomOrderForSet(set)) {
+                needsUpdate = true;
+            }
+        });
+
+        // If any sets were updated, save the changes
+        if (needsUpdate) {
+            browserAPI.storage.local.set({ configurationSets }, function() {
+                debugLog('Updated custom orders for all sets');
+            });
+        }
+
+        // Set current set after potential updates
+        currentSet = configurationSets.find(set => set.name === currentSetName) || configurationSets[0];
         currentAvailableActions = currentSet ? currentSet.buttons.filter(button => !button.configurationDisabled) : [];
         
         createDynamicButtons();
@@ -3488,6 +3559,21 @@ function createSetSwitcher() {
 function switchConfigurationSet(setName) {
     currentSetName = setName;
     currentSet = configurationSets.find(set => set.name === setName);
+
+    if (updateCustomOrderForSet(currentSet)) {
+        // Save if the order was updated
+        browserAPI.storage.local.get('configurationSets', function(data) {
+            const sets = data.configurationSets || [];
+            const setIndex = sets.findIndex(set => set.name === setName);
+            if (setIndex !== -1) {
+                sets[setIndex].customOrder = currentSet.customOrder;
+                browserAPI.storage.local.set({ configurationSets: sets }, function() {
+                    debugLog('Updated custom order during set switch:', currentSet.customOrder);
+                });
+            }
+        });
+    }
+
     currentAvailableActions = currentSet.buttons.filter(button => !button.configurationDisabled);
     
     browserAPI.storage.local.set({ currentSetName: setName }, async function() {
@@ -3495,8 +3581,8 @@ function switchConfigurationSet(setName) {
         createSetSwitcher();
         updateBulkActionButtons();
         
-        // Apply the set's saved sort method only if it's not a custom layout
-        if (currentSet.sortMethod && currentSet.sortMethod !== 'custom') {
+        // Apply the set's saved sort method
+        if (currentSet.sortMethod) {
             sortButtons(currentSet.sortMethod);
         }
         
@@ -3507,6 +3593,7 @@ function switchConfigurationSet(setName) {
         }
     });
 }
+
 
 function updateBulkActionDropdown(actionSelect, availableActions) {
     console.log('Updating bulk action dropdown. Available actions:', availableActions);
