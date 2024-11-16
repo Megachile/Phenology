@@ -982,20 +982,26 @@ function getListName(listId) {
 }
 
 function toggleHideButton(configId, checkbox) {
-    const config = customButtons.find(c => c.id === configId);
+    const currentSet = getCurrentSet();
+    if (!currentSet) return;
+
+    const config = currentSet.buttons.find(c => c.id === configId);
     if (config) {
         config.buttonHidden = checkbox.checked;
         updateConfigurationDisplay(config);
-        saveConfigurations();
+        saveConfigurationSets();
     }
 }
 
 function toggleDisableConfiguration(configId, checkbox) {
-    const config = customButtons.find(c => c.id === configId);
+    const currentSet = getCurrentSet();
+    if (!currentSet) return;
+
+    const config = currentSet.buttons.find(c => c.id === configId);
     if (config) {
         config.configurationDisabled = checkbox.checked;
         updateConfigurationDisplay(config);
-        saveConfigurations();
+        saveConfigurationSets();
     }
 }
 
