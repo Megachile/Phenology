@@ -1119,3 +1119,41 @@ async function addOrRemoveObservationFromList(observationId, listId, isRemove = 
         });
     });
 }
+
+async function getFieldValueDetails(observationId, fieldId) {
+    try {
+        const response = await makeAPIRequest(`/observations/${observationId}`);
+        if (!response.results || !response.results[0]) {
+            throw new Error('Observation not found');
+        }
+
+        const observation = response.results[0];
+        const fieldValue = observation.ofvs.find(ofv => ofv.field_id === parseInt(fieldId));
+        
+        if (!fieldValue) {
+            return null;
+        }
+
+        return {
+            value: fieldValue.value,
+            timestamp: fieldValue.updated_at || fieldValue.created_at
+        };
+    } catch (error) {
+        console.error('Error getting field value details:', error);
+        throw error;
+    }
+}
+
+function compareFieldValues(existingValue, newValue, datatype) {
+    if (!existingValue) return true; // No existing value means values are different
+
+    switch (datatype) {
+        case 'numeric':
+            return parseFloat(existingValue) !== parseFloat(newValue);
+        case 'date':
+        case 'datetime':
+            return new Date(existingValue).getTime() !== new Date(newValue).getTime();
+        default:
+            return existingValue !== newValue;
+    }
+}

@@ -1318,29 +1318,31 @@ async function performActions(actions) {
         alert('Please open an observation before using this button.');
         return [];
     }
-    
-    const lockedObservationId = observationId;
-    const isIdentifyPage = window.location.pathname.includes('/identify');
-    const isObservationPage = window.location.pathname.match(/^\/observations\/\d+/);
-    let needsPageUpdate = true;
-    const results = [];
 
+    const { safeMode = true } = await new Promise(resolve => 
+        browserAPI.storage.local.get('safeMode', resolve)
+    );
+
+    for (const action of actions) {
+        if (action.type === 'observationField') {
+            try {
+                const existingValue = await getFieldValueDetails(observationId, action.fieldId);
+                if (existingValue && safeMode) {
+                    console.log(`Skipping observation ${observationId} - existing value: ${existingValue.value}`);
+                    alert(`This observation already has a value for this field: ${existingValue.value}\nSkipping in safe mode.`);
+                    return [];
+                }
+            } catch (error) {
+                console.error('Error checking existing values:', error);
+            }
+        }
+    }
+
+    const results = [];
     try {
         for (const action of actions) {
-            const result = await performSingleAction(action, lockedObservationId, isIdentifyPage);
+            const result = await performSingleAction(action, observationId);
             results.push(result);
-        }
-
-        if (isIdentifyPage) {
-            console.log('Attempting to refresh observation');
-            await refreshObservation().catch(error => {
-                console.error('Error in refreshObservation:', error);
-            });
-        } else if (isObservationPage && needsPageUpdate) {
-            console.log('Updating observation page');
-            await updateObservationPage(lockedObservationId).catch(error => {
-                console.error('Error in updateObservationPage:', error);
-            });
         }
     } catch (error) {
         console.error('Error in performActions:', error);
@@ -2707,6 +2709,13 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
     const observationIds = Array.from(selectedObservations);
     const totalObservations = observationIds.length;
     let processedObservations = 0;
+    const results = [];
+    const skippedObservations = [];
+
+    const { safeMode = true } = await new Promise(resolve => 
+        browserAPI.storage.local.get('safeMode', resolve)
+    );
+
     const progressFill = modal.querySelector('.progress-fill');
     progressFill.style.width = '0%';
 
@@ -2715,48 +2724,57 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
     modal.appendChild(statusElement);
 
     try {
-        statusElement.textContent = 'Fetching observation data...';
-        const preActionStates = await generatePreActionStates(observationIds);
-        
-        statusElement.textContent = 'Preparing undo record...';
-        const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedAction, observationIds, preActionStates);  
-        
-        const results = [];
-        const skippedObservations = [];
-        const errorMessages = [];
-
-        statusElement.textContent = 'Applying actions...';
         for (const observationId of observationIds) {
             if (isCancelledFunc()) {
                 statusElement.textContent = 'Action cancelled. Processing completed actions...';
                 break;
             }
 
-            for (const action of selectedAction.actions) {
-                try {
-                    await executeAction(action, observationId, preActionStates, preliminaryUndoRecord, results, skippedObservations);
-                } catch (error) {
-                    console.error(`Error executing action for observation ${observationId}:`, error);
-                    errorMessages.push(`Error for observation ${observationId}: ${error.message}`);
+            let shouldSkip = false;
+            if (safeMode) {
+                for (const action of selectedAction.actions) {
+                    if (action.type === 'observationField') {
+                        const existingValue = await getFieldValueDetails(observationId, action.fieldId);
+                        if (existingValue) {
+                            console.log(`Skipping observation ${observationId} - existing value: ${existingValue.value}`);
+                            skippedObservations.push(observationId);
+                            shouldSkip = true;
+                            break;
+                        }
+                    }
                 }
             }
+
+            if (!shouldSkip) {
+                for (const action of selectedAction.actions) {
+                    try {
+                        const result = await performSingleAction(action, observationId);
+                        results.push({ ...result, observationId });
+                    } catch (error) {
+                        console.error(`Error executing action for observation ${observationId}:`, error);
+                        results.push({ success: false, error: error.toString(), observationId });
+                    }
+                }
+            }
+
             processedObservations++;
             await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
         }
 
-        statusElement.textContent = 'Finalizing...';
-        await updateProgressBar(progressFill, 100);
-        
-        const finalUndoRecord = generateUndoRecord(preliminaryUndoRecord, results);
-        handleActionResults(results, skippedObservations, finalUndoRecord, errorMessages);
+        if (skippedObservations.length > 0) {
+            const skippedMessage = `Skipped ${skippedObservations.length} observation(s) with existing values.`;
+            const successMessage = `Successfully processed ${results.length} observation(s).`;
+            statusElement.textContent = `${skippedMessage}\n${successMessage}`;
+            
+            const skippedURL = generateObservationURL(skippedObservations);
+            createSkippedActionsModal(skippedObservations.length, skippedURL);
+        }
 
-        return finalUndoRecord;
+        return { results, skippedObservations };
     } catch (error) {
         console.error('Error in bulk action execution:', error);
-        alert(`An error occurred during bulk action execution: ${error.message}`);
-        return null;
-    } finally {
-        modal.removeChild(statusElement);
+        statusElement.textContent = `Error: ${error.message}`;
+        throw error;
     }
 }
 
@@ -3717,32 +3735,64 @@ document.addEventListener('keydown', function(event) {
 });
 
 function updateBulkActionButtons() {
-    if (bulkActionModeEnabled) {
-        const bulkButtonContainer = document.getElementById('bulk-action-container');
-        if (bulkButtonContainer) {
-            // Clear existing buttons
-            while (bulkButtonContainer.firstChild) {
-                bulkButtonContainer.firstChild.remove();
-            }
-            
-            // Recreate bulk action buttons
-            const selectAllButton = createBulkActionButton('Select All', selectAllObservations);
-            const invertSelectionButton = createBulkActionButton('Invert Selection', invertSelection);
-            const clearSelectionButton = createBulkActionButton('Clear Selection', clearSelection);
-            const applyActionButton = createBulkActionButton('Select and Apply Action', applyBulkAction);
-            const disableBulkModeButton = createBulkActionButton('Disable Bulk Mode', disableBulkActionMode);
-            const showUndoRecordsButton = createBulkActionButton('Show Undo Records', showUndoRecordsModal);
+    const bulkButtonContainer = document.getElementById('bulk-action-container');
+    const enableBulkModeButton = document.getElementById('enable-bulk-mode-button');
+    
+    // Only show the container when bulk mode is enabled
+    if (bulkButtonContainer) {
+        bulkButtonContainer.style.display = bulkActionModeEnabled ? 'block' : 'none';
+    }
+    
+    if (enableBulkModeButton) {
+        enableBulkModeButton.style.display = bulkActionModeEnabled ? 'none' : 'block';
+    }
 
-            bulkButtonContainer.appendChild(selectAllButton);
-            bulkButtonContainer.appendChild(invertSelectionButton);
-            bulkButtonContainer.appendChild(clearSelectionButton);
-            bulkButtonContainer.appendChild(applyActionButton);
-            bulkButtonContainer.appendChild(disableBulkModeButton);
-            bulkButtonContainer.appendChild(showUndoRecordsButton);
+    if (bulkActionModeEnabled && bulkButtonContainer) {
+        bulkButtonContainer.innerHTML = '';
+        
+        // Create button wrapper for first row
+        const buttonWrapper = document.createElement('div');
+        buttonWrapper.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 10px;
+        `;
+        
+        const safeModeToggle = createSafeModeToggle();
+        buttonWrapper.appendChild(safeModeToggle);
+        
+        // Add main action buttons
+        const selectAllButton = createBulkActionButton('Select All', selectAllObservations);
+        const invertSelectionButton = createBulkActionButton('Invert Selection', invertSelection);
+        const clearSelectionButton = createBulkActionButton('Clear Selection', clearSelection);
+        const applyActionButton = createBulkActionButton('Select and Apply Action', applyBulkAction);
+        const disableBulkModeButton = createBulkActionButton('Disable Bulk Mode', disableBulkActionMode);
+        const showUndoRecordsButton = createBulkActionButton('Show Undo Records', showUndoRecordsModal);
 
-            // Update button states based on selection
-            clearSelectionButton.disabled = selectedObservations.size === 0;
-        }
+        // Add buttons to wrapper
+        buttonWrapper.appendChild(selectAllButton);
+        buttonWrapper.appendChild(invertSelectionButton);
+        buttonWrapper.appendChild(clearSelectionButton);
+        
+        // Create second row for remaining buttons
+        const secondRowWrapper = document.createElement('div');
+        secondRowWrapper.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        `;
+        
+        secondRowWrapper.appendChild(applyActionButton);
+        secondRowWrapper.appendChild(disableBulkModeButton);
+        secondRowWrapper.appendChild(showUndoRecordsButton);
+
+        // Add both rows to container
+        bulkButtonContainer.appendChild(buttonWrapper);
+        bulkButtonContainer.appendChild(secondRowWrapper);
+
+        // Update button states
+        clearSelectionButton.disabled = selectedObservations.size === 0;
     }
 }
 
@@ -3831,3 +3881,118 @@ function updateModalTitle() {
         }
     }
 }
+
+function createSafeModeToggle() {
+    const toggleContainer = document.createElement('div');
+    toggleContainer.className = 'safe-mode-toggle';
+    toggleContainer.style.cssText = `
+        display: inline-flex;
+        align-items: center;
+        margin-right: 10px;
+        vertical-align: middle;
+    `;
+
+    const toggle = document.createElement('button');
+    toggle.className = 'mode-toggle-button';
+    toggle.style.cssText = `
+        width: 44px;
+        height: 24px;
+        border-radius: 12px;
+        background-color: #4CAF50;
+        position: relative;
+        transition: background-color 0.2s;
+        border: none;
+        cursor: pointer;
+        margin-right: 8px;
+        vertical-align: middle;
+    `;
+
+    const slider = document.createElement('span');
+    slider.style.cssText = `
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: white;
+        transition: transform 0.2s;
+    `;
+    toggle.appendChild(slider);
+
+    const label = document.createElement('span');
+    label.textContent = 'Safe Mode';
+    label.style.cssText = `
+        font-size: 14px;
+        vertical-align: middle;
+    `;
+
+    const tooltip = document.createElement('div');
+    tooltip.style.cssText = `
+        position: absolute;
+        background-color: black;
+        color: white;
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        max-width: 200px;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.2s;
+        top: 100%;
+        left: 0;
+        margin-top: 8px;
+        z-index: 1000;
+        pointer-events: none;
+    `;
+
+    let safeMode = true; // Default to true
+
+    function updateToggleState() {
+        toggle.style.backgroundColor = safeMode ? '#4CAF50' : '#666';
+        slider.style.transform = safeMode ? 'translateX(0)' : 'translateX(20px)';
+        label.textContent = safeMode ? 'Safe Mode' : 'Overwrite Mode';
+        tooltip.textContent = safeMode ? 
+            'Safe Mode: Skips observations with existing values to prevent data loss' :
+            'Overwrite Mode: Allows overwriting existing values - use with caution';
+    }
+
+    browserAPI.storage.local.get('safeMode', function(data) {
+        safeMode = data.safeMode !== false; // Default to true if not set
+        updateToggleState();
+    });
+
+    toggle.addEventListener('click', () => {
+        safeMode = !safeMode;
+        browserAPI.storage.local.set({ safeMode });
+        updateToggleState();
+    });
+
+    toggleContainer.addEventListener('mouseenter', () => {
+        tooltip.style.visibility = 'visible';
+        tooltip.style.opacity = '1';
+    });
+
+    toggleContainer.addEventListener('mouseleave', () => {
+        tooltip.style.visibility = 'hidden';
+        tooltip.style.opacity = '0';
+    });
+
+    toggleContainer.appendChild(toggle);
+    toggleContainer.appendChild(label);
+    toggleContainer.appendChild(tooltip);
+
+    return toggleContainer;
+}
+
+const safeModeStyles = `
+    .safe-mode-toggle {
+        position: relative;
+        margin-bottom: 10px;
+    }
+    .mode-toggle-button:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+    }
+`;
+document.head.appendChild(document.createElement('style')).textContent += safeModeStyles;
