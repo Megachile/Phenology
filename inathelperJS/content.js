@@ -1430,16 +1430,23 @@ async function getObservationFieldValue(observationId, fieldId) {
     }
 }
 
-function generateUndoRecord(preliminaryUndoRecord, results) {
+function generateUndoRecord(preliminaryUndoRecord, results, overwrittenValues) {
     let finalUndoRecord = {...preliminaryUndoRecord};
     finalUndoRecord.observations = {};
+    finalUndoRecord.overwrittenValues = overwrittenValues; // Store overwritten values
 
     results.forEach(result => {
         if (result.success) {
             const observationId = result.observationId;
             if (preliminaryUndoRecord.observations[observationId]) {
                 finalUndoRecord.observations[observationId] = preliminaryUndoRecord.observations[observationId];
-                console.log(`Undo record for observation ${observationId}:`, finalUndoRecord.observations[observationId]);
+                // Add overwritten values info if it exists
+                if (overwrittenValues[observationId]) {
+                    finalUndoRecord.observations[observationId].overwrittenValues = 
+                        overwrittenValues[observationId];
+                }
+                console.log(`Undo record for observation ${observationId}:`, 
+                    finalUndoRecord.observations[observationId]);
             }
         }
     });
@@ -2443,241 +2450,18 @@ function updateSelectedObservations() {
 }
 
 async function applyBulkAction() {
-    console.log('Opening Select and Apply Action box');
-
-    if (currentAvailableActions.length === 0 && currentSet) {
-        currentAvailableActions = currentSet.buttons.filter(button => !button.configurationDisabled);
-    }
-
-    if (currentAvailableActions.length === 0) {
-        alert('No available actions found. Please configure some actions first.');
+    console.log('Starting bulk action application');
+    if (selectedObservations.size === 0) {
+        alert('Please select at least one observation first.');
         return;
     }
 
     const modal = createActionModal();
-    updateModalTitle();
-
-    const actionSelect = document.createElement('select');
-    actionSelect.id = 'bulk-action-select';
-    actionSelect.style.marginBottom = '10px';
-    modal.insertBefore(actionSelect, modal.querySelector('#action-description'));
-
-    updateBulkActionDropdown(actionSelect, currentAvailableActions);
-
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.marginTop = '20px';
-
-    const applyButton = document.createElement('button');
-    applyButton.textContent = 'Apply Action';
-    applyButton.classList.add('modal-button');
-    applyButton.style.marginRight = '10px';
-
-    const cancelButton = document.createElement('button');
-    cancelButton.textContent = 'Cancel';
-    cancelButton.classList.add('modal-button');
-    cancelButton.style.marginRight = '10px';
-    cancelButton.disabled = true;
-
-    const closeButton = document.createElement('button');
-    closeButton.textContent = 'Close';
-    closeButton.classList.add('modal-button');
-
-    buttonContainer.appendChild(applyButton);
-    buttonContainer.appendChild(cancelButton);
-    buttonContainer.appendChild(closeButton);
-
-    modal.appendChild(buttonContainer);
-
     document.body.appendChild(modal);
-
-    let isCancelled = false;
-    let undoRecord = null;
-
-    actionSelect.onchange = () => updateActionDescription(actionSelect);
-
-    applyButton.onclick = async () => {
-        if (selectedObservations.size === 0) {
-            alert('Please select at least one observation before applying an action.');
-            return;
-        }
-        if (!actionSelect.value) {
-            alert('Please select an action before applying.');
-            return;
-        }
-
-        const selectedAction = currentAvailableActions.find(button => button.id === actionSelect.value);
-        if (selectedAction) {
-            const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
-            const hasTaxonId = selectedAction.actions.some(action => action.type === 'addTaxonId');
-
-            let confirmMessage = `Are you sure you want to apply "${selectedAction.name}" to ${selectedObservations.size} observation(s)?\n\n`;
-            confirmMessage += "This action includes:\n";
-
-            selectedAction.actions.forEach(action => {
-                switch (action.type) {
-                    case 'observationField':
-                        const displayValue = action.displayValue || action.fieldValue;
-                        confirmMessage += `- Add observation field: ${action.fieldName} = ${displayValue}\n`;
-                        break;
-                    case 'annotation':
-                        const attribute = Object.entries(controlledTerms).find(([_, value]) => value.id === parseInt(action.annotationField));
-                        const attributeName = attribute ? attribute[0] : 'Unknown';
-                        const valueName = attribute ? Object.entries(attribute[1].values).find(([_, id]) => id === parseInt(action.annotationValue))[0] : 'Unknown';
-                        confirmMessage += `- Add annotation: ${attributeName} = ${valueName}\n`;
-                        break;
-                    case 'addToProject':
-                        confirmMessage += `- Add to project: ${action.projectName}\n`;
-                        break;
-                    case 'addComment':
-                        confirmMessage += `- Add comment: "${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}"\n`;
-                        break;
-                    case 'addTaxonId':
-                        confirmMessage += `- Add taxon ID: ${action.taxonName}\n`;
-                        break;
-                    case 'qualityMetric':
-                        const metricName = getQualityMetricName(action.metric);
-                        confirmMessage += `- Set quality metric: ${metricName} to ${action.vote}\n`;
-                        break;
-                    case 'copyObservationField':
-                        confirmMessage += `- Copy field: ${action.sourceFieldName} to ${action.targetFieldName}\n`;
-                        break;
-                }
-            });
-
-            confirmMessage += "\nNote: iNaturalist policy requires that you have individually inspected every observation before you apply this action.";
-
-            if (hasDQIRemoval) {
-                confirmMessage += "\n\nPlease note: Removing DQI votes cannot be undone in bulk due to API limitations.";
-            }
-
-            if (confirm(confirmMessage)) {
-                applyButton.disabled = true;
-                cancelButton.disabled = false;
-                actionSelect.disabled = true;
-
-                try {
-                    undoRecord = await executeBulkAction(selectedAction, modal, () => isCancelled);
-                } catch (error) {
-                    console.error('Error in bulk action execution:', error);
-                    alert(`An error occurred during bulk action execution: ${error.message}`);
-                } finally {
-                    applyButton.disabled = false;
-                    cancelButton.disabled = true;
-                    actionSelect.disabled = false;
-                }
-            }
-        } else {
-            alert('Selected action not found.');
-        }
-    };
-
-    cancelButton.onclick = () => {
-        isCancelled = true;
-        cancelButton.disabled = true;
-    };
-
-    closeButton.onclick = async () => {
-        if (undoRecord && undoRecord.affectedObservationsCount > 0) {
-            await storeUndoRecord(undoRecord);
-            console.log('Undo record stored:', undoRecord);
-        }
-        document.body.removeChild(modal);
-    };
 }
 
 async function getAvailableActions() {
     return currentSet.buttons.filter(button => !button.configurationDisabled);
-}
-
-function createActionModal() {
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background-color: white;
-        padding: 20px;
-        border-radius: 5px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        z-index: 10001;
-        max-width: 80%;
-        max-height: 80%;
-        overflow-y: auto;
-    `;
-    
-    const title = document.createElement('h2');
-    title.id = 'action-selection-title';
-    title.textContent = `Select Action for ${selectedObservations.size} Observations`;
-    modal.appendChild(title);
-
-    const progressBar = createProgressBar();
-    modal.appendChild(progressBar);
-
-    const descriptionArea = document.createElement('p');
-    descriptionArea.id = 'action-description';
-    descriptionArea.style.marginBottom = '10px';
-    modal.appendChild(descriptionArea);
-
-    const disclaimer = document.createElement('p');
-    disclaimer.id = 'action-disclaimer';
-    disclaimer.style.color = 'red';
-    disclaimer.style.display = 'none';
-    modal.appendChild(disclaimer);
-
-    return modal;
-}
-
-function createModalControls(availableActions) {
-    const actionSelect = document.createElement('select');
-    actionSelect.style.marginBottom = '10px';
-    
-    const defaultOption = document.createElement('option');
-    defaultOption.value = "";
-    defaultOption.textContent = "Select an action";
-    defaultOption.disabled = true;
-    defaultOption.selected = true;
-    actionSelect.appendChild(defaultOption);
-
-    availableActions.forEach(button => {
-        const option = document.createElement('option');
-        option.value = button.id;
-        option.textContent = button.name;
-        actionSelect.appendChild(option);
-    });
-
-    const applyButton = document.createElement('button');
-    applyButton.textContent = 'Apply Action';
-
-    const cancelButton = document.createElement('button');
-    cancelButton.textContent = 'Cancel';
-
-    actionSelect.onchange = () => {
-        const selectedAction = availableActions.find(button => button.id === actionSelect.value);
-        const disclaimer = document.getElementById('action-disclaimer');
-        
-        if (selectedAction) {
-            const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
-            const hasTaxonId = selectedAction.actions.some(action => action.type === 'addTaxonId');
-        
-            let disclaimerText = '';
-        
-            if (hasDQIRemoval) {
-                disclaimerText += "Removing DQI votes cannot be undone in bulk due to API limitations.";
-            }
-               
-            if (disclaimerText) {
-                disclaimer.textContent = disclaimerText;
-                disclaimer.style.display = 'block';
-            } else {
-                disclaimer.style.display = 'none';
-            }
-        } else {
-            disclaimer.style.display = 'none';
-        }
-    };
-
-    return { actionSelect, applyButton, cancelButton };
 }
 
 function setupTitleUpdater(modal) {
@@ -2711,6 +2495,8 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
     let processedObservations = 0;
     const results = [];
     const skippedObservations = [];
+    const overwrittenValues = {};
+    const errorMessages = [];
 
     const { safeMode = true } = await new Promise(resolve => 
         browserAPI.storage.local.get('safeMode', resolve)
@@ -2724,6 +2510,7 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
     modal.appendChild(statusElement);
 
     try {
+        // Get existing values before processing
         for (const observationId of observationIds) {
             if (isCancelledFunc()) {
                 statusElement.textContent = 'Action cancelled. Processing completed actions...';
@@ -2731,27 +2518,45 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
             }
 
             let shouldSkip = false;
-            if (safeMode) {
-                for (const action of selectedAction.actions) {
-                    if (action.type === 'observationField') {
+            const existingFieldValues = {};
+
+            // Check for existing values
+            for (const action of selectedAction.actions) {
+                if (action.type === 'observationField') {
+                    try {
                         const existingValue = await getFieldValueDetails(observationId, action.fieldId);
                         if (existingValue) {
-                            console.log(`Skipping observation ${observationId} - existing value: ${existingValue.value}`);
-                            skippedObservations.push(observationId);
-                            shouldSkip = true;
+                            if (safeMode) {
+                                shouldSkip = true;
+                                skippedObservations.push(observationId);
+                            } else {
+                                // Store the existing value for tracking overwrites
+                                existingFieldValues[action.fieldName] = {
+                                    oldValue: existingValue.value,
+                                    newValue: action.fieldValue
+                                };
+                            }
                             break;
                         }
+                    } catch (error) {
+                        console.error(`Error checking values for observation ${observationId}:`, error);
+                        errorMessages.push(`Error checking observation ${observationId}: ${error.message}`);
                     }
                 }
             }
 
             if (!shouldSkip) {
+                // Process the observation
                 for (const action of selectedAction.actions) {
                     try {
                         const result = await performSingleAction(action, observationId);
+                        if (result.success && Object.keys(existingFieldValues).length > 0) {
+                            overwrittenValues[observationId] = existingFieldValues;
+                        }
                         results.push({ ...result, observationId });
                     } catch (error) {
                         console.error(`Error executing action for observation ${observationId}:`, error);
+                        errorMessages.push(`Error processing observation ${observationId}: ${error.message}`);
                         results.push({ success: false, error: error.toString(), observationId });
                     }
                 }
@@ -2761,22 +2566,35 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
             await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
         }
 
-        if (skippedObservations.length > 0) {
-            const skippedMessage = `Skipped ${skippedObservations.length} observation(s) with existing values.`;
-            const successMessage = `Successfully processed ${results.length} observation(s).`;
-            statusElement.textContent = `${skippedMessage}\n${successMessage}`;
-            
-            const skippedURL = generateObservationURL(skippedObservations);
-            createSkippedActionsModal(skippedObservations.length, skippedURL);
-        }
+         // After processing is complete
+         document.body.removeChild(modal); // Remove progress modal
 
-        return { results, skippedObservations };
-    } catch (error) {
-        console.error('Error in bulk action execution:', error);
-        statusElement.textContent = `Error: ${error.message}`;
-        throw error;
-    }
-}
+         // Show results in new modal
+         const overwrittenCount = Object.keys(overwrittenValues).length;
+         const skippedURL = generateObservationURL(skippedObservations);
+         
+         createActionResultsModal(
+             results,
+             skippedObservations.length,
+             skippedURL,
+             overwrittenCount,
+             overwrittenValues,
+             errorMessages
+         );
+ 
+         return { 
+             results, 
+             skippedObservations, 
+             overwrittenValues,
+             errorMessages 
+         };
+     } catch (error) {
+         console.error('Error in bulk action execution:', error);
+         statusElement.textContent = `Error: ${error.message}`;
+         document.body.removeChild(modal); // Ensure modal is removed even on error
+         throw error;
+     }
+ }
 
 async function executeAction(action, observationId, preActionStates, preliminaryUndoRecord, results, skippedObservations) {
     try {
@@ -2878,7 +2696,7 @@ function handleActionResults(results, skippedObservations, undoRecord, errorMess
     if (skippedCount > 0) {
         const skippedURL = generateObservationURL(skippedObservations);
         console.log('Generated URL for skipped observations:', skippedURL);
-        createSkippedActionsModal(skippedCount, skippedURL, errorMessages);
+        createActionResultsModal(skippedCount, skippedURL, errorMessages);
     } else if (errorCount > 0) {
         createErrorModal(errorMessages);
     } else {
@@ -3201,7 +3019,7 @@ function showUndoRecordsModal() {
     });
 }
 
-function createSkippedActionsModal(skippedCount, skippedURL, errorMessages) {
+function createActionResultsModal(results, skippedCount, skippedURL, overwrittenCount, overwrittenDetails, errorMessages) {
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed;
@@ -3226,26 +3044,67 @@ function createSkippedActionsModal(skippedCount, skippedURL, errorMessages) {
         overflow-y: auto;
     `;
 
-    let contentHTML = `
-        <h2>Bulk Action Results</h2>
-        <p>${skippedCount} actions were skipped due to existing values or user permissions.</p>
-        <p>View skipped observations: <a class="modal-link" href="${skippedURL}" target="_blank">${skippedURL}</a></p>
-    `;
+    let contentHTML = `<h2>Bulk Action Results</h2>`;
 
-    if (errorMessages.length > 0) {
+    // Add success count
+    const successCount = results.filter(r => r.success).length;
+    contentHTML += `<p>${successCount} action(s) completed successfully.</p>`;
+
+    // Add overwritten values section if any
+    if (overwrittenCount > 0) {
         contentHTML += `
-            <h3>Errors</h3>
-            <p>${errorMessages.length} errors occurred during execution:</p>
-            <ul>
-                ${errorMessages.map(error => `<li>${error}</li>`).join('')}
-            </ul>
+            <div style="margin: 15px 0; padding: 10px; background: #fff3e0; border-radius: 4px;">
+                <p><strong>${overwrittenCount} value(s) were overwritten:</strong></p>
+                <div style="max-height: 200px; overflow-y: auto;">
+                    <ul>
+        `;
+        Object.entries(overwrittenDetails).forEach(([observationId, details]) => {
+            contentHTML += `
+                <li>
+                    <a href="https://www.inaturalist.org/observations/${observationId}" 
+                       target="_blank" 
+                       style="color: #0077cc;">
+                        Observation ${observationId}
+                    </a>:
+                    <ul>
+            `;
+            Object.entries(details).forEach(([fieldName, values]) => {
+                contentHTML += `
+                    <li>${fieldName}: "${values.oldValue}" → "${values.newValue}"</li>
+                `;
+            });
+            contentHTML += `</ul></li>`;
+        });
+        contentHTML += `
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+
+    // Add skipped section if any
+    if (skippedCount > 0) {
+        contentHTML += `
+            <p>${skippedCount} action(s) were skipped due to existing values or user permissions.</p>
+            <p>View skipped observations: <a class="modal-link" href="${skippedURL}" target="_blank">${skippedURL}</a></p>
+        `;
+    }
+
+    // Add errors section if any
+    if (errorMessages && errorMessages.length > 0) {
+        contentHTML += `
+            <div style="margin: 15px 0; padding: 10px; background: #ffebee; border-radius: 4px;">
+                <h3>Errors</h3>
+                <p>${errorMessages.length} errors occurred during execution:</p>
+                <ul>
+                    ${errorMessages.map(error => `<li>${error}</li>`).join('')}
+                </ul>
+            </div>
         `;
     }
 
     contentHTML += `<button id="closeModal" class="modal-button">Close</button>`;
-
     modalContent.innerHTML = contentHTML;
-
     modal.appendChild(modalContent);
 
     document.body.appendChild(modal);
@@ -3255,7 +3114,6 @@ function createSkippedActionsModal(skippedCount, skippedURL, errorMessages) {
     });
 }
 
-// Add this to the existing page change detection logic
 window.addEventListener('popstate', updateSelectedObservations);
 window.addEventListener('pushstate', updateSelectedObservations);
 window.addEventListener('replacestate', updateSelectedObservations);
@@ -3655,46 +3513,45 @@ function updateActionDescription(actionSelect) {
     if (actionSelect && descriptionElement) {
         const selectedAction = currentSet.buttons.find(button => button.id === actionSelect.value);
         if (selectedAction) {
-            let descriptionHTML = '<strong>This action includes:</strong><ul style="list-style-type: none; padding-left: 0; margin: 10px 0;">';
-
+            let descriptionHTML = '<strong>This action will:</strong><ul>';
             selectedAction.actions.forEach(action => {
-                let actionDescription = '';
+                let actionDesc = '';
                 switch(action.type) {
                     case 'observationField':
-                        const displayValue = action.displayValue || action.fieldValue;
-                        actionDescription = `Add observation field: ${action.fieldName} = ${displayValue}`;
+                        actionDesc = `Set field "${action.fieldName}" to "${action.fieldValue}"`;
                         break;
                     case 'annotation':
-                        const attribute = Object.entries(controlledTerms).find(([_, value]) => value.id === parseInt(action.annotationField));
-                        const attributeName = attribute ? attribute[0] : 'Unknown';
-                        const valueName = attribute ? Object.entries(attribute[1].values).find(([_, id]) => id === parseInt(action.annotationValue))[0] : 'Unknown';
-                        actionDescription = `Add annotation: ${attributeName} = ${valueName}`;
+                        actionDesc = `Add annotation: ${action.annotationDisplay}`;
                         break;
                     case 'addToProject':
-                        actionDescription = `Add to project: ${action.projectName}`;
+                        actionDesc = `Add to project: ${action.projectName}`;
                         break;
                     case 'addComment':
-                        actionDescription = `Add comment: "${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}"`;
+                        actionDesc = `Add comment: "${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}"`;
                         break;
                     case 'addTaxonId':
-                        actionDescription = `Add taxon ID: ${action.taxonName}`;
+                        actionDesc = `Add taxon ID: ${action.taxonName}`;
                         break;
                     case 'qualityMetric':
                         const metricName = getQualityMetricName(action.metric);
-                        actionDescription = `Set quality metric: ${metricName} to ${action.vote}`;
+                        actionDesc = `Set quality metric: ${metricName} to ${action.vote}`;
                         break;
                     case 'copyObservationField':
-                        actionDescription = `Copy field: ${action.sourceFieldName} to ${action.targetFieldName}`;
+                        actionDesc = `Copy field: ${action.sourceFieldName} to ${action.targetFieldName}`;
                         break;
                 }
-                descriptionHTML += `<li>- ${actionDescription}</li>`;
+                if (actionDesc) {
+                    descriptionHTML += `<li>${actionDesc}</li>`;
+                }
             });
-
             descriptionHTML += '</ul>';
 
-            const hasDQIRemoval = selectedAction.actions.some(action => action.type === 'qualityMetric' && action.vote === 'remove');
+            const hasDQIRemoval = selectedAction.actions.some(action => 
+                action.type === 'qualityMetric' && action.vote === 'remove'
+            );
+
             if (hasDQIRemoval) {
-                descriptionHTML += '<p><strong>Please note:</strong> Removing DQI votes cannot be undone in bulk due to API limitations.</p>';
+                descriptionHTML += '<p style="color: red;"><strong>Note:</strong> Removing DQI votes cannot be undone in bulk due to API limitations.</p>';
             }
 
             descriptionElement.innerHTML = descriptionHTML;
@@ -3996,3 +3853,780 @@ const safeModeStyles = `
     }
 `;
 document.head.appendChild(document.createElement('style')).textContent += safeModeStyles;
+
+// Add required styles
+const highlightStyles = `
+    .ObservationsGridItem {
+        overflow: visible !important;
+        pointer-events: auto !important;
+    }
+
+    .observation-warning-icon {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 24px;
+        height: 24px;
+        background-color: white !important;
+        border-radius: 50%;
+        padding: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        z-index: 100000;
+        cursor: help;
+        pointer-events: auto !important;
+        opacity: 1 !important;
+        mix-blend-mode: normal !important;
+        filter: none !important;
+        -webkit-filter: none !important;
+        backdrop-filter: none !important;
+        background-blend-mode: normal !important;
+    }
+
+    .observation-warning-icon::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: white;
+        border-radius: 50%;
+        z-index: -1;
+    }
+
+    .observation-tooltip {
+        visibility: hidden;
+        position: fixed;
+        background-color: white !important;
+        border: 1px solid #E5E7EB;
+        border-radius: 6px;
+        padding: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        z-index: 100001;
+        font-size: 11px;
+        pointer-events: none;
+        width: 200px;
+        opacity: 1 !important;
+        mix-blend-mode: normal !important;
+        filter: none !important;
+        -webkit-filter: none !important;
+        backdrop-filter: none !important;
+        background-blend-mode: normal !important;
+    }
+
+    /* Force our elements above any site overlays */
+    .observation-warning-icon *, .observation-tooltip * {
+        opacity: 1 !important;
+        mix-blend-mode: normal !important;
+        filter: none !important;
+        -webkit-filter: none !important;
+        backdrop-filter: none !important;
+        background-blend-mode: normal !important;
+        color: inherit !important;
+    }
+
+    .observation-warning-icon:hover .observation-tooltip {
+        visibility: visible;
+    }
+`;
+
+function highlightObservationsWithExistingValues(observationsWithValues, reset = false) {
+    document.querySelectorAll('.observation-warning-icon').forEach(icon => icon.remove());
+
+    if (reset) return;
+
+    observationsWithValues.forEach(({ observationId, fieldValues }) => {
+        const observationElement = document.querySelector(
+            `.ObservationsGridItem a[href$="/observations/${observationId}"]`
+        )?.closest('.ObservationsGridItem');
+
+        if (observationElement) {
+            const warningIcon = document.createElement('div');
+            warningIcon.className = 'observation-warning-icon';
+            warningIcon.innerHTML = createWarningIcon();
+            
+            const tooltip = document.createElement('div');
+            tooltip.className = 'observation-tooltip';
+            tooltip.innerHTML = createTooltipContent(fieldValues);
+            
+            // Update tooltip position on hover with context sensitivity
+            warningIcon.addEventListener('mouseenter', (e) => {
+                const iconRect = warningIcon.getBoundingClientRect();
+                const windowWidth = window.innerWidth;
+                const tooltipWidth = 200; // Same as CSS width
+
+                // Calculate if tooltip would go off screen on the left
+                if (iconRect.left < tooltipWidth + 40) {
+                    // Position tooltip to the right of the icon
+                    tooltip.style.transform = 'translateX(32px)';
+                    tooltip.style.left = `${iconRect.left}px`;
+                } else {
+                    // Position tooltip to the left of the icon
+                    tooltip.style.transform = 'translateX(calc(-100% - 32px))';
+                    tooltip.style.left = `${iconRect.right}px`;
+                }
+                tooltip.style.top = `${iconRect.top}px`;
+            });
+            
+            warningIcon.appendChild(tooltip);
+            
+            // Create a white background element for the icon
+            const iconBackground = document.createElement('div');
+            iconBackground.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: white;
+                border-radius: 50%;
+                z-index: -1;
+            `;
+            warningIcon.insertBefore(iconBackground, warningIcon.firstChild);
+            
+            observationElement.appendChild(warningIcon);
+        }
+    });
+}
+
+// Add styles to document
+const styleSheet = document.createElement('style');
+styleSheet.textContent = highlightStyles;
+document.head.appendChild(styleSheet);
+
+function createWarningIcon() {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FF4444" stroke="#FF0000" stroke-width="1.5">
+        <path d="M12 3L3 21h18L12 3z" />  /* Adjusted triangle to fit better */
+        <path d="M12 9v6" stroke="white" stroke-width="2" />
+        <circle cx="12" cy="17.5" r="1" fill="white" />
+    </svg>`;
+}
+
+function createTooltipContent(fieldValues) {
+    let content = `
+        <div class="tooltip-header">Field Values Will Change</div>
+    `;
+    
+    Object.entries(fieldValues).forEach(([fieldName, values]) => {
+        content += `
+            <div class="tooltip-field">
+                <div class="tooltip-field-name">${fieldName}</div>
+                <div class="tooltip-value">
+                    <span class="tooltip-current">Current: "${values.current}"</span>
+                    <span class="tooltip-proposed">Will change to: "${values.proposed}"</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    return content;
+}
+
+function toggleObservationSelection(element, selected) {
+    if (selected) {
+        element.classList.add('observation-selected');
+    } else {
+        element.classList.remove('observation-selected');
+    }
+}
+
+// Helper function to handle z-index when both highlights are present
+function updateHighlightZIndex(element) {
+    const hasExistingValues = element.classList.contains('observation-existing-values');
+    const isSelected = element.classList.contains('observation-selected');
+    
+    if (hasExistingValues && isSelected) {
+        const warningIcon = element.querySelector('.observation-warning-icon');
+        if (warningIcon) {
+            warningIcon.style.zIndex = '1002';
+        }
+    }
+}
+
+
+async function validateBulkAction(selectedAction, observationIds) {
+    const results = {
+        total: observationIds.length,
+        toProcess: [],
+        toSkip: [],
+        fieldNames: new Map(),
+        existingValues: new Map(),
+        proposedValues: new Map() // Add this to store new values
+    };
+
+    const { safeMode = true } = await new Promise(resolve => 
+        browserAPI.storage.local.get('safeMode', resolve)
+    );
+
+    // First, store the proposed values for each field
+    selectedAction.actions.forEach(action => {
+        if (action.type === 'observationField') {
+            results.fieldNames.set(action.fieldId, action.fieldName);
+            results.proposedValues.set(action.fieldId, action.fieldValue);
+        }
+    });
+
+    for (const observationId of observationIds) {
+        let hasExistingValues = false;
+        const existingFields = new Map();
+
+        // Check for existing values regardless of mode
+        for (const action of selectedAction.actions) {
+            if (action.type === 'observationField') {
+                try {
+                    const existingValue = await getFieldValueDetails(observationId, action.fieldId);
+                    if (existingValue) {
+                        hasExistingValues = true;
+                        results.fieldNames.set(action.fieldId, action.fieldName);
+                        existingFields.set(action.fieldId, existingValue.value);
+                    }
+                } catch (error) {
+                    console.error(`Error checking field values for observation ${observationId}:`, error);
+                }
+            }
+        }
+
+        // If has existing values, handle based on mode
+        if (hasExistingValues) {
+            const observationInfo = {
+                observationId,
+                existingFields: Object.fromEntries(existingFields)
+            };
+            
+            if (safeMode) {
+                results.toSkip.push(observationInfo);
+            } else {
+                results.toProcess.push(observationId);
+                results.existingValues.set(observationId, observationInfo);
+            }
+        } else {
+            results.toProcess.push(observationId);
+        }
+    }
+
+    return results;
+}
+
+async function createValidationSummary(validationResults) {
+    const { safeMode = true } = await new Promise(resolve => 
+        browserAPI.storage.local.get('safeMode', resolve)
+    );
+
+    let summary = '<div style="margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px;">';
+    
+    const hasExistingValues = validationResults.toSkip.length > 0 || validationResults.existingValues.size > 0;
+    
+    if (hasExistingValues) {
+        if (safeMode) {
+            summary += `
+                <p><strong>Safe Mode is ON</strong></p>
+                <p>Will process: ${validationResults.toProcess.length} observation(s)</p>
+                <p>Will skip: ${validationResults.toSkip.length} observation(s) with existing values</p>
+            `;
+
+            if (validationResults.toSkip.length <= 10) {
+                summary += '<div style="margin-top: 10px;"><strong>Observations to skip:</strong><ul>';
+                validationResults.toSkip.forEach(({ observationId, existingFields }) => {
+                    const fieldsList = Object.entries(existingFields)
+                        .map(([fieldId, value]) => {
+                            const fieldName = validationResults.fieldNames.get(fieldId);
+                            const newValue = validationResults.proposedValues?.get(fieldId);
+                            return `${fieldName}: "${value}" (would be "${newValue}")`;
+                        })
+                        .join(', ');
+                    summary += `<li>Observation ${observationId}: ${fieldsList}</li>`;
+                });
+                summary += '</ul></div>';
+            }
+        } else {
+            summary += `
+                <p><strong>Overwrite Mode is ON</strong></p>
+                <p style="color: red;">Warning: This will overwrite existing values in ${validationResults.existingValues.size} observation(s)</p>
+                <p>Total observations to process: ${validationResults.total}</p>
+            `;
+
+            if (validationResults.existingValues.size <= 10) {
+                summary += '<div style="margin-top: 10px;"><strong>Values that will be overwritten:</strong><ul>';
+                for (const [observationId, info] of validationResults.existingValues) {
+                    const fieldsList = Object.entries(info.existingFields)
+                        .map(([fieldId, value]) => {
+                            const fieldName = validationResults.fieldNames.get(fieldId);
+                            const newValue = validationResults.proposedValues?.get(fieldId);
+                            return `${fieldName}: "${value}" → "${newValue}"`;
+                        })
+                        .join(', ');
+                    summary += `<li>Observation ${observationId}: ${fieldsList}</li>`;
+                }
+                summary += '</ul></div>';
+            }
+        }
+    } else {
+        summary += `
+            <p>All ${validationResults.total} selected observation(s) will be processed.</p>
+            <p>No existing values found.</p>
+        `;
+    }
+    
+    summary += '</div>';
+    return summary;
+}
+
+function createActionModal() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 10001;
+        max-width: 80%;
+        max-height: 80%;
+        overflow-y: auto;
+    `;
+    
+    const title = document.createElement('h2');
+    title.id = 'action-selection-title';
+    title.textContent = `Select Action for ${selectedObservations.size} Observations`;
+    modal.appendChild(title);
+
+    const progressBar = createProgressBar();
+    modal.appendChild(progressBar);
+
+    // Action selection area - only create options once
+    const actionSelect = document.createElement('select');
+    actionSelect.id = 'bulk-action-select';
+    actionSelect.style.cssText = `
+        width: 100%;
+        padding: 8px;
+        margin: 10px 0;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    `;
+    
+    // Add default option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = "";
+    defaultOption.textContent = "Select an action";
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    actionSelect.appendChild(defaultOption);
+    
+    // Add options for each available action - do this only once
+    currentAvailableActions.forEach(button => {
+        const option = document.createElement('option');
+        option.value = button.id;
+        option.textContent = button.name;
+        actionSelect.appendChild(option);
+    });
+    modal.appendChild(actionSelect);
+
+    // Description area for the selected action
+    const descriptionArea = document.createElement('p');
+    descriptionArea.id = 'action-description';
+    descriptionArea.style.marginBottom = '10px';
+    modal.appendChild(descriptionArea);
+
+    // Area for displaying validation results
+    const validationArea = document.createElement('div');
+    validationArea.id = 'validation-area';
+    validationArea.style.display = 'none';
+    modal.appendChild(validationArea);
+
+    // Disclaimer for warnings
+    const disclaimer = document.createElement('p');
+    disclaimer.id = 'action-disclaimer';
+    disclaimer.style.color = 'red';
+    disclaimer.style.display = 'none';
+    modal.appendChild(disclaimer);
+
+    // Button container
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+    `;
+
+    const applyButton = document.createElement('button');
+    applyButton.textContent = 'Apply Action';
+    applyButton.classList.add('modal-button');
+    applyButton.style.marginRight = '10px';
+    applyButton.disabled = true;
+
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.classList.add('modal-button');
+
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(applyButton);
+    modal.appendChild(buttonContainer);
+
+    // Event handler for action selection
+    actionSelect.onchange = () => {
+        const selectedAction = currentAvailableActions.find(button => button.id === actionSelect.value);
+        if (selectedAction) {
+            updateActionDescription(actionSelect);
+            applyButton.disabled = false;
+        } else {
+            descriptionArea.innerHTML = '';
+            applyButton.disabled = true;
+        }
+    };
+
+    // In createActionModal(), in the applyButton.onclick handler:
+    applyButton.onclick = async () => {
+        const selectedAction = currentAvailableActions.find(button => button.id === actionSelect.value);
+        if (selectedAction) {
+            try {
+                // Show processing state immediately
+                applyButton.textContent = 'Processing...';
+                applyButton.disabled = true;
+
+                // Get safe mode setting
+                const { safeMode = true } = await new Promise(resolve => 
+                    browserAPI.storage.local.get('safeMode', resolve)
+                );
+
+                // Perform validation in background
+                const observationIds = Array.from(selectedObservations);
+                const validationResults = await validateBulkAction(selectedAction, observationIds);
+                
+                // Add highlighting for observations with existing values
+                const observationsToHighlight = safeMode ?
+                    validationResults.toSkip.map(item => ({
+                        observationId: item.observationId,
+                        fieldValues: Object.fromEntries(
+                            Object.entries(item.existingFields).map(([fieldId, value]) => [
+                                validationResults.fieldNames.get(fieldId),
+                                {
+                                    current: value,
+                                    proposed: validationResults.proposedValues.get(fieldId)
+                                }
+                            ])
+                        )
+                    })) :
+                    Array.from(validationResults.existingValues.entries()).map(([observationId, info]) => ({
+                        observationId,
+                        fieldValues: Object.fromEntries(
+                            Object.entries(info.existingFields).map(([fieldId, value]) => [
+                                validationResults.fieldNames.get(fieldId),
+                                {
+                                    current: value,
+                                    proposed: validationResults.proposedValues.get(fieldId)
+                                }
+                            ])
+                        )
+                    }));
+
+                // Apply the highlighting before showing validation modal
+                highlightObservationsWithExistingValues(observationsToHighlight);
+
+                // Remove the action selection modal
+                document.body.removeChild(modal);
+                
+                // Show validation modal and proceed with action
+                const validationModal = await createValidationModal(
+                    validationResults,
+                    selectedAction,
+                    async () => {
+                        // Clear highlights when proceeding with action
+                        highlightObservationsWithExistingValues([], true);
+                        const progressModal = createProgressModal();
+                        document.body.appendChild(progressModal);
+                        await executeBulkAction(selectedAction, progressModal, () => false);
+                    },
+                    () => {
+                        // Don't clear highlights on cancel
+                        console.log('Validation cancelled');
+                    }
+                );
+                
+                document.body.appendChild(validationModal);
+            } catch (error) {
+                console.error('Error in bulk action:', error);
+                alert(`Error: ${error.message}`);
+                applyButton.textContent = 'Apply Action';
+                applyButton.disabled = false;
+                // Clear highlights on error
+                highlightObservationsWithExistingValues([], true);
+            }
+        }
+    };
+
+    cancelButton.onclick = () => {
+        document.body.removeChild(modal);
+    };
+
+    return modal;
+}
+
+async function createValidationModal(validationResults, selectedAction, onConfirm, onCancel) {
+    const { safeMode = true } = await new Promise(resolve => 
+        browserAPI.storage.local.get('safeMode', resolve)
+    );
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10001;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 80%;
+        max-height: 80%;
+        overflow-y: auto;
+        position: relative;
+    `;
+
+    const title = document.createElement('h2');
+    title.textContent = 'Action Validation';
+    title.style.marginTop = '0';
+
+    const summary = document.createElement('div');
+    summary.style.marginBottom = '20px';
+
+    // Add actions summary
+    const actionSummary = document.createElement('div');
+    actionSummary.style.marginBottom = '15px';
+    actionSummary.innerHTML = '<strong>This action will:</strong><ul>';
+    selectedAction.actions.forEach(action => {
+        if (action.type === 'observationField') {
+            actionSummary.innerHTML += `<li>Set field "${action.fieldName}" to "${action.fieldValue}"</li>`;
+        }
+    });
+    actionSummary.innerHTML += '</ul>';
+
+    if (validationResults.toSkip.length > 0 || validationResults.existingValues.size > 0) {
+        if (safeMode) {
+            summary.innerHTML = `
+                <p><strong>Safe Mode is ON</strong></p>
+                <p>${validationResults.toProcess.length} observations will be processed</p>
+                <p>${validationResults.toSkip.length} observations will be skipped due to existing values:</p>
+            `;
+
+            const skipList = document.createElement('div');
+            skipList.style.cssText = `
+                max-height: 200px;
+                overflow-y: auto;
+                border: 1px solid #ccc;
+                padding: 10px;
+                margin: 10px 0;
+                background: #fff3e0;
+                border-radius: 4px;
+            `;
+
+            validationResults.toSkip.forEach(({ observationId, existingFields }) => {
+                const item = document.createElement('div');
+                item.style.marginBottom = '10px';
+                item.innerHTML = `
+                    <a href="https://www.inaturalist.org/observations/${observationId}" 
+                       target="_blank" 
+                       style="color: #0077cc;">
+                        Observation ${observationId}
+                    </a>:
+                    <ul style="margin: 5px 0; padding-left: 20px;">
+                `;
+                
+                Object.entries(existingFields).forEach(([fieldId, currentValue]) => {
+                    const fieldName = validationResults.fieldNames.get(fieldId);
+                    const newValue = selectedAction.actions.find(a => 
+                        a.type === 'observationField' && a.fieldId === fieldId
+                    )?.fieldValue;
+                    item.innerHTML += `
+                        <li>${fieldName}:
+                            <span style="color: #666;">"${currentValue}"</span>
+                            <span style="color: #999;"> (would be set to </span>
+                            <span style="color: #666;">"${newValue}"</span>
+                            <span style="color: #999;">)</span>
+                        </li>
+                    `;
+                });
+                
+                item.innerHTML += '</ul>';
+                skipList.appendChild(item);
+            });
+
+            summary.appendChild(skipList);
+
+            if (validationResults.toProcess.length === 0) {
+                summary.innerHTML += `
+                    <p style="color: red; margin-top: 10px;">
+                        No observations will be processed. All selected observations have existing values.
+                    </p>
+                `;
+            }
+        } else {
+            summary.innerHTML = `
+                <p><strong>Overwrite Mode is ON</strong></p>
+                <p style="color: red;">Warning: This will overwrite existing values in ${validationResults.existingValues.size} observations:</p>
+            `;
+
+            const overwriteList = document.createElement('div');
+            overwriteList.style.cssText = `
+                max-height: 200px;
+                overflow-y: auto;
+                border: 1px solid #ccc;
+                padding: 10px;
+                margin: 10px 0;
+                background: #ffebee;
+                border-radius: 4px;
+            `;
+
+            for (const [observationId, info] of validationResults.existingValues) {
+                const item = document.createElement('div');
+                item.style.marginBottom = '10px';
+                item.innerHTML = `
+                    <a href="https://www.inaturalist.org/observations/${observationId}" 
+                       target="_blank" 
+                       style="color: #0077cc;">
+                        Observation ${observationId}
+                    </a>:
+                    <ul style="margin: 5px 0; padding-left: 20px;">
+                `;
+                
+                Object.entries(info.existingFields).forEach(([fieldId, currentValue]) => {
+                    const fieldName = validationResults.fieldNames.get(fieldId);
+                    const newValue = selectedAction.actions.find(a => 
+                        a.type === 'observationField' && a.fieldId === fieldId
+                    )?.fieldValue;
+                    item.innerHTML += `
+                        <li>${fieldName}: 
+                            <span style="color: #666;">"${currentValue}"</span>
+                            <span style="color: #999;"> → </span>
+                            <span style="color: #666;">"${newValue}"</span>
+                        </li>
+                    `;
+                });
+                
+                item.innerHTML += '</ul>';
+                overwriteList.appendChild(item);
+            }
+
+            summary.appendChild(overwriteList);
+            summary.innerHTML += `<p>Total observations to process: ${validationResults.total}</p>`;
+        }
+    } else {
+        summary.innerHTML = `
+            <p>All ${validationResults.total} selected observation(s) will be processed.</p>
+            <p>No existing values found.</p>
+        `;
+    }
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+    `;
+
+    const confirmButton = document.createElement('button');
+    confirmButton.textContent = 'Proceed';
+    confirmButton.className = 'bulk-action-button';
+    confirmButton.onclick = () => {
+        document.body.removeChild(modal);
+        onConfirm();
+    };
+
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.className = 'bulk-action-button';
+    cancelButton.onclick = () => {
+        document.body.removeChild(modal);
+        onCancel();
+    };
+
+    // Disable confirm button if no observations will be processed
+    if (safeMode && validationResults.toProcess.length === 0) {
+        confirmButton.disabled = true;
+        confirmButton.title = 'No observations to process';
+    }
+
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(confirmButton);
+
+    content.appendChild(title);
+    content.appendChild(actionSummary);
+    content.appendChild(summary);
+    content.appendChild(buttonContainer);
+    modal.appendChild(content);
+
+    return modal;
+}
+
+function createProgressModal() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10001;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 500px;
+        width: 90%;
+    `;
+
+    const title = document.createElement('h2');
+    title.textContent = 'Processing Observations';
+    title.style.marginTop = '0';
+
+    const progressContainer = document.createElement('div');
+    progressContainer.style.cssText = `
+        width: 100%;
+        height: 20px;
+        background: #f0f0f0;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 20px 0;
+    `;
+
+    const progressFill = document.createElement('div');
+    progressFill.className = 'progress-fill';
+    progressFill.style.cssText = `
+        width: 0%;
+        height: 100%;
+        background: #4CAF50;
+        transition: width 0.3s ease;
+    `;
+
+    const status = document.createElement('p');
+    status.id = 'bulk-action-status';
+    status.style.textAlign = 'center';
+
+    progressContainer.appendChild(progressFill);
+    content.appendChild(title);
+    content.appendChild(progressContainer);
+    content.appendChild(status);
+    modal.appendChild(content);
+
+    return modal;
+}
