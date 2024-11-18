@@ -3872,7 +3872,7 @@ const highlightStyles = `
         width: 100%;
         height: 100%;
         pointer-events: none;
-        z-index: 10000;
+        z-index: 1000;
     }
 
     #warning-icons-overlay > * {
@@ -3892,6 +3892,7 @@ const highlightStyles = `
         contain: paint !important;
         opacity: 1 !important;
         transform: translateZ(0) !important;
+        z-index: 1000;
     }
 
     #active-tooltip {
@@ -3901,7 +3902,7 @@ const highlightStyles = `
         border-radius: 6px;
         padding: 8px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        z-index: 10001;
+        z-index: 1001;
         font-size: 11px;
         pointer-events: none;
         width: 200px;
