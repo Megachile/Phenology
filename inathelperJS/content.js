@@ -3854,86 +3854,122 @@ const safeModeStyles = `
 `;
 document.head.appendChild(document.createElement('style')).textContent += safeModeStyles;
 
-// Add required styles
 const highlightStyles = `
-    .ObservationsGridItem {
-        overflow: visible !important;
-        pointer-events: auto !important;
+    #warning-icons-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 10000;
+    }
+
+    #warning-icons-overlay > * {
+        pointer-events: auto;
     }
 
     .observation-warning-icon {
-        position: absolute;
-        top: 8px;
-        right: 8px;
+        position: fixed;
         width: 24px;
         height: 24px;
         background-color: white !important;
         border-radius: 50%;
         padding: 2px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        z-index: 100000;
         cursor: help;
-        pointer-events: auto !important;
+        isolation: isolate !important;
+        contain: paint !important;
         opacity: 1 !important;
-        mix-blend-mode: normal !important;
-        filter: none !important;
-        -webkit-filter: none !important;
-        backdrop-filter: none !important;
-        background-blend-mode: normal !important;
+        transform: translateZ(0) !important;
     }
 
-    .observation-warning-icon::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: white;
-        border-radius: 50%;
-        z-index: -1;
-    }
-
-    .observation-tooltip {
-        visibility: hidden;
+    #active-tooltip {
         position: fixed;
         background-color: white !important;
         border: 1px solid #E5E7EB;
         border-radius: 6px;
         padding: 8px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        z-index: 100001;
+        z-index: 10001;
         font-size: 11px;
         pointer-events: none;
         width: 200px;
-        opacity: 1 !important;
-        mix-blend-mode: normal !important;
-        filter: none !important;
-        -webkit-filter: none !important;
-        backdrop-filter: none !important;
-        background-blend-mode: normal !important;
+        display: none;
     }
 
-    /* Force our elements above any site overlays */
-    .observation-warning-icon *, .observation-tooltip * {
-        opacity: 1 !important;
-        mix-blend-mode: normal !important;
-        filter: none !important;
-        -webkit-filter: none !important;
-        backdrop-filter: none !important;
-        background-blend-mode: normal !important;
-        color: inherit !important;
+    .tooltip-header {
+        font-weight: 600 !important;
+        color: #1F2937 !important;
+        margin-bottom: 8px !important;
+        padding-bottom: 4px !important;
+        border-bottom: 1px solid #E5E7EB !important;
+        display: block !important;
     }
 
-    .observation-warning-icon:hover .observation-tooltip {
-        visibility: visible;
+    .tooltip-field {
+        margin-bottom: 8px !important;
+        display: block !important;
+    }
+
+    .tooltip-field:last-child {
+        margin-bottom: 0;
+    }
+
+    .tooltip-field-name {
+        font-weight: 500 !important;
+        color: #4B5563 !important;
+        margin-bottom: 2px !important;
+        display: block !important;
+    }
+
+    .tooltip-value {
+        padding-left: 4px !important;
+        display: block !important;
+    }
+
+    .tooltip-current {
+        color: #4B5563 !important;
+        display: block !important;
+    }
+
+    .tooltip-proposed {
+        color: #DC2626 !important;
+        display: block !important;
+        font-weight: 500 !important;
     }
 `;
 
+
 function highlightObservationsWithExistingValues(observationsWithValues, reset = false) {
-    document.querySelectorAll('.observation-warning-icon').forEach(icon => icon.remove());
+    document.getElementById('warning-icons-overlay')?.remove();
+    document.getElementById('active-tooltip')?.remove();
 
     if (reset) return;
+
+    // Create tooltip element
+    const activeTooltip = document.createElement('div');
+    activeTooltip.id = 'active-tooltip';
+    document.body.appendChild(activeTooltip);
+
+    const overlay = document.createElement('div');
+    overlay.id = 'warning-icons-overlay';
+    document.body.appendChild(overlay);
+
+    function updateIconPositions() {
+        overlay.querySelectorAll('.observation-warning-icon').forEach(icon => {
+            const observationId = icon.dataset.observationId;
+            const observationElement = document.querySelector(
+                `.ObservationsGridItem a[href$="/observations/${observationId}"]`
+            )?.closest('.ObservationsGridItem');
+            
+            if (observationElement) {
+                const rect = observationElement.getBoundingClientRect();
+                icon.style.top = `${rect.top + 8}px`;
+                icon.style.left = `${rect.right - 32}px`;
+            }
+        });
+    }
 
     observationsWithValues.forEach(({ observationId, fieldValues }) => {
         const observationElement = document.querySelector(
@@ -3941,52 +3977,50 @@ function highlightObservationsWithExistingValues(observationsWithValues, reset =
         )?.closest('.ObservationsGridItem');
 
         if (observationElement) {
+            const rect = observationElement.getBoundingClientRect();
+            
             const warningIcon = document.createElement('div');
             warningIcon.className = 'observation-warning-icon';
             warningIcon.innerHTML = createWarningIcon();
+            warningIcon.dataset.observationId = observationId;
+            warningIcon.style.top = `${rect.top + 8}px`;
+            warningIcon.style.left = `${rect.right - 32}px`;
             
-            const tooltip = document.createElement('div');
-            tooltip.className = 'observation-tooltip';
-            tooltip.innerHTML = createTooltipContent(fieldValues);
+            // Store field values data on the icon
+            warningIcon.dataset.fieldValues = JSON.stringify(fieldValues);
             
-            // Update tooltip position on hover with context sensitivity
             warningIcon.addEventListener('mouseenter', (e) => {
-                const iconRect = warningIcon.getBoundingClientRect();
+                const iconRect = e.target.getBoundingClientRect();
                 const windowWidth = window.innerWidth;
-                const tooltipWidth = 200; // Same as CSS width
+                const tooltipWidth = 200;
 
-                // Calculate if tooltip would go off screen on the left
+                // Update tooltip content
+                activeTooltip.innerHTML = createTooltipContent(fieldValues);
+
+                // Position tooltip
                 if (iconRect.left < tooltipWidth + 40) {
-                    // Position tooltip to the right of the icon
-                    tooltip.style.transform = 'translateX(32px)';
-                    tooltip.style.left = `${iconRect.left}px`;
+                    activeTooltip.style.left = `${iconRect.right + 8}px`;
+                    activeTooltip.style.transform = 'none';
                 } else {
-                    // Position tooltip to the left of the icon
-                    tooltip.style.transform = 'translateX(calc(-100% - 32px))';
-                    tooltip.style.left = `${iconRect.right}px`;
+                    activeTooltip.style.left = `${iconRect.left - 8}px`;
+                    activeTooltip.style.transform = 'translateX(-100%)';
                 }
-                tooltip.style.top = `${iconRect.top}px`;
+                activeTooltip.style.top = `${iconRect.top}px`;
+                
+                // Show tooltip
+                activeTooltip.style.display = 'block';
+            });
+
+            warningIcon.addEventListener('mouseleave', () => {
+                activeTooltip.style.display = 'none';
             });
             
-            warningIcon.appendChild(tooltip);
-            
-            // Create a white background element for the icon
-            const iconBackground = document.createElement('div');
-            iconBackground.style.cssText = `
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: white;
-                border-radius: 50%;
-                z-index: -1;
-            `;
-            warningIcon.insertBefore(iconBackground, warningIcon.firstChild);
-            
-            observationElement.appendChild(warningIcon);
+            overlay.appendChild(warningIcon);
         }
     });
+
+    window.addEventListener('scroll', updateIconPositions, { passive: true });
+    window.addEventListener('resize', updateIconPositions, { passive: true });
 }
 
 // Add styles to document
@@ -4182,7 +4216,7 @@ function createActionModal() {
         padding: 20px;
         border-radius: 5px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        z-index: 10001;
+        z-index: 20001;
         max-width: 80%;
         max-height: 80%;
         overflow-y: auto;
@@ -4381,7 +4415,7 @@ async function createValidationModal(validationResults, selectedAction, onConfir
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 10001;
+        z-index: 20001;
     `;
 
     const content = document.createElement('div');
