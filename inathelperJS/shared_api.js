@@ -697,50 +697,65 @@ async function performSingleUndoAction(observationId, undoAction) {
                     console.error('Annotation UUID not found for undo action');
                     return { success: false, error: 'Annotation UUID not found' };
                 }
-            case 'updateObservationField':
-                // First, get the current state of the observation
-                const observationResponse = await makeAPIRequest(`/observations/${observationId}`);
-                console.log('Current observation state:', observationResponse.results[0]);
-                
-                const ofv = observationResponse.results[0].ofvs.find(ofv => ofv.field_id === parseInt(undoAction.fieldId));
-                
-                if (ofv) {
-                    console.log('Found existing OFV:', ofv);
+                case 'updateObservationField':
+                    // First, get the current state of the observation
+                    const observationResponse = await makeAPIRequest(`/observations/${observationId}`);
+                    console.log('Current observation state:', observationResponse.results[0]);
                     
-                    // Attempt to delete the field value
-                    const deleteResult = await makeAPIRequest(`/observation_field_values/${ofv.id}`, {
-                        method: 'DELETE'
-                    });
-                    console.log('Delete result:', deleteResult);
+                    const ofv = observationResponse.results[0].ofvs.find(ofv => ofv.field_id === parseInt(undoAction.fieldId));
                     
-                    // Check if the field value was actually deleted
-                    const checkResponse = await makeAPIRequest(`/observations/${observationId}`);
-                    const checkOfv = checkResponse.results[0].ofvs.find(ofv => ofv.field_id === parseInt(undoAction.fieldId));
-                    
-                    if (checkOfv) {
-                        console.error('Field value still exists after deletion attempt');
-                        return { success: false, error: 'Field value not deleted' };
-                    } else {
-                        console.log('Field value successfully deleted');
-                        return { success: true, action: 'deleted', fieldId: undoAction.fieldId };
-                    }                                        
-                } else if (undoAction.originalValue) {
-                    // If there was an original value, restore it
-                    console.log('Restoring original value:', undoAction.originalValue);
-                    return makeAPIRequest('/observation_field_values', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            observation_field_value: {
-                                observation_id: observationId,
-                                observation_field_id: undoAction.fieldId,
-                                value: undoAction.originalValue
+                    if (ofv) {
+                        console.log('Found existing OFV:', ofv);
+                        
+                        // Delete the current value
+                        const deleteResult = await makeAPIRequest(`/observation_field_values/${ofv.id}`, {
+                            method: 'DELETE'
+                        });
+                        console.log('Delete result:', deleteResult);
+                        
+                        // Verify the deletion
+                        const checkResponse = await makeAPIRequest(`/observations/${observationId}`);
+                        const checkOfv = checkResponse.results[0].ofvs.find(ofv => ofv.field_id === parseInt(undoAction.fieldId));
+                        
+                        if (!checkOfv) {
+                            // Deletion successful, now restore original value if it exists
+                            if (undoAction.originalValue !== undefined && undoAction.originalValue !== null) {
+                                console.log('Restoring original value:', undoAction.originalValue);
+                                const restoreResult = await makeAPIRequest('/observation_field_values', {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        observation_field_value: {
+                                            observation_id: observationId,
+                                            observation_field_id: undoAction.fieldId,
+                                            value: undoAction.originalValue
+                                        }
+                                    })
+                                });
+                                return { success: true, action: 'restored', fieldId: undoAction.fieldId, value: undoAction.originalValue };
                             }
-                        })
-                    });
-                } else {
-                    console.warn(`Observation field value not found for field ID ${undoAction.fieldId} on observation ${observationId}`);
+                            return { success: true, action: 'deleted', fieldId: undoAction.fieldId };
+                        } else {
+                            console.error('Field value not deleted successfully');
+                            return { success: false, error: 'Failed to delete field value' };
+                        }
+                    } else if (undoAction.originalValue) {
+                        // No current value but we have an original value to restore
+                        console.log('No current value, restoring original:', undoAction.originalValue);
+                        const restoreResult = await makeAPIRequest('/observation_field_values', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                observation_field_value: {
+                                    observation_id: observationId,
+                                    observation_field_id: undoAction.fieldId,
+                                    value: undoAction.originalValue
+                                }
+                            })
+                        });
+                        return { success: true, action: 'restored', fieldId: undoAction.fieldId, value: undoAction.originalValue };
+                    }
+                    
+                    console.warn(`No action needed for field ID ${undoAction.fieldId} on observation ${observationId}`);
                     return { success: true, message: 'No action needed' };
-                }
         case 'removeFromProject':
             try {
                 const response = await makeAPIRequest(`/projects/${undoAction.projectId}/remove?observation_id=${observationId}`, {

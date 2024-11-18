@@ -2510,7 +2510,11 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
     modal.appendChild(statusElement);
 
     try {
-        // Get existing values before processing
+        // Get the pre-action states for all observations first
+        const preActionStates = await generatePreActionStates(observationIds);
+        // Generate preliminary undo record with these states
+        const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedAction, observationIds, preActionStates);
+
         for (const observationId of observationIds) {
             if (isCancelledFunc()) {
                 statusElement.textContent = 'Action cancelled. Processing completed actions...';
@@ -2523,30 +2527,34 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
             // Check for existing values
             for (const action of selectedAction.actions) {
                 if (action.type === 'observationField') {
-                    try {
-                        const existingValue = await getFieldValueDetails(observationId, action.fieldId);
-                        if (existingValue) {
-                            if (safeMode) {
-                                shouldSkip = true;
-                                skippedObservations.push(observationId);
-                            } else {
-                                // Store the existing value for tracking overwrites
-                                existingFieldValues[action.fieldName] = {
-                                    oldValue: existingValue.value,
-                                    newValue: action.fieldValue
-                                };
+                    const existingValue = await getFieldValueDetails(observationId, action.fieldId);
+                    if (existingValue) {
+                        if (safeMode) {
+                            shouldSkip = true;
+                            skippedObservations.push(observationId);
+                        } else {
+                            // Store both the values and ensure the undo record has the original value
+                            existingFieldValues[action.fieldName] = {
+                                oldValue: existingValue.value,
+                                newValue: action.fieldValue
+                            };
+                            
+                            // Make sure the undo record for this observation has the correct original value
+                            if (preliminaryUndoRecord.observations[observationId]) {
+                                const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
+                                    ua => ua.type === 'updateObservationField' && ua.fieldId === action.fieldId
+                                );
+                                if (undoAction) {
+                                    undoAction.originalValue = existingValue.value;
+                                }
                             }
-                            break;
                         }
-                    } catch (error) {
-                        console.error(`Error checking values for observation ${observationId}:`, error);
-                        errorMessages.push(`Error checking observation ${observationId}: ${error.message}`);
+                        break;
                     }
                 }
             }
 
             if (!shouldSkip) {
-                // Process the observation
                 for (const action of selectedAction.actions) {
                     try {
                         const result = await performSingleAction(action, observationId);
@@ -2566,35 +2574,37 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
             await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
         }
 
-         // After processing is complete
-         document.body.removeChild(modal); // Remove progress modal
+        // Generate final undo record with all the collected information
+        const finalUndoRecord = generateUndoRecord(preliminaryUndoRecord, results, overwrittenValues);
+        await storeUndoRecord(finalUndoRecord);
 
-         // Show results in new modal
-         const overwrittenCount = Object.keys(overwrittenValues).length;
-         const skippedURL = generateObservationURL(skippedObservations);
-         
-         createActionResultsModal(
-             results,
-             skippedObservations.length,
-             skippedURL,
-             overwrittenCount,
-             overwrittenValues,
-             errorMessages
-         );
- 
-         return { 
-             results, 
-             skippedObservations, 
-             overwrittenValues,
-             errorMessages 
-         };
-     } catch (error) {
-         console.error('Error in bulk action execution:', error);
-         statusElement.textContent = `Error: ${error.message}`;
-         document.body.removeChild(modal); // Ensure modal is removed even on error
-         throw error;
-     }
- }
+        document.body.removeChild(modal);
+
+        const overwrittenCount = Object.keys(overwrittenValues).length;
+        const skippedURL = generateObservationURL(skippedObservations);
+        
+        createActionResultsModal(
+            results,
+            skippedObservations.length,
+            skippedURL,
+            overwrittenCount,
+            overwrittenValues,
+            errorMessages
+        );
+
+        return { 
+            results, 
+            skippedObservations, 
+            overwrittenValues,
+            errorMessages 
+        };
+    } catch (error) {
+        console.error('Error in bulk action execution:', error);
+        statusElement.textContent = `Error: ${error.message}`;
+        document.body.removeChild(modal);
+        throw error;
+    }
+}
 
 async function executeAction(action, observationId, preActionStates, preliminaryUndoRecord, results, skippedObservations) {
     try {
