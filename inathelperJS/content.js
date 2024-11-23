@@ -1988,6 +1988,10 @@ function createButton(config) {
                 if (!allSuccessful) {
                     console.error('Some actions failed:', resultsArray.filter(r => !r.success));
                 }
+                // Add refresh here if successful
+                if (allSuccessful && refreshEnabled) {
+                    refreshObservation();
+                }
             })
             .catch(error => {
                 console.error('Error performing actions:', error);
