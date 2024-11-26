@@ -445,7 +445,10 @@ function setupAnnotationDropdowns(index) {
         } else {
             valueSelect.disabled = true;
         }
+        saveInputs(); // Save state when field changes
     });
+
+    valueSelect.addEventListener('change', saveInputs); // Save state when value changes
 
     // Ensure value select is initially disabled
     valueSelect.disabled = true;
@@ -1413,7 +1416,7 @@ function saveInputs() {
 
 function loadInputs() {
     const savedState = JSON.parse(localStorage.getItem('urlGenState'));
-    if (savedState) {
+    if (!savedState) return;
         // Load static inputs (existing code)
         Object.keys(savedState.inputs || {}).forEach(id => {
             const element = document.getElementById(id);
@@ -1492,33 +1495,51 @@ function loadInputs() {
             }
         });
 
-        // Load dynamic fields (existing code)
         const actionsContainer = document.getElementById('actionsContainer');
         if (actionsContainer && savedState.dynamicFields) {
             savedState.dynamicFields.forEach(field => {
                 addField(field.type);
                 const lastActionBox = actionsContainer.lastElementChild;
-                field.inputs.forEach(inputData => {
-                    let input;
-                    if (inputData.id && inputData.id.trim() !== '') {
-                        input = lastActionBox.querySelector(`#${inputData.id}`);
+                
+                if (field.type === 'annotation') {
+                    // Find the saved field and value
+                    const fieldInput = field.inputs.find(i => i.className === 'annotationField');
+                    const valueInput = field.inputs.find(i => i.className === 'annotationValue');
+                    
+                    if (fieldInput && valueInput) {
+                        setupAnnotationField(lastActionBox, fieldInput.value, valueInput.value);
                     }
-                    if (!input && inputData.className && inputData.className.trim() !== '') {
-                        input = lastActionBox.querySelector(`.${inputData.className}`);
-                    }
-                    if (input) {
-                        if (input.type === 'checkbox') {
-                            input.checked = inputData.value;
-                        } else {
-                            input.value = inputData.value;
+                    
+                        field.inputs.forEach(inputData => {
+                        if (inputData.className === 'negationCheckbox') {
+                            const checkbox = lastActionBox.querySelector(`.${inputData.className}`);
+                            if (checkbox) {
+                                checkbox.checked = inputData.value;
+                            }
                         }
-                    }
-                });
+                    });
+                } else {
+                    field.inputs.forEach(inputData => {
+                        let input;
+                        if (inputData.id && inputData.id.trim() !== '') {
+                            input = lastActionBox.querySelector(`#${inputData.id}`);
+                        } else if (inputData.className && inputData.className.trim() !== '') {
+                            input = lastActionBox.querySelector(`.${inputData.className}`);
+                        }
+                        if (input) {
+                            if (input.type === 'checkbox') {
+                                input.checked = inputData.value;
+                            } else {
+                                input.value = inputData.value;
+                            }
+                        }
+                    });
+                }
             });
         }
+    
+        generateURL();
     }
-    generateURL(); // Regenerate the URL after loading inputs
-}
 
 function resetForm() {
     // Reset static inputs
@@ -1630,3 +1651,38 @@ function getSelectedObservations() {
       });
     });
   }
+
+  function setupAnnotationField(actionBox, savedField, savedValue) {
+    const fieldSelect = actionBox.querySelector('.annotationField');
+    const valueSelect = actionBox.querySelector('.annotationValue');
+    
+    if (!fieldSelect || !valueSelect) {
+        console.error('Annotation selects not found');
+        return;
+    }
+
+    // First set the field value
+    fieldSelect.value = savedField;
+
+    // Enable and populate the value select
+    if (savedField) {
+        valueSelect.disabled = false;
+        const selectedField = controlledTerms[fieldSelect.options[fieldSelect.selectedIndex].text];
+        
+        if (selectedField) {
+            // Clear and repopulate value options
+            valueSelect.innerHTML = '<option value="">Select Value</option>';
+            Object.entries(selectedField.values).forEach(([key, value]) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = key;
+                valueSelect.appendChild(option);
+            });
+
+            // Set the saved value after populating options
+            if (savedValue) {
+                valueSelect.value = savedValue;
+            }
+        }
+    }
+}
