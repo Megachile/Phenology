@@ -816,7 +816,6 @@ function addActionToForm(action = null) {
                     taxonNameInput.value = action.taxonName;
                     taxonIdInput.value = action.taxonId;
                     taxonNameInput.dataset.taxonId = action.taxonId;
-                    taxonNameInput.dispatchEvent(new Event('focus'));
                     actionDiv.querySelector('.taxonComment').value = action.comment || '';
                 }
                 break;
