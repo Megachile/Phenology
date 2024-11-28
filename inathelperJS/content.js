@@ -716,7 +716,7 @@ async function addComment(observationId, commentBody) {
     }
 }
 
-async function addTaxonId(observationId, taxonId, comment = '') {
+async function addTaxonId(observationId, taxonId, comment = '', disagreement = false) {
     if (!observationId) {
         console.log('No observation ID provided. Please select an observation first.');
         return { success: false, error: 'No observation ID provided' };
@@ -733,7 +733,8 @@ async function addTaxonId(observationId, taxonId, comment = '') {
         identification: {
             observation_id: observationId,
             taxon_id: taxonId,
-            body: comment
+            body: comment,
+            disagreement: disagreement
         }
     };
 
@@ -1372,7 +1373,7 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
             const commentResult = await addComment(observationId, action.commentBody);
             return { ...commentResult, commentUUID: commentResult.uuid };
         case 'addTaxonId':
-            const idResult = await addTaxonId(observationId, action.taxonId, action.comment);
+            const idResult = await addTaxonId(observationId, action.taxonId, action.comment, action.disagreement);
             return { 
                 ...idResult, 
                 identificationUUID: idResult.identificationUUID 

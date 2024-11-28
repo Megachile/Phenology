@@ -146,6 +146,7 @@ function extractActionsFromForm() {
                 action.taxonId = taxonNameInput.dataset.taxonId;
                 action.taxonName = taxonNameInput.value.trim();
                 action.comment = actionDiv.querySelector('.taxonComment').value.trim();
+                action.disagreement = actionDiv.querySelector('.disagreementCheckbox').checked;
                 break;
             case 'qualityMetric':
                 action.metric = actionDiv.querySelector('.qualityMetricType').value;
@@ -317,15 +318,66 @@ function saveConfiguration() {
             configurationDisabled: false
         };
 
+        // Store the current expanded states
+        const expandedStates = {};
+        document.querySelectorAll('.config-item').forEach(item => {
+            const details = item.querySelector('.config-details');
+            expandedStates[item.dataset.id] = details.style.display === 'block';
+        });
+
         updateOrAddConfiguration(newConfig, currentSet);
 
-        saveConfigurationSets(function() {
+        // Save without refreshing display
+        saveConfigurationSets(() => {
             console.log('Configuration saved');
             clearForm();
-        });
+            
+            // Manually update the display for an edit, or refresh all for a new config
+            if (editIndex) {
+                const configDiv = document.querySelector(`.config-item[data-id="${editIndex}"]`);
+                if (configDiv) {
+                    updateSingleConfigurationDisplay(newConfig, configDiv);
+                }
+            } else {
+                displayConfigurations();
+            }
+
+            // Restore expanded states
+            Object.entries(expandedStates).forEach(([id, isExpanded]) => {
+                const configDiv = document.querySelector(`.config-item[data-id="${id}"]`);
+                if (configDiv) {
+                    const details = configDiv.querySelector('.config-details');
+                    const toggle = configDiv.querySelector('.toggle-details');
+                    if (details && toggle) {
+                        details.style.display = isExpanded ? 'block' : 'none';
+                        toggle.innerHTML = isExpanded ? '&#9650;' : '&#9660;';
+                    }
+                }
+            });
+        }, false);
     } catch (error) {
         alert(error.message);
     }
+}
+
+// Add this new helper function
+function updateSingleConfigurationDisplay(config, configDiv) {
+    const actionsPromises = config.actions.map(formatAction);
+    Promise.all(actionsPromises).then(formattedActions => {
+        const actionsHtml = formattedActions.map(action => `<p>${action}</p>`).join('');
+        
+        configDiv.querySelector('.config-name').textContent = config.name;
+        configDiv.querySelector('.config-shortcut').textContent = formatShortcut(config.shortcut);
+        const detailsDiv = configDiv.querySelector('.config-details');
+        const actionsContainer = document.createElement('div');
+        actionsContainer.innerHTML = actionsHtml;
+        
+        // Preserve the button actions div
+        const buttonActions = detailsDiv.querySelector('.button-actions');
+        detailsDiv.innerHTML = '';
+        detailsDiv.appendChild(actionsContainer);
+        detailsDiv.appendChild(buttonActions);
+    });
 }
 
 function updateOrAddConfiguration(config, currentSet) {
@@ -404,6 +456,9 @@ function populateActionInputs(actionDiv, action) {
             actionDiv.querySelector('.taxonName').value = action.taxonName || '';
             actionDiv.querySelector('.taxonId').value = action.taxonId || '';
             actionDiv.querySelector('.taxonComment').value = action.comment || '';
+            if (actionDiv.querySelector('.disagreementCheckbox')) {
+                actionDiv.querySelector('.disagreementCheckbox').checked = action.disagreement || false;
+            }
             break;
         case 'qualityMetric':
             actionDiv.querySelector('.qualityMetricType').value = action.metric || '';
@@ -613,8 +668,16 @@ function addActionToForm(action = null) {
     console.log('Setting up action form for type:', action ? action.type : 'new action');
     if (taxonIdInputs) {
         taxonIdInputs.innerHTML += `
-            <textarea class="taxonComment" placeholder="Enter comment (optional)"></textarea>
-        `;
+        <textarea class="taxonComment" placeholder="Enter comment (optional)"></textarea>
+        <div class="checkboxContainer" style="display: flex; align-items: center; margin-top: 10px; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="disagreement-${Date.now()}" class="disagreementCheckbox" style="margin: 0;">
+                <label for="disagreement-${Date.now()}" style="margin: 0; font-size: 14px; cursor: pointer; line-height: 1.4;">
+                    Disagree with current ID (only affects higher level IDs; otherwise default behavior applies)
+                </label>
+            </div>
+        </div>
+    `;
     }
     actionType.addEventListener('change', () => {
         ofInputs.style.display = actionType.value === 'observationField' ? 'block' : 'none';
@@ -952,6 +1015,9 @@ async function formatAction(action) {
             return `Add comment: "${action.commentBody.substring(0, 30)}${action.commentBody.length > 30 ? '...' : ''}"`;
         case 'addTaxonId':
             let taxonDisplay = `Add taxon ID: ${action.taxonName} (ID: ${action.taxonId})`;
+            if (action.disagreement) {
+                taxonDisplay += ' [Disagreement]';
+            }
             if (action.comment) {
                 taxonDisplay += `\nwith\ncomment: "${action.comment.substring(0, 30)}${action.comment.length > 30 ? '...' : ''}"`;
             }
@@ -988,8 +1054,13 @@ function toggleHideButton(configId, checkbox) {
     const config = currentSet.buttons.find(c => c.id === configId);
     if (config) {
         config.buttonHidden = checkbox.checked;
-        updateConfigurationDisplay(config);
-        saveConfigurationSets();
+        
+        // Instead of rebuilding everything, just update this config's display
+        const configDiv = document.querySelector(`.config-item[data-id="${configId}"]`);
+        if (configDiv) {
+            updateConfigurationDisplay(config);
+            saveConfigurationSets(() => {}, false); // Pass false to prevent display refresh
+        }
     }
 }
 
@@ -1000,8 +1071,12 @@ function toggleDisableConfiguration(configId, checkbox) {
     const config = currentSet.buttons.find(c => c.id === configId);
     if (config) {
         config.configurationDisabled = checkbox.checked;
-        updateConfigurationDisplay(config);
-        saveConfigurationSets();
+        
+        const configDiv = document.querySelector(`.config-item[data-id="${configId}"]`);
+        if (configDiv) {
+            updateConfigurationDisplay(config);
+            saveConfigurationSets(() => {}, false);
+        }
     }
 }
 
@@ -1009,6 +1084,17 @@ function updateConfigurationDisplay(config) {
     const configDiv = document.querySelector(`.config-item[data-id="${config.id}"]`);
     if (configDiv) {
         configDiv.classList.toggle('disabled-config', config.configurationDisabled);
+        
+        // Update checkboxes without triggering change events
+        const hideCheckbox = configDiv.querySelector('.hide-button-checkbox');
+        if (hideCheckbox) {
+            hideCheckbox.checked = config.buttonHidden;
+        }
+        
+        const disableCheckbox = configDiv.querySelector('.disable-config-checkbox');
+        if (disableCheckbox) {
+            disableCheckbox.checked = config.configurationDisabled;
+        }
     }
 }
 
@@ -1661,16 +1747,18 @@ function removeCurrentSet() {
     }
 }
 
-function saveConfigurationSets(callback) {
+function saveConfigurationSets(callback, refreshDisplay = true) {
     browserAPI.storage.local.set({ 
         configurationSets: configurationSets,
         currentSetName: currentSetName,
         lastConfigUpdate: Date.now()
     }, function() {
         console.log('Configuration sets updated');
-        updateSetSelector();
-        displayConfigurations();
-        updateSetManagementButtons();
+        if (refreshDisplay) {
+            updateSetSelector();
+            displayConfigurations();
+            updateSetManagementButtons();
+        }
         if (callback) callback();
     });
 }
