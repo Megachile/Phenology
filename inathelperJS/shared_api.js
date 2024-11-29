@@ -1135,24 +1135,49 @@ async function addOrRemoveObservationFromList(observationId, listId, isRemove = 
     });
 }
 
+async function lookupTaxonById(taxonId) {
+    const baseUrl = 'https://api.inaturalist.org/v1/taxa';
+    const response = await fetch(`${baseUrl}/${taxonId}`);
+    const data = await response.json();
+    return data.results;
+}
+
 async function getFieldValueDetails(observationId, fieldId) {
     try {
+        console.log('getFieldValueDetails starting for:', {observationId, fieldId});
         const response = await makeAPIRequest(`/observations/${observationId}`);
-        if (!response.results || !response.results[0]) {
-            throw new Error('Observation not found');
-        }
-
         const observation = response.results[0];
         const fieldValue = observation.ofvs.find(ofv => ofv.field_id === parseInt(fieldId));
+        console.log('Found field value:', fieldValue);
         
         if (!fieldValue) {
             return null;
         }
 
-        return {
+        console.log('Field datatype:', fieldValue.datatype);
+        if (fieldValue.datatype === 'taxon' && fieldValue.value) {
+            try {
+                const taxonData = await lookupTaxonById(fieldValue.value);
+                if (taxonData && taxonData[0]) {
+                    return {
+                        value: fieldValue.value,
+                        displayValue: taxonData[0].preferred_common_name ? 
+                            `${taxonData[0].preferred_common_name} (${taxonData[0].name})` : 
+                            taxonData[0].name,
+                        timestamp: fieldValue.updated_at || fieldValue.created_at
+                    };
+                }
+            } catch (error) {
+                console.error('Error looking up taxon:', error);
+            }
+        }
+        
+        const result = {
             value: fieldValue.value,
             timestamp: fieldValue.updated_at || fieldValue.created_at
         };
+        console.log('Returning without display value:', result);
+        return result;
     } catch (error) {
         console.error('Error getting field value details:', error);
         throw error;

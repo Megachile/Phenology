@@ -3961,7 +3961,7 @@ const highlightStyles = `
 `;
 
 
-function highlightObservationsWithExistingValues(observationsWithValues, reset = false) {
+function highlightObservationsWithExistingValues(observationsWithValues, selectedAction, reset = false) {
     document.getElementById('warning-icons-overlay')?.remove();
     document.getElementById('active-tooltip')?.remove();
 
@@ -4009,13 +4009,13 @@ function highlightObservationsWithExistingValues(observationsWithValues, reset =
             // Store field values data on the icon
             warningIcon.dataset.fieldValues = JSON.stringify(fieldValues);
             
-            warningIcon.addEventListener('mouseenter', (e) => {
+            warningIcon.addEventListener('mouseenter', async (e) => {
                 const iconRect = e.target.getBoundingClientRect();
                 const windowWidth = window.innerWidth;
                 const tooltipWidth = 200;
 
                 // Update tooltip content
-                activeTooltip.innerHTML = createTooltipContent(fieldValues);
+                activeTooltip.innerHTML = await createTooltipContent(fieldValues, selectedAction);
 
                 // Position tooltip
                 if (iconRect.left < tooltipWidth + 40) {
@@ -4056,24 +4056,45 @@ function createWarningIcon() {
     </svg>`;
 }
 
-function createTooltipContent(fieldValues) {
+async function createTooltipContent(fieldValues, selectedAction) {
     let content = `
         <div class="tooltip-header">Field Values Will Change</div>
     `;
     
-    Object.entries(fieldValues).forEach(([fieldName, values]) => {
-        const displayCurrent = values.current.displayValue || values.current;
-        const displayProposed = values.proposed.displayValue || values.proposed;
+    for (const [fieldName, values] of Object.entries(fieldValues)) {
+        // For the proposed value, get it from the action which has displayValue
+        const matchingAction = selectedAction.actions.find(a => 
+            a.type === 'observationField' && a.fieldName === fieldName
+        );
+        const proposedDisplay = matchingAction ? 
+            (matchingAction.displayValue || matchingAction.fieldValue) : 
+            values.proposed;
+
+        // For current value, if it's a number (likely a taxon ID), look it up
+        let currentDisplay = values.current;
+        if (!isNaN(values.current)) {
+            try {
+                const taxonData = await lookupTaxon(values.current, 1);
+                if (taxonData && taxonData[0]) {
+                    currentDisplay = taxonData[0].preferred_common_name ? 
+                        `${taxonData[0].preferred_common_name} (${taxonData[0].name})` : 
+                        taxonData[0].name;
+                }
+            } catch (error) {
+                console.error('Error looking up taxon:', error);
+            }
+        }
+
         content += `
             <div class="tooltip-field">
                 <div class="tooltip-field-name">${fieldName}</div>
                 <div class="tooltip-value">
-                    <span class="tooltip-current">Current: "${displayCurrent}"</span>
-                    <span class="tooltip-proposed">Will change to: "${displayProposed}"</span>
+                    <span class="tooltip-current">Current: "${currentDisplay}"</span>
+                    <span class="tooltip-proposed">Will change to: "${proposedDisplay}"</span>
                 </div>
             </div>
         `;
-    });
+    }
     
     return content;
 }
@@ -4101,6 +4122,7 @@ function updateHighlightZIndex(element) {
 
 
 async function validateBulkAction(selectedAction, observationIds) {
+    console.log('Starting validateBulkAction with:', {selectedAction, observationIds});
     const results = {
         total: observationIds.length,
         toProcess: [],
@@ -4130,11 +4152,15 @@ async function validateBulkAction(selectedAction, observationIds) {
         for (const action of selectedAction.actions) {
             if (action.type === 'observationField') {
                 try {
+                    console.log('Checking field values for:', {observationId, action});
                     const existingValue = await getFieldValueDetails(observationId, action.fieldId);
+                    console.log('Got existing value:', existingValue);
                     if (existingValue) {
                         hasExistingValues = true;
                         results.fieldNames.set(action.fieldId, action.fieldName);
-                        existingFields.set(action.fieldId, existingValue.value);
+                        const valueToStore = existingValue.displayValue || existingValue.value;
+                        console.log('Storing value:', valueToStore);
+                        existingFields.set(action.fieldId, valueToStore);
                     }
                 } catch (error) {
                     console.error(`Error checking field values for observation ${observationId}:`, error);
@@ -4380,7 +4406,7 @@ function createActionModal() {
                     }));
 
                 // Apply the highlighting before showing validation modal
-                highlightObservationsWithExistingValues(observationsToHighlight);
+                highlightObservationsWithExistingValues(observationsToHighlight, selectedAction);
 
                 // Remove the action selection modal
                 document.body.removeChild(modal);
