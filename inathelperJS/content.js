@@ -3533,7 +3533,8 @@ function updateActionDescription(actionSelect) {
                 let actionDesc = '';
                 switch(action.type) {
                     case 'observationField':
-                        actionDesc = `Set field "${action.fieldName}" to "${action.fieldValue}"`;
+                        const displayValue = action.displayValue || action.fieldValue;
+                        actionDesc = `Set field "${action.fieldName}" to "${displayValue}"`;
                         break;
                     case 'annotation':
                         actionDesc = `Add annotation: ${action.annotationDisplay}`;
@@ -4061,12 +4062,14 @@ function createTooltipContent(fieldValues) {
     `;
     
     Object.entries(fieldValues).forEach(([fieldName, values]) => {
+        const displayCurrent = values.current.displayValue || values.current;
+        const displayProposed = values.proposed.displayValue || values.proposed;
         content += `
             <div class="tooltip-field">
                 <div class="tooltip-field-name">${fieldName}</div>
                 <div class="tooltip-value">
-                    <span class="tooltip-current">Current: "${values.current}"</span>
-                    <span class="tooltip-proposed">Will change to: "${values.proposed}"</span>
+                    <span class="tooltip-current">Current: "${displayCurrent}"</span>
+                    <span class="tooltip-proposed">Will change to: "${displayProposed}"</span>
                 </div>
             </div>
         `;
@@ -4461,8 +4464,7 @@ async function createValidationModal(validationResults, selectedAction, onConfir
     actionSummary.innerHTML = '<strong>This action will:</strong><ul>';
     selectedAction.actions.forEach(action => {
         if (action.type === 'observationField') {
-            actionSummary.innerHTML += `<li>Set field "${action.fieldName}" to "${action.fieldValue}"</li>`;
-        }
+            actionSummary.innerHTML += `<li>Set field "${action.fieldName}" to "${action.displayValue || action.fieldValue}"</li>`;        }
     });
     actionSummary.innerHTML += '</ul>';
 
@@ -4499,9 +4501,10 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                 
                 Object.entries(existingFields).forEach(([fieldId, currentValue]) => {
                     const fieldName = validationResults.fieldNames.get(fieldId);
-                    const newValue = selectedAction.actions.find(a => 
+                    const matchingAction = selectedAction.actions.find(a => 
                         a.type === 'observationField' && a.fieldId === fieldId
-                    )?.fieldValue;
+                    );
+                    const newValue = matchingAction ? (matchingAction.displayValue || matchingAction.fieldValue) : '';
                     item.innerHTML += `
                         <li>${fieldName}:
                             <span style="color: #666;">"${currentValue}"</span>
@@ -4556,9 +4559,10 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                 
                 Object.entries(info.existingFields).forEach(([fieldId, currentValue]) => {
                     const fieldName = validationResults.fieldNames.get(fieldId);
-                    const newValue = selectedAction.actions.find(a => 
+                    const matchingAction = selectedAction.actions.find(a => 
                         a.type === 'observationField' && a.fieldId === fieldId
-                    )?.fieldValue;
+                    );
+                    const newValue = matchingAction ? (matchingAction.displayValue || matchingAction.fieldValue) : '';
                     item.innerHTML += `
                         <li>${fieldName}: 
                             <span style="color: #666;">"${currentValue}"</span>
