@@ -3620,6 +3620,8 @@ function updateBulkActionButtons() {
     }
 
     if (bulkActionModeEnabled && bulkButtonContainer) {
+        // Preserve existing toggle if it exists
+        const existingToggle = bulkButtonContainer.querySelector('.safe-mode-toggle');
         bulkButtonContainer.innerHTML = '';
         
         // Create button wrapper for first row
@@ -3631,7 +3633,8 @@ function updateBulkActionButtons() {
             margin-bottom: 10px;
         `;
         
-        const safeModeToggle = createSafeModeToggle();
+        // Either reuse existing toggle or create new one
+        const safeModeToggle = existingToggle || createSafeModeToggle();
         buttonWrapper.appendChild(safeModeToggle);
         
         // Add main action buttons
