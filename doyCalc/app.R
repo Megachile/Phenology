@@ -536,8 +536,8 @@ p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=
       si <- singlesi(doy, input$lat)
       min <- (si-input$thr) %% 1
       max <- (si+input$thr) %% 1
-      low <- lineCalc(min, "seasind", 0.02)
-      high <- lineCalc(max, "seasind", 0.02)
+      low <- lineCalc()(min, "seasind", 0.02)
+      high <- lineCalc()(max, "seasind", 0.02)
       p <- p + geom_abline(aes(intercept = low[1], slope=low[2]), linetype = "twodash", color="green")+
         geom_abline(aes(intercept = high[1], slope=high[2]), linetype = "twodash", color="green")
 
