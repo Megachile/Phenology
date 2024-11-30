@@ -300,9 +300,17 @@ function setupTaxonAutocomplete(inputElement, idElement) {
                         suggestion.addEventListener('click', (event) => {
                             if (event.target.tagName !== 'A') {
                                 event.preventDefault();
-                                inputElement.value = taxon.preferred_common_name ? 
+                                const selectedName = taxon.preferred_common_name ? 
                                     `${taxon.preferred_common_name} (${taxon.name})` : 
                                     taxon.name;
+                                console.log('Taxon selected:', {
+                                    name: selectedName,
+                                    id: taxon.id,
+                                    inputElement: inputElement,
+                                    idElement: idElement,
+                                    dataset: inputElement.dataset
+                                });
+                                inputElement.value = selectedName;
                                 inputElement.dataset.taxonId = taxon.id;
                                 if (idElement) idElement.value = taxon.id;
                                 suggestionContainer.innerHTML = '';
@@ -374,8 +382,9 @@ function updateFieldValueInput(field, container, existingValue = null) {
             input.type = 'text';
             input.className = 'taxonInput';
             input.placeholder = 'Enter species name';
-            console.log('Setting up taxon autocomplete for taxon input');
-            setupTaxonAutocomplete(input);
+            console.log('Setting up taxon autocomplete for field:', field);
+            setupTaxonAutocomplete(input, null); 
+            console.log('Created taxon input:', input);
             break;
         default:
             input = document.createElement('input');

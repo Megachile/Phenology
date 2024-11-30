@@ -670,12 +670,20 @@ async function generateURL() {
             
             if (fieldNameInput && fieldNameInput.value) {
                 const fieldName = safeEncode(fieldNameInput.value);
-                const fieldValue = fieldValueInput ? safeEncode(fieldValueInput.value) : '';
                 
                 if (negated) {
                     params.push(`without_field=${fieldName}`);
-                } else if (fieldValue) {
-                    params.push(`field:${fieldName}=${fieldValue}`);
+                } else if (fieldValueInput) {
+                    // If it's a taxon input, use the stored taxonId from the dataset
+                    if (fieldValueInput.dataset && fieldValueInput.dataset.taxonId) {
+                        params.push(`field:${fieldName}=${fieldValueInput.dataset.taxonId}`);
+                    } else {
+                        // For non-taxon fields, use the value directly
+                        const fieldValue = safeEncode(fieldValueInput.value);
+                        if (fieldValue) {
+                            params.push(`field:${fieldName}=${fieldValue}`);
+                        }
+                    }
                 } else {
                     params.push(`field:${fieldName}`);
                 }
