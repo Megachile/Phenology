@@ -168,6 +168,59 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Add event listeners to all form elements
+    document.querySelectorAll('input, select, textarea').forEach(element => {
+        if (element.tagName === 'SELECT') {
+            element.addEventListener('change', generateURL);
+        } else {
+            element.addEventListener('input', generateURL);
+            element.addEventListener('change', generateURL);
+        }
+    });
+
+    // Event delegation for selects in dynamic containers
+    document.getElementById('actionsContainer').addEventListener('change', function(e) {
+        if (e.target.tagName === 'SELECT') {
+            generateURL();
+        }
+    });
+
+    // Handle button clicks
+    document.getElementById('exploreButton').addEventListener('click', async function(e) {
+        e.preventDefault();
+        const queryString = await generateURL();
+        window.open('https://www.inaturalist.org/observations?' + queryString, '_blank');
+    });
+    
+    document.getElementById('identifyButton').addEventListener('click', async function(e) {
+        e.preventDefault();
+        const queryString = await generateURL();
+        window.open('https://www.inaturalist.org/observations/identify?' + queryString, '_blank');
+    });
+
+    const actionsContainer = document.getElementById('actionsContainer');
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' || 
+                (mutation.type === 'characterData' && mutation.target.parentNode && mutation.target.parentNode.tagName === 'INPUT')) {
+                generateURL();
+            }
+            // Also check for changes to readonly ID inputs which get populated by autocomplete
+            if (mutation.target.tagName === 'INPUT' && mutation.target.hasAttribute('readonly')) {
+                generateURL();
+            }
+        });
+    });
+
+    observer.observe(actionsContainer, {
+        attributes: true,
+        childList: true,
+        characterData: true,
+        subtree: true
+    });
+
+    // Generate URL initially
+    generateURL();
 });
 
 function toggleGeoInputs() {
@@ -457,6 +510,8 @@ function setupAnnotationDropdowns(index) {
 
     // Ensure value select is initially disabled
     valueSelect.disabled = true;
+    fieldSelect.addEventListener('change', generateURL);
+    valueSelect.addEventListener('change', generateURL);
 }
 
 function removeField(event) {
@@ -563,6 +618,12 @@ async function generateURL() {
     let url = 'https://www.inaturalist.org/observations/identify?';
     let params = [];
 
+    // Get selected observations first
+    const selectedObservations = await getSelectedObservations();
+    if (selectedObservations.length > 0) {
+        params.push(`id=${selectedObservations.join(',')}`);
+    }
+
      // Quality Grade
      const qualityGrades = Array.from(document.querySelectorAll('input[name="quality_grade"]:checked'))
      .map(input => input.value);
@@ -579,11 +640,6 @@ async function generateURL() {
 
     // Handle toggles
     const toggles = ['captive', 'sounds', 'photos', 'threatened', 'introduced', 'native', 'popular', 'identified', 'description', 'tags', 'geo', 'mappable'];
-
-    const selectedObservations = await getSelectedObservations();
-    if (selectedObservations.length > 0) {
-        params.push(`id=${selectedObservations.join(',')}`);
-    }
 
     toggles.forEach(toggle => {
         const selectedValue = document.querySelector(`input[name="${toggle}"]:checked`).value;
@@ -865,25 +921,24 @@ async function generateURL() {
   const rawUrl = url + params.join('&');
   console.log('Raw generated URL:', rawUrl);
 
-  // Extract only the query string
-  const queryString = rawUrl.split('?')[1] || '';
+    const queryString = params.join('&');
+    console.log('Generated query string:', queryString);
 
-  // Update the plain text URL output
-  const plainUrlText = document.getElementById('plainUrlText');
-  plainUrlText.value = queryString;
+    // Update the plain text URL output
+    const plainUrlText = document.getElementById('plainUrlText');
+    plainUrlText.value = queryString;
 
-  // Update the Explore button
-  const exploreButton = document.getElementById('exploreButton');
-  exploreButton.href = 'https://www.inaturalist.org/observations?' + queryString;
+    // Update the button URLs
+    const exploreButton = document.getElementById('exploreButton');
+    const identifyButton = document.getElementById('identifyButton');
+    
+    exploreButton.href = 'https://www.inaturalist.org/observations?' + queryString;
+    identifyButton.href = 'https://www.inaturalist.org/observations/identify?' + queryString;
 
-  // Update the Identify button
-  const identifyButton = document.getElementById('identifyButton');
-  identifyButton.href = rawUrl;
+    // Show the URL outputs
+    document.getElementById('urlOutputs').style.display = 'block';
 
-  // Show the URL outputs
-  document.getElementById('urlOutputs').style.display = 'block';
-
-  return queryString;
+    return queryString;
 }
 
 function setupUserAutocomplete(input, idInput) {
@@ -1706,7 +1761,6 @@ function setupActionBoxToggle(actionBox) {
         }
 
         // Toggle the disabled state
-        console.log('Toggling disabled state');
         this.classList.toggle('disabled');
         
         // Regenerate URL and save state

@@ -6,6 +6,71 @@ body {
     margin: 0;
     padding: 20px;
     background-color: #f4f4f4;
+    padding-bottom: 200px;
+}
+
+#urlOutputs {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: white;
+  padding: 20px;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  margin-top: 0;
+  display: block; /* Always visible */
+}
+
+#plainUrlOutput {
+  margin-bottom: 10px;
+  position: relative;
+}
+
+#plainUrlText {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: monospace;
+  resize: none;
+}
+
+#buttonOutputs {
+  display: flex;
+  gap: 10px;
+  justify-content: stretch;
+}
+
+.url-button {
+  flex: 1;
+  padding: 15px 0;
+  margin: 0;
+  font-size: 18px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+#copyUrlButton {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 16px;
+  z-index: 1;
+}
+
+#copyUrlButton:hover {
+  background-color: #e0e0e0;
+}
+
+#generateUrlButton {
+  display: none;
 }
 
 h1, h2 {
