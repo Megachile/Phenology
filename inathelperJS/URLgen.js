@@ -160,6 +160,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('input, select, textarea').forEach(input => {
         input.addEventListener('change', saveInputs);
     });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('actionsContainer');
+        if (container) {
+            container.querySelectorAll('.action-box').forEach(setupActionBoxToggle);
+        }
+    });
+
 });
 
 function toggleGeoInputs() {
@@ -284,12 +292,6 @@ function addField(type) {
             <label><input type="checkbox" class="negationCheckbox"> Without</label>
             <label data-tooltip="Match/exclude only this exact taxon, not its descendants"><input type="checkbox" class="exactCheckbox"> Exact</label>
         `;
-    } else if (type === 'idTaxon') {
-        fieldGroup.innerHTML = `
-           <input type="text" id="${type}${fieldCount}" placeholder="Enter ID taxon">
-            <input type="text" id="${type}Id${fieldCount}" placeholder="ID Taxon ID" readonly>
-            <button class="removeFieldButton">Remove</button>
-            `;
         } else if (type === 'idTaxon') {
             fieldGroup.innerHTML = `
                 <input type="text" id="${type}${fieldCount}" placeholder="Enter ID taxon">
@@ -368,6 +370,9 @@ function addField(type) {
 
     fieldGroup.querySelector('.removeFieldButton').addEventListener('click', removeField);
     fieldGroup.querySelector('.negationCheckbox').addEventListener('change', toggleNegation);
+    
+    // Add this directly instead of the recursive redefinition
+    setupActionBoxToggle(actionBox);  // Note: actionBox, not lastActionBox
 
     console.log(`Field added: `, fieldGroup);
     saveInputs();
@@ -490,6 +495,69 @@ function safeEncode(str) {
     return encodeURIComponent(decodedStr);
 }
 
+function processInputs(type) {
+    const container = document.getElementById('actionsContainer');
+    if (!container) {
+        console.error('Actions container not found');
+        return { ids: [], withoutIds: [], exactIds: [], withoutDirectIds: [], applyRulesIds: [], notMatchingRulesIds: [] };
+    }
+
+    const result = {
+        ids: [],
+        withoutIds: [],
+        exactIds: [],
+        withoutDirectIds: [],
+        applyRulesIds: [],
+        notMatchingRulesIds: []
+    };
+
+    const actionBoxes = container.querySelectorAll('.action-box');
+    actionBoxes.forEach((box, index) => {
+        // Skip disabled action boxes
+        if (box.classList.contains('disabled')) {
+            return;
+        }
+
+        const actionType = box.querySelector('.action-type');
+        if (!actionType) {
+            console.error(`Action type not found in box ${index}`);
+            return;
+        }
+
+        if (actionType.textContent.toLowerCase() === type.toLowerCase()) {
+            const input = box.querySelector(`input[id^="${type}"]`);
+            const idInput = box.querySelector(`input[id^="${type}Id"]`);
+            const negationCheckbox = box.querySelector('.negationCheckbox');
+            const exactCheckbox = box.querySelector('.exactCheckbox');
+            const rulesCheckbox = box.querySelector('.rulesCheckbox');
+
+            if (input && idInput && idInput.value) {
+                const negated = negationCheckbox ? negationCheckbox.checked : false;
+                const exact = exactCheckbox ? exactCheckbox.checked : false;
+                const applyRules = rulesCheckbox ? rulesCheckbox.checked : false;
+
+                if (negated) {
+                    if (type === 'taxon' && exact) {
+                        result.withoutDirectIds.push(idInput.value);
+                    } else if (type === 'project' && applyRules) {
+                        result.notMatchingRulesIds.push(idInput.value);
+                    } else {
+                        result.withoutIds.push(idInput.value);
+                    }
+                } else if (exact) {
+                    result.exactIds.push(idInput.value);
+                } else if (applyRules) {
+                    result.applyRulesIds.push(idInput.value);
+                } else {
+                    result.ids.push(idInput.value);
+                }
+            }
+        }
+    });
+
+    return result;
+}
+
 async function generateURL() {
     console.log('Generating URL...');
     let url = 'https://www.inaturalist.org/observations/identify?';
@@ -523,68 +591,6 @@ async function generateURL() {
             params.push(`${toggle}=${selectedValue}`);
         }
     });
-
-    function processInputs(type) {
-        const container = document.getElementById('actionsContainer');
-        if (!container) {
-            console.error('Actions container not found');
-            return { ids: [], withoutIds: [], exactIds: [], withoutDirectIds: [], applyRulesIds: [], notMatchingRulesIds: [] };
-        }
-        const actionBoxes = container.querySelectorAll('.action-box');
-        const ids = [];
-        const withoutIds = [];
-        const exactIds = [];
-        const withoutDirectIds = [];
-        const applyRulesIds = [];
-        const notMatchingRulesIds = [];
-    
-        actionBoxes.forEach((box, index) => {
-            const actionType = box.querySelector('.action-type');
-            if (!actionType) {
-                console.error(`Action type not found in box ${index}`);
-                return;
-            }
-            if (actionType.textContent.toLowerCase() === type.toLowerCase()) {
-                const input = box.querySelector(`input[id^="${type}"]`);
-                const idInput = box.querySelector(`input[id^="${type}Id"]`);
-                const negationCheckbox = box.querySelector('.negationCheckbox');
-                const exactCheckbox = box.querySelector('.exactCheckbox');
-                const rulesCheckbox = box.querySelector('.rulesCheckbox');
-    
-                if (input && idInput && idInput.value) {
-                    const negated = negationCheckbox ? negationCheckbox.checked : false;
-                    const exact = exactCheckbox ? exactCheckbox.checked : false;
-                    const applyRules = rulesCheckbox ? rulesCheckbox.checked : false;
-    
-                    console.log(`${type} input ${index}:`, {
-                        value: input.value,
-                        id: idInput.value,
-                        negated: negated,
-                        exact: exact,
-                        applyRules: applyRules
-                    });
-    
-                    if (negated) {
-                        if (type === 'taxon' && exact) {
-                            withoutDirectIds.push(idInput.value);
-                        } else if (type === 'project' && applyRules) {
-                            notMatchingRulesIds.push(idInput.value);
-                        } else {
-                            withoutIds.push(idInput.value);
-                        }
-                    } else if (exact) {
-                        exactIds.push(idInput.value);
-                    } else if (applyRules) {
-                        applyRulesIds.push(idInput.value);
-                    } else {
-                        ids.push(idInput.value);
-                    }
-                }
-            }
-        });
-    
-        return { ids, withoutIds, exactIds, withoutDirectIds, applyRulesIds, notMatchingRulesIds };
-    }
     
     const types = ['taxon', 'idTaxon', 'user', 'identifier', 'project', 'place'];
     types.forEach(type => {
@@ -662,6 +668,11 @@ async function generateURL() {
     // Observation Field
     const ofInputs = document.querySelectorAll('#actionsContainer .action-box');
     ofInputs.forEach((box) => {
+        // Skip if box is disabled
+        if (box.classList.contains('disabled')) {
+            return;
+        }
+
         const actionType = box.querySelector('.action-type');
         if (actionType && actionType.textContent.toLowerCase() === 'observationfield') {
             const fieldNameInput = box.querySelector(`input[id^="observationField"]`);
@@ -673,19 +684,20 @@ async function generateURL() {
                 
                 if (negated) {
                     params.push(`without_field=${fieldName}`);
-                } else if (fieldValueInput) {
-                    // If it's a taxon input, use the stored taxonId from the dataset
-                    if (fieldValueInput.dataset && fieldValueInput.dataset.taxonId) {
-                        params.push(`field:${fieldName}=${fieldValueInput.dataset.taxonId}`);
-                    } else {
-                        // For non-taxon fields, use the value directly
-                        const fieldValue = safeEncode(fieldValueInput.value);
-                        if (fieldValue) {
+                } else {
+                    if (fieldValueInput && fieldValueInput.value) {
+                        // If it's a taxon input, use the stored taxonId from the dataset
+                        if (fieldValueInput.dataset && fieldValueInput.dataset.taxonId) {
+                            params.push(`field:${fieldName}=${fieldValueInput.dataset.taxonId}`);
+                        } else {
+                            // For non-taxon fields, use the value directly
+                            const fieldValue = safeEncode(fieldValueInput.value);
                             params.push(`field:${fieldName}=${fieldValue}`);
                         }
+                    } else {
+                        // Add field without value requirement
+                        params.push(`field:${fieldName}`);
                     }
-                } else {
-                    params.push(`field:${fieldName}`);
                 }
             }
         }
@@ -694,6 +706,11 @@ async function generateURL() {
     // Annotation
     const annotationInputs = document.querySelectorAll('#actionsContainer .action-box');
     annotationInputs.forEach((box) => {
+        // Skip if box is disabled
+        if (box.classList.contains('disabled')) {
+            return;
+        }
+
         const actionType = box.querySelector('.action-type');
         if (actionType && actionType.textContent.toLowerCase() === 'annotation') {
             const fieldSelect = box.querySelector('.annotationField');
@@ -703,22 +720,17 @@ async function generateURL() {
             if (fieldSelect && fieldSelect.value) {
                 if (negated) {
                     if (valueSelect && valueSelect.value) {
-                        // Without a specific annotation value
                         params.push(`term_id=${encodeURIComponent(fieldSelect.value)}`);
                         params.push(`without_term_value_id=${encodeURIComponent(valueSelect.value)}`);
                     } else {
-                        // Without annotation (no value)
                         params.push(`without_term_id=${encodeURIComponent(fieldSelect.value)}`);
                     }
                 } else {
-                    // With Annotation
                     params.push(`term_id=${encodeURIComponent(fieldSelect.value)}`);
                     if (valueSelect && valueSelect.value) {
-                        // With annotation and specific value
                         params.push(`term_value_id=${encodeURIComponent(valueSelect.value)}`);
                     }
                 }
-                console.log('Added Annotation:', params[params.length - 1]);
             }
         }
     });
@@ -1130,24 +1142,6 @@ function refreshMap() {
   
       observer.observe(geographicFieldset, { attributes: true, attributeFilter: ['style'] });
   }
-  
-
-function setupMapObserver() {
-    const mapContainer = document.getElementById('mapContainer');
-    const geographicFieldset = document.getElementById('geographicFieldset');
-  
-    if (!mapContainer || !geographicFieldset) return;
-  
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-          setTimeout(refreshMap, 100);
-        }
-      });
-    });
-  
-    observer.observe(geographicFieldset, { attributes: true, attributeFilter: ['style'] });
-  }
 
 function clearInputs() {
     ['nelat', 'nelng', 'swlat', 'swlng', 'lat', 'lng', 'radius'].forEach(id => {
@@ -1345,14 +1339,15 @@ function saveInputs() {
             sound: []
         },
         observationSources: [],
-        geographicBoundingBox: {}
+        geographicBoundingBox: {},
+        disabledStates: [] // Added this field
     };
 
     const container = document.getElementById('customListsContainer');
     const selectedCheckboxes = container.querySelectorAll('input[type="checkbox"]:checked');
     savedState.selectedCustomLists = Array.from(selectedCheckboxes).map(checkbox => checkbox.value);
   
-    // Save static inputs (existing code)
+    // Save static inputs
     document.querySelectorAll('input, select, textarea').forEach(input => {
         if (input.id) {
             if (input.type === 'checkbox' || input.type === 'radio') {
@@ -1363,7 +1358,7 @@ function saveInputs() {
         }
     });
 
-    // Save quality grade checkboxes (existing code)
+    // Save quality grade checkboxes
     document.querySelectorAll('input[name="quality_grade"]:checked').forEach(checkbox => {
         savedState.qualityGrade.push(checkbox.value);
     });
@@ -1402,7 +1397,7 @@ function saveInputs() {
         }
     });
 
-    // Save dynamic fields (existing code)
+    // Save dynamic fields and their disabled states
     const actionsContainer = document.getElementById('actionsContainer');
     if (actionsContainer) {
         actionsContainer.querySelectorAll('.action-box').forEach(actionBox => {
@@ -1415,7 +1410,11 @@ function saveInputs() {
                     className: input.className
                 };
             });
-            savedState.dynamicFields.push({ type: actionType, inputs });
+            savedState.dynamicFields.push({ 
+                type: actionType, 
+                inputs,
+                disabled: actionBox.classList.contains('disabled') // Save disabled state
+            });
         });
     }
 
@@ -1425,129 +1424,133 @@ function saveInputs() {
 function loadInputs() {
     const savedState = JSON.parse(localStorage.getItem('urlGenState'));
     if (!savedState) return;
-        // Load static inputs (existing code)
-        Object.keys(savedState.inputs || {}).forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                if (element.type === 'checkbox' || element.type === 'radio') {
-                    element.checked = savedState.inputs[id];
-                } else {
-                    element.value = savedState.inputs[id];
-                }
+
+    // Load static inputs
+    Object.keys(savedState.inputs || {}).forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            if (element.type === 'checkbox' || element.type === 'radio') {
+                element.checked = savedState.inputs[id];
+            } else {
+                element.value = savedState.inputs[id];
             }
-        });
-
-        if (savedState.selectedCustomLists) {
-            const container = document.getElementById('customListsContainer');
-            savedState.selectedCustomLists.forEach(listId => {
-              const checkbox = container.querySelector(`input[value="${listId}"]`);
-              if (checkbox) {
-                checkbox.checked = true;
-              }
-            });
-          }
-
-        // Load quality grade checkboxes (existing code)
-        (savedState.qualityGrade || []).forEach(value => {
-            const checkbox = document.querySelector(`input[name="quality_grade"][value="${value}"]`);
-            if (checkbox) checkbox.checked = true;
-        });
-
-        // Load reviewed status
-        if (savedState.reviewedStatus) {
-            const reviewedStatus = document.querySelector(`input[name="reviewed"][value="${savedState.reviewedStatus}"]`);
-            if (reviewedStatus) reviewedStatus.checked = true;
         }
+    });
 
-        // Load "search on" toggle
-        if (savedState.searchOn) {
-            const searchOn = document.querySelector(`input[name="searchOn"][value="${savedState.searchOn}"]`);
-            if (searchOn) searchOn.checked = true;
-        }
-
-        // Load licenses
-        if (savedState.licenses) {
-            (savedState.licenses.photo || []).forEach(license => {
-                const checkbox = document.querySelector(`#photoLicenses input[value="${license}"]`);
-                if (checkbox) checkbox.checked = true;
-            });
-            (savedState.licenses.sound || []).forEach(license => {
-                const checkbox = document.querySelector(`#soundLicenses input[value="${license}"]`);
-                if (checkbox) checkbox.checked = true;
-            });
-        }
-
-        // Load observation sources
-        const anySourceCheckbox = document.querySelector('#observationSources input[value="any"]');
-        let specificSourceSelected = false;
-        (savedState.observationSources || []).forEach(source => {
-            const checkbox = document.querySelector(`#observationSources input[value="${source}"]`);
+    // Load custom lists
+    if (savedState.selectedCustomLists) {
+        const container = document.getElementById('customListsContainer');
+        savedState.selectedCustomLists.forEach(listId => {
+            const checkbox = container.querySelector(`input[value="${listId}"]`);
             if (checkbox) {
                 checkbox.checked = true;
-                if (source !== 'any') {
-                    specificSourceSelected = true;
-                }
             }
         });
-
-        // Adjust the "Any" checkbox based on other selections
-        if (anySourceCheckbox) {
-            anySourceCheckbox.checked = !specificSourceSelected;
-        }
-
-        // Load geographic bounding box
-        Object.keys(savedState.geographicBoundingBox || {}).forEach(id => {
-            const input = document.getElementById(id);
-            if (input) {
-                input.value = savedState.geographicBoundingBox[id];
-            }
-        });
-
-        const actionsContainer = document.getElementById('actionsContainer');
-        if (actionsContainer && savedState.dynamicFields) {
-            savedState.dynamicFields.forEach(field => {
-                addField(field.type);
-                const lastActionBox = actionsContainer.lastElementChild;
-                
-                if (field.type === 'annotation') {
-                    // Find the saved field and value
-                    const fieldInput = field.inputs.find(i => i.className === 'annotationField');
-                    const valueInput = field.inputs.find(i => i.className === 'annotationValue');
-                    
-                    if (fieldInput && valueInput) {
-                        setupAnnotationField(lastActionBox, fieldInput.value, valueInput.value);
-                    }
-                    
-                        field.inputs.forEach(inputData => {
-                        if (inputData.className === 'negationCheckbox') {
-                            const checkbox = lastActionBox.querySelector(`.${inputData.className}`);
-                            if (checkbox) {
-                                checkbox.checked = inputData.value;
-                            }
-                        }
-                    });
-                } else {
-                    field.inputs.forEach(inputData => {
-                        let input;
-                        if (inputData.id && inputData.id.trim() !== '') {
-                            input = lastActionBox.querySelector(`#${inputData.id}`);
-                        } else if (inputData.className && inputData.className.trim() !== '') {
-                            input = lastActionBox.querySelector(`.${inputData.className}`);
-                        }
-                        if (input) {
-                            if (input.type === 'checkbox') {
-                                input.checked = inputData.value;
-                            } else {
-                                input.value = inputData.value;
-                            }
-                        }
-                    });
-                }
-            });
-        }
-    
-        generateURL();
     }
+
+    // Load quality grade checkboxes
+    (savedState.qualityGrade || []).forEach(value => {
+        const checkbox = document.querySelector(`input[name="quality_grade"][value="${value}"]`);
+        if (checkbox) checkbox.checked = true;
+    });
+
+    // Load reviewed status
+    if (savedState.reviewedStatus) {
+        const reviewedStatus = document.querySelector(`input[name="reviewed"][value="${savedState.reviewedStatus}"]`);
+        if (reviewedStatus) reviewedStatus.checked = true;
+    }
+
+    // Load "search on" toggle
+    if (savedState.searchOn) {
+        const searchOn = document.querySelector(`input[name="searchOn"][value="${savedState.searchOn}"]`);
+        if (searchOn) searchOn.checked = true;
+    }
+
+    // Load licenses
+    if (savedState.licenses) {
+        (savedState.licenses.photo || []).forEach(license => {
+            const checkbox = document.querySelector(`#photoLicenses input[value="${license}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+        (savedState.licenses.sound || []).forEach(license => {
+            const checkbox = document.querySelector(`#soundLicenses input[value="${license}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+    }
+
+    // Load observation sources
+    const anySourceCheckbox = document.querySelector('#observationSources input[value="any"]');
+    let specificSourceSelected = false;
+    (savedState.observationSources || []).forEach(source => {
+        const checkbox = document.querySelector(`#observationSources input[value="${source}"]`);
+        if (checkbox) {
+            checkbox.checked = true;
+            if (source !== 'any') {
+                specificSourceSelected = true;
+            }
+        }
+    });
+
+    // Adjust the "Any" checkbox based on other selections
+    if (anySourceCheckbox) {
+        anySourceCheckbox.checked = !specificSourceSelected;
+    }
+
+    // Load geographic bounding box
+    Object.keys(savedState.geographicBoundingBox || {}).forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.value = savedState.geographicBoundingBox[id];
+        }
+    });
+
+    // Load dynamic fields with their disabled states
+    const actionsContainer = document.getElementById('actionsContainer');
+    if (actionsContainer && savedState.dynamicFields) {
+        savedState.dynamicFields.forEach(field => {
+            addField(field.type);
+            const lastActionBox = actionsContainer.lastElementChild;
+            
+            if (field.disabled) {
+                lastActionBox.classList.add('disabled');
+            }
+            
+            if (field.type === 'annotation') {
+                const fieldInput = field.inputs.find(i => i.className === 'annotationField');
+                const valueInput = field.inputs.find(i => i.className === 'annotationValue');
+                if (fieldInput && valueInput) {
+                    setupAnnotationField(lastActionBox, fieldInput.value, valueInput.value);
+                }
+                field.inputs.forEach(inputData => {
+                    if (inputData.className === 'negationCheckbox') {
+                        const checkbox = lastActionBox.querySelector(`.${inputData.className}`);
+                        if (checkbox) {
+                            checkbox.checked = inputData.value;
+                        }
+                    }
+                });
+            } else {
+                field.inputs.forEach(inputData => {
+                    let input;
+                    if (inputData.id && inputData.id.trim() !== '') {
+                        input = lastActionBox.querySelector(`#${inputData.id}`);
+                    } else if (inputData.className && inputData.className.trim() !== '') {
+                        input = lastActionBox.querySelector(`.${inputData.className}`);
+                    }
+                    if (input) {
+                        if (input.type === 'checkbox') {
+                            input.checked = inputData.value;
+                        } else {
+                            input.value = inputData.value;
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    generateURL();
+}
 
 function resetForm() {
     // Reset static inputs
@@ -1693,4 +1696,21 @@ function getSelectedObservations() {
             }
         }
     }
+}
+
+function setupActionBoxToggle(actionBox) {
+    actionBox.addEventListener('click', function(e) {
+        // Only toggle if clicking directly on the action-box itself or the action-type header
+        if (e.target !== actionBox && e.target !== actionBox.querySelector('.action-type')) {
+            return;
+        }
+
+        // Toggle the disabled state
+        console.log('Toggling disabled state');
+        this.classList.toggle('disabled');
+        
+        // Regenerate URL and save state
+        generateURL();
+        saveInputs();
+    });
 }

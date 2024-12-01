@@ -513,3 +513,37 @@ input:checked + .slider:before {
 .custom-list-checkbox label {
   margin-left: 5px;
 }
+.action-box.disabled {
+  opacity: 0.6 !important;
+  background-color: #e0e0e0 !important;
+  position: relative;
+}
+
+.action-box.disabled::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  /* Remove pointer-events from this overlay */
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Change this to only disable specific elements */
+.action-box.disabled button,
+.action-box.disabled label,
+.action-box.disabled input[type="checkbox"],
+.action-box.disabled input[type="radio"] {
+  pointer-events: none;
+}
+
+/* Keep inputs and autocomplete functional */
+.action-box.disabled input[type="text"],
+.action-box.disabled select,
+.action-box.disabled .autocomplete-suggestions {
+  pointer-events: auto;
+}
