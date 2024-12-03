@@ -331,7 +331,7 @@ function addField(type) {
 
     const actionType = document.createElement('div');
     actionType.className = 'action-type';
-    actionType.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+    actionType.textContent = type;
     actionBox.appendChild(actionType);
 
     const fieldGroup = document.createElement('div');
@@ -1456,19 +1456,19 @@ function saveInputs() {
     const actionsContainer = document.getElementById('actionsContainer');
     if (actionsContainer) {
         actionsContainer.querySelectorAll('.action-box').forEach(actionBox => {
-            const actionType = actionBox.querySelector('.action-type').textContent.toLowerCase();
-            const inputs = Array.from(actionBox.querySelectorAll('input, select')).map(input => {
-                return {
-                    type: input.type,
-                    value: input.type === 'checkbox' ? input.checked : input.value,
-                    id: input.id,
-                    className: input.className
-                };
-            });
-            savedState.dynamicFields.push({ 
-                type: actionType, 
-                inputs,
-                disabled: actionBox.classList.contains('disabled') // Save disabled state
+            const actionTypeEl = actionBox.querySelector('.action-type');
+            const actionType = actionTypeEl.textContent;
+            const inputs = Array.from(actionBox.querySelectorAll('input, select')).map(input => ({
+                type: input.type,
+                value: input.type === 'checkbox' ? input.checked : input.value,
+                id: input.id,
+                className: input.className
+            }));
+            // THIS is where we need to actually save it:
+            savedState.dynamicFields.push({
+                type: actionType,
+                inputs: inputs,
+                disabled: actionBox.classList.contains('disabled')
             });
         });
     }
