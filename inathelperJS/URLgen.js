@@ -1458,6 +1458,15 @@ function saveInputs() {
         actionsContainer.querySelectorAll('.action-box').forEach(actionBox => {
             const actionTypeEl = actionBox.querySelector('.action-type');
             const actionType = actionTypeEl.textContent;
+            console.log('Saving field type:', actionType);
+            
+            if (actionType === 'observationField') {
+                const valueContainer = actionBox.querySelector('.fieldValueContainer');
+                const valueInput = valueContainer?.querySelector('.fieldValue');
+                console.log('OF value container:', valueContainer);
+                console.log('OF value input:', valueInput);
+                console.log('OF value:', valueInput?.value);
+            }
             const inputs = Array.from(actionBox.querySelectorAll('input, select')).map(input => ({
                 type: input.type,
                 value: input.type === 'checkbox' ? input.checked : input.value,
@@ -1586,17 +1595,32 @@ function loadInputs() {
                 });
             } else {
                 field.inputs.forEach(inputData => {
+
                     let input;
-                    if (inputData.id && inputData.id.trim() !== '') {
-                        input = lastActionBox.querySelector(`#${inputData.id}`);
-                    } else if (inputData.className && inputData.className.trim() !== '') {
-                        input = lastActionBox.querySelector(`.${inputData.className}`);
-                    }
-                    if (input) {
-                        if (input.type === 'checkbox') {
-                            input.checked = inputData.value;
-                        } else {
-                            input.value = inputData.value;
+                    if (field.type === 'observationField') {
+                        const fieldId = field.inputs.find(i => i.id === 'observationFieldId0')?.value;
+                        const fieldValue = field.inputs.find(i => i.className === 'fieldValue')?.value;
+                        
+                        if (fieldId) {
+                            // Look up the specific field by its ID
+                            lookupObservationField(field.inputs.find(i => i.id === 'observationField0')?.value).then(fields => {
+                                const fieldData = fields[0]; // Should be our exact match
+                                if (fieldData) {
+                                    const fieldValueContainer = lastActionBox.querySelector('.fieldValueContainer');
+                                    const fieldNameInput = lastActionBox.querySelector('#observationField0');
+                                    const fieldIdInput = lastActionBox.querySelector('#observationFieldId0');
+                                    
+                                    if (fieldNameInput) {
+                                        fieldNameInput.value = fieldData.name;
+                                    }
+                                    if (fieldIdInput) {
+                                        fieldIdInput.value = fieldData.id;
+                                    }
+                                    if (fieldValueContainer) {
+                                        updateFieldValueInput(fieldData, fieldValueContainer, fieldValue);
+                                    }
+                                }
+                            });
                         }
                     }
                 });

@@ -247,17 +247,24 @@ function debounce(func, wait) {
 }
 
 
-function setupFieldAutocomplete(fieldNameInput, fieldIdInput, fieldValueContainer, fieldDescriptionElement) {
-    console.log('Setting up field autocomplete');
-    setupAutocompleteDropdown(fieldNameInput, lookupObservationField, (result) => {
-        console.log('Field selected:', result);
-        fieldIdInput.value = result.id;
+function setupFieldAutocomplete(nameInput, idInput, fieldValueContainer, fieldDescriptionElement) {
+    console.log('Setting up field autocomplete with:', {
+        nameInput,
+        idInput,
+        fieldValueContainer,
+        fieldDescriptionElement
+    });
+
+    setupAutocompleteDropdown(nameInput, lookupObservationField, (result) => {
+        console.log('Field selected in autocomplete:', result);
+        idInput.value = result.id;  // Changed from fieldIdInput to idInput
         if (fieldDescriptionElement) {
             fieldDescriptionElement.textContent = result.description || '';
         }
         updateFieldValueInput(result, fieldValueContainer);
     });
 }
+
 function setupTaxonAutocomplete(inputElement, idElement) {
     console.log('Setting up taxon autocomplete for:', inputElement);
     
@@ -347,14 +354,18 @@ function setupTaxonAutocomplete(inputElement, idElement) {
 
 
 function updateFieldValueInput(field, container, existingValue = null) {
-    console.log('Updating field value input for:', field);
+    console.log('Updating field value input for:', {
+        field,
+        container,
+        existingValue
+    });
     
     // Always clear the container
     container.innerHTML = '';
+    console.log('Container after clearing:', container.innerHTML);
     
     let input;
-
-    console.log('Field datatype:', field.datatype);
+    console.log('Creating input for field type:', field.datatype);
 
     switch (field.datatype) {
         case 'text':
@@ -398,7 +409,9 @@ function updateFieldValueInput(field, container, existingValue = null) {
         input.value = existingValue;
     }    
 
+    console.log('Created input:', input);
     container.appendChild(input);
+    console.log('Final container state:', container.innerHTML);
 
     // Handle allowed values
     if (field.allowed_values && field.datatype !== 'taxon') {
