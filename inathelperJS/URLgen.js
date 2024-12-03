@@ -417,6 +417,7 @@ function addField(type) {
         const valueContainer = fieldGroup.querySelector('.fieldValueContainer');
         const descriptionElement = fieldGroup.querySelector('.fieldDescription');
         setupFieldAutocomplete(nameInput, idInput, valueContainer, descriptionElement);
+        valueContainer.addEventListener('change', generateURL);
     } else {
         setupAutocomplete(type, fieldCount);
     }
@@ -1568,65 +1569,75 @@ function loadInputs() {
         }
     });
 
-    // Load dynamic fields with their disabled states
-    const actionsContainer = document.getElementById('actionsContainer');
-    if (actionsContainer && savedState.dynamicFields) {
-        savedState.dynamicFields.forEach(field => {
-            addField(field.type);
-            const lastActionBox = actionsContainer.lastElementChild;
-            
-            if (field.disabled) {
-                lastActionBox.classList.add('disabled');
-            }
-            
-            if (field.type === 'annotation') {
-                const fieldInput = field.inputs.find(i => i.className === 'annotationField');
-                const valueInput = field.inputs.find(i => i.className === 'annotationValue');
-                if (fieldInput && valueInput) {
-                    setupAnnotationField(lastActionBox, fieldInput.value, valueInput.value);
+        // Load dynamic fields with their disabled states
+        const actionsContainer = document.getElementById('actionsContainer');
+        if (actionsContainer && savedState.dynamicFields) {
+            savedState.dynamicFields.forEach(field => {
+                addField(field.type);
+                const lastActionBox = actionsContainer.lastElementChild;
+                
+                if (field.disabled) {
+                    lastActionBox.classList.add('disabled');
                 }
-                field.inputs.forEach(inputData => {
-                    if (inputData.className === 'negationCheckbox') {
-                        const checkbox = lastActionBox.querySelector(`.${inputData.className}`);
-                        if (checkbox) {
-                            checkbox.checked = inputData.value;
-                        }
+                
+                if (field.type === 'annotation') {
+                    const fieldInput = field.inputs.find(i => i.className === 'annotationField');
+                    const valueInput = field.inputs.find(i => i.className === 'annotationValue');
+                    if (fieldInput && valueInput) {
+                        setupAnnotationField(lastActionBox, fieldInput.value, valueInput.value);
                     }
-                });
-            } else {
-                field.inputs.forEach(inputData => {
-
-                    let input;
-                    if (field.type === 'observationField') {
-                        const fieldId = field.inputs.find(i => i.id === 'observationFieldId0')?.value;
-                        const fieldValue = field.inputs.find(i => i.className === 'fieldValue')?.value;
-                        
-                        if (fieldId) {
-                            // Look up the specific field by its ID
-                            lookupObservationField(field.inputs.find(i => i.id === 'observationField0')?.value).then(fields => {
-                                const fieldData = fields[0]; // Should be our exact match
-                                if (fieldData) {
-                                    const fieldValueContainer = lastActionBox.querySelector('.fieldValueContainer');
-                                    const fieldNameInput = lastActionBox.querySelector('#observationField0');
-                                    const fieldIdInput = lastActionBox.querySelector('#observationFieldId0');
-                                    
-                                    if (fieldNameInput) {
-                                        fieldNameInput.value = fieldData.name;
-                                    }
-                                    if (fieldIdInput) {
-                                        fieldIdInput.value = fieldData.id;
-                                    }
-                                    if (fieldValueContainer) {
-                                        updateFieldValueInput(fieldData, fieldValueContainer, fieldValue);
-                                    }
+                    field.inputs.forEach(inputData => {
+                        if (inputData.className === 'negationCheckbox') {
+                            const checkbox = lastActionBox.querySelector(`.${inputData.className}`);
+                            if (checkbox) {
+                                checkbox.checked = inputData.value;
+                            }
+                        }
+                    });
+                } else if (field.type === 'observationField') {
+                    const fieldId = field.inputs.find(i => i.id.includes('observationFieldId'))?.value;
+                    const fieldValue = field.inputs.find(i => i.className === 'fieldValue')?.value;
+                    const fieldName = field.inputs.find(i => i.id.includes('observationField') && !i.id.includes('Id'))?.value;
+                    
+                    if (fieldId && fieldName) {
+                        lookupObservationField(fieldName).then(fields => {
+                            const fieldData = fields[0];
+                            if (fieldData) {
+                                const fieldValueContainer = lastActionBox.querySelector('.fieldValueContainer');
+                                const fieldNameInput = lastActionBox.querySelector(`input[id^="observationField"]`);
+                                const fieldIdInput = lastActionBox.querySelector(`input[id^="observationFieldId"]`);
+                                
+                                if (fieldNameInput) {
+                                    fieldNameInput.value = fieldData.name;
                                 }
-                            });
-                        }
+                                if (fieldIdInput) {
+                                    fieldIdInput.value = fieldData.id;
+                                }
+                                if (fieldValueContainer) {
+                                    updateFieldValueInput(fieldData, fieldValueContainer, fieldValue);
+                                }
+                            }
+                        });
                     }
-                });
-            }
-        });
-    }
+                } else {
+                    field.inputs.forEach(inputData => {
+                        let input;
+                        if (inputData.id && inputData.id.trim() !== '') {
+                            input = lastActionBox.querySelector(`#${inputData.id}`);
+                        } else if (inputData.className && inputData.className.trim() !== '') {
+                            input = lastActionBox.querySelector(`.${inputData.className}`);
+                        }
+                        if (input) {
+                            if (input.type === 'checkbox') {
+                                input.checked = inputData.value;
+                            } else {
+                                input.value = inputData.value;
+                            }
+                        }
+                    });
+                }
+            });
+        }
 
     generateURL();
 }
