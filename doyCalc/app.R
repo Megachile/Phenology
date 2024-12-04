@@ -31,15 +31,6 @@ singlesi <- function(doy, lat){
   trapz(seq(1,doy),(pos_part(eq(seq(1,doy),lat))))/trapz(seq(1,(365)),(pos_part(eq(seq(1,(365)),lat))))
 }
 
-
-# species_limits <- observations %>%
-#   select(binom, latitude, longitude) %>%
-#   group_by(binom) %>%
-#   summarise(min_lat = min(latitude),
-#             max_lat = max(latitude),
-#             min_long = min(longitude),
-#             max_long = max(longitude))
-
 dateText <- function (df, lat, string){
   if (!(df$highslope==0|df$lowslope==0)){
     start <- format(as.Date(((lat - df$lowyint[1])/df$lowslope[1]),origin="2023-01-01"), "%B %d")
@@ -135,11 +126,10 @@ $(function () {
    dateInput("date", label="Observation date (ignore year)", value =Sys.Date()),
    sliderInput("days", label="How many days before or after the observation do you want to look?", min = 1, max = 183, value = 10),
    sliderInput("thr", label="How far from the observation do you want to look?", min = 0.005, max = 0.5, value = 0.05),
-   sliderInput("lat", label="What latitude are you interested in?", min = 8, max=65, value = 40)
-   
-   # sliderInput("latrange", label="Latitude:", min = 10, max = 65, value = c(10, 65)),
-     # sliderInput("longrange", label="Longitude:", min = -140, max = -55, value = c(-140, -55)),
-     # leafletOutput("map", height = "500px"),  
+   sliderInput("lat", label="What latitude are you interested in?", min = 8, max=65, value = 40),
+   sliderInput("latrange", label="Latitude:", min = 10, max = 65, value = c(10, 65)),
+   sliderInput("longrange", label="Longitude:", min = -140, max = -55, value = c(-140, -55)),
+   leafletOutput("map", height = "500px")
     ),
     mainPanel(
       plotOutput(outputId = "plot",
@@ -192,6 +182,15 @@ server <- function(input, output, session) {
   data <- load_data()
   observations <- data$observations
   eas <- data$eas
+  
+  species_limits <- observations %>%
+    select(binom, latitude, longitude) %>%
+    group_by(binom) %>%
+    summarise(min_lat = min(latitude),
+              max_lat = max(latitude),
+              min_long = min(longitude),
+              max_long = max(longitude))
+  
   y <- reactive({
     eas %>% select(-longitude) %>% distinct()
   })
@@ -220,20 +219,20 @@ server <- function(input, output, session) {
   }, priority = 1000)  # High priority ensures this runs before other observers
   
   
-  # output$map <- renderLeaflet({
-  #   leaflet() %>% addTiles() %>%
-  #     setView(lng = -101, lat = 47, zoom = 3)
-  # })
-  # 
-  # observe({
-  #   lat1 <- input$latrange[1]
-  #   lat2 <- input$latrange[2]
-  #   lng1 <- input$longrange[1]
-  #   lng2 <- input$longrange[2]
-  #   leafletProxy("map", data = "rect") %>%
-  #     clearShapes() %>%
-  #     addRectangles(lng1 = lng1, lat1 = lat1, lng2 = lng2, lat2 = lat2, layerId = "rect", color = "red", fillOpacity = 0.3)
-  # })
+  output$map <- renderLeaflet({
+    leaflet() %>% addTiles() %>%
+      setView(lng = -101, lat = 47, zoom = 3)
+  })
+
+  observe({
+    lat1 <- input$latrange[1]
+    lat2 <- input$latrange[2]
+    lng1 <- input$longrange[1]
+    lng2 <- input$longrange[2]
+    leafletProxy("map", data = "rect") %>%
+      clearShapes() %>%
+      addRectangles(lng1 = lng1, lat1 = lat1, lng2 = lng2, lat2 = lat2, layerId = "rect", color = "red", fillOpacity = 0.3)
+  })
   
   observeEvent(input$display, {
     if(input$display == "Calculate dates"){
@@ -301,13 +300,16 @@ server <- function(input, output, session) {
         filter(grepl(paste(sapply(search_terms, escapeRegex), collapse="|"), binom, ignore.case = TRUE))
     }
   
-  # filtered_species_limits <- species_limits %>%
-  #   filter(min_lat >= min(input$latrange) & max_lat <= max(input$latrange)) %>%
-  #   filter(min_long >= min(input$longrange) & max_long <= max(input$longrange))
-  # 
-  # filtered_observations %>%
-  #   inner_join(filtered_species_limits, by = c("binom" = "binom"))
-  
+    filtered_species_limits <- species_limits %>%
+      filter(
+        # Check if the species range overlaps with selected bounds
+        !(max_lat < min(input$latrange) | min_lat > max(input$latrange)) &  # Latitude ranges overlap
+          !(max_long < min(input$longrange) | min_long > max(input$longrange))  # Longitude ranges overlap
+      )
+    
+    filtered_observations %>%
+      # Use semi_join instead of inner_join to keep all observations for matching species
+      semi_join(filtered_species_limits, by = "binom")
 })
 
 plotted <- reactive({
