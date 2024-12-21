@@ -13,7 +13,7 @@ setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
 
 # Define the URLs
-urls <- c("http://www.inaturalist.org/observations/74845187")
+urls <- c("https://www.inaturalist.org/observations/160966778")
 
 # Function to get the end part of the URL
 get_url_end <- function(url) {
@@ -35,10 +35,10 @@ select <- paste0("SELECT * FROM observations ", query)
 data <- dbGetQuery(gallphen, select)
 
 # Uncomment the following lines if you need to perform updates or deletions
-update <- paste0("UPDATE observations SET viability = 'viable' ", query)
-dbExecute(gallphen, update)
-data <- dbGetQuery(gallphen, select)
-
+# update <- paste0("UPDATE observations SET viability = 'viable' ", query)
+# dbExecute(gallphen, update)
+# data <- dbGetQuery(gallphen, select)
+# 
 # delete <- paste0("DELETE FROM observations ", query)
 # dbExecute(gallphen, delete)
 

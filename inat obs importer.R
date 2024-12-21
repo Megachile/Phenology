@@ -42,21 +42,21 @@ url <- urlMaker(spcode)
 # url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&user_id=", user_id, "&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775")
 
 ## create an API call for all RG cynipini marked by a given phenophase
-# phenophase <- "maturing" 
-# url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field%3AGall+phenophase=", phenophase)
+phenophase <- "maturing" 
+url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field%3AGall+phenophase=", phenophase)
 
 ## create an API call for all RG cynipini marked viable
 # Define the rearing viability as a variable
 # rearing_viability <- "viable" 
 # url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field:Rearing%20viability=", rearing_viability)
-# 
-# ## create an API call for only free-living adults of a given taxon
+# # 
+# ## create an API call for only RG free-living adults of a given taxon
 # taxon <- "205775"
 # url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=", taxon, "&term_id=1&term_value_id=2&without_field=Gall+phenophase")
 
-## paste in a URL string to generate an API call (must include per_page=200)
-end <- "quality_grade=research&reviewed=any&taxon_id=885733&term_id=1&term_value_id=2&per_page=200"
-url <- paste0("https://api.inaturalist.org/v1/observations?", end)
+# ## paste in a URL string to generate an API call (must include per_page=200)
+# end <- "quality_grade=research&reviewed=any&taxon_id=885733&term_id=1&term_value_id=2&per_page=200"
+# url <- paste0("https://api.inaturalist.org/v1/observations?", end)
 
 ## iNat API call to pull a dataframe of all matching observations. This iterates in batches of 200 at a time. 
 obs <- iNatCall(url)
@@ -86,31 +86,48 @@ for (i in 1:20){
 
 # some code to help manually correct issues that can't be fixed or it isn't convenient to fix on the iNat side. 
 # inat observation ID of a problematic record
-# prob <- "214630323"
-# 
-# # new <- new[new$id != prob, ]
+# Remove rows with IDs in the first `prob` vector
+prob <- c("28249543", "205006449", "225820488", "240327885", "242148314", "242691014", "247268515", "249448738")
+new <- new[!(new$id %in% prob), ]
+
+# Update Gall_generation to "bisexual" for IDs in the second `prob` vector
+prob <- c("151313186", "152052940", "155675273", "156891411", "203805267")
+new[new$id %in% prob, "Gall_generation"] <- "bisexual"
+
+# Update Gall_generation to "unisexual" for IDs in the third `prob` vector
+prob <- c("199896597", "199896613", "200325175", "200695585", "200771578", 
+          "201201286", "201201296", "201231451", "201330118")
+new[new$id %in% prob, "Gall_generation"] <- "unisexual"
+
 # new[new$id==prob,"Life_Stage"] <- NA
 # new[new$id==prob,"Gall_phenophase"] <- "dormant"
-# new[new$id==prob,"Gall_generation"] <- "bisexual"
+
 # new[new$id==prob,"Host_Plant_ID"] <- "49006"
 # new[new$uri==prob,"taxon.name"] <- "Phylloteras poculum"
 # new <- new[!(new$taxon.name == 'Phylloteras poculum'), ]
+
+nogen <- new[new$Life_Stage=="",]
+
+for (i in 1:40){
+  browseURL(nogen$uri[i])
+}
+
 
 # creates a *new* dataframe with only rows missing some key data
 missing <- findMissing(new)
 print(dim(missing)[1])
 #open each in your default browser, in batches of 20
-for (i in 1:20){
+for (i in 1:48){
   browseURL(missing$uri[i])
 }
 
 #check all new rows on iNat, 20 at a time (you need to manually change the values as you go)
-for (i in 1:20){
+for (i in 121:134){
   browseURL(new$uri[i])
 }
 
 # drop rows that are missing key info (these are often not usable yet for a variety of reasons)
-# new = new[!(new$id %in% missing$id), ]
+new = new[!(new$id %in% missing$id), ]
 # drop rows specifically missing gall generation
 new <- new[!(new$Gall_generation==""),]
 
@@ -160,7 +177,7 @@ toappend <- acchours(toappend)
 # append[append$pageURL==prob,"lifestage"] <- NA
 
 ## add to the database
-# dbAppendTable(gallphen, "observations",toappend)
+dbAppendTable(gallphen, "observations",toappend)
 
 
 ### in case you need an "undo" for appending data you shouldn't have 

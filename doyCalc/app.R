@@ -58,21 +58,21 @@ ui <- fluidPage(
                 label="Search by genus, species, or gallformers code (comma-separated for multiple)", 
                 value = "Dryocosmus quercuspalustris"),  # Default search string
       radioButtons("gen",label="Filter by generation:", choices = c("sexgen","agamic","all"),selected = "all"),
-   tags$button(
-       "Key",
-       `data-toggle` = "popover",
-       `data-placement` = "bottom",
-       `data-html` = "true",
-       title = "Phenophases",
-       `data-content` = '<b>Oviscar:</b> Scars indicate eggs have been laid, but no gall is evident. Refers to generation of egg, not mother.<br><br>
+      tags$button(
+        "Key",
+        `data-toggle` = "popover",
+        `data-placement` = "bottom",
+        `data-html` = "true",
+        title = "Phenophases",
+        `data-content` = '<b>Oviscar:</b> Scars indicate eggs have been laid, but no gall is evident. Refers to generation of egg, not mother.<br><br>
                   <b>Developing:</b> Gall is actively growing; inducer needs continued contact with the plant.<br><br>
                   <b>Dormant:</b> Gall development is complete; inducer can mature if gall is removed from the plant.<br><br>
                   <b>Maturing:</b> Inducer was observed emerging from the gall on this day.<br><br>
                   <b>Adult:</b> A free-living inducer was observed apart from its gall.<br><br>
                   <b>Perimature:</b> Inducer was inferred to have emerged from the gall shortly before this day.'
-       ),
-     tags$style(
-       '
+      ),
+      tags$style(
+        '
     .popover {
       max-width: 300px;
     }
@@ -82,26 +82,26 @@ ui <- fluidPage(
       color: black;
     }
     '
-     ),
-     tags$script(
-       '
+      ),
+      tags$script(
+        '
     $(function () {
       $(\'[data-toggle="popover"]\').popover()
     })
     '
-     ),
-   multiInput("phen",label="Filter by phenophase (affects plot but not lines/date ranges):", choices = c("oviscar","developing","dormant","maturing","Adult","perimature"),selected = c("maturing","Adult","perimature")),
-   radioButtons("mode", label="Selection mode:", choices = c("Click and drag", "Date range", "Season index"), selected = "Click and drag"),
-   tags$button(
-     "Explain Season Index",
-     `data-toggle` = "popover",
-     `data-placement` = "bottom",
-     `data-html` = "true",
-     title = "Season Index",
-     `data-content` = "Season Index is the percent of annual daylight hours at a given latitude that have accumulated by a given day. Minimum and maximum Season Index values calculated based on the date, latitude, and threshold you select are plotted and used to filter the observations or species listed below."
-   ),
-   tags$style(
-     '
+      ),
+      multiInput("phen",label="Filter by phenophase (affects plot but not lines/date ranges):", choices = c("oviscar","developing","dormant","maturing","Adult","perimature"),selected = c("maturing","Adult","perimature")),
+      radioButtons("mode", label="Selection mode:", choices = c("Click and drag", "Date range", "Season index"), selected = "Click and drag"),
+      tags$button(
+        "Explain Season Index",
+        `data-toggle` = "popover",
+        `data-placement` = "bottom",
+        `data-html` = "true",
+        title = "Season Index",
+        `data-content` = "Season Index is the percent of annual daylight hours at a given latitude that have accumulated by a given day. Minimum and maximum Season Index values calculated based on the date, latitude, and threshold you select are plotted and used to filter the observations or species listed below."
+      ),
+      tags$style(
+        '
 .popover {
   max-width: 300px;
 }
@@ -111,25 +111,25 @@ ui <- fluidPage(
   color: black;
 }
 '
-   ),
-   tags$script(
-     '
+      ),
+      tags$script(
+        '
 $(function () {
   $(\'[data-toggle="popover"]\').popover()
 })
 '
-   ),
-   radioButtons("display", label="Output mode:", choices = c("Calculate dates", "View data points", "List species"), selected = "View data points"),
-   radioButtons("lines", label="Plot predicted start-end dates by latitude?", choices = c("Yes","No")),
-   # checkboxInput("correct",label="Correct for latitude?", value=FALSE),
-
-   dateInput("date", label="Observation date (ignore year)", value =Sys.Date()),
-   sliderInput("days", label="How many days before or after the observation do you want to look?", min = 1, max = 183, value = 10),
-   sliderInput("thr", label="How far from the observation do you want to look?", min = 0.005, max = 0.5, value = 0.05),
-   sliderInput("lat", label="What latitude are you interested in?", min = 8, max=65, value = 40),
-   sliderInput("latrange", label="Latitude:", min = 10, max = 65, value = c(10, 65)),
-   sliderInput("longrange", label="Longitude:", min = -140, max = -55, value = c(-140, -55)),
-   leafletOutput("map", height = "500px")
+      ),
+      radioButtons("display", label="Output mode:", choices = c("Calculate dates", "View data points", "List species"), selected = "View data points"),
+      radioButtons("lines", label="Plot predicted start-end dates by latitude?", choices = c("Yes","No")),
+      # checkboxInput("correct",label="Correct for latitude?", value=FALSE),
+      
+      dateInput("date", label="Observation date (ignore year)", value =Sys.Date()),
+      sliderInput("days", label="How many days before or after the observation do you want to look?", min = 1, max = 183, value = 10),
+      sliderInput("thr", label="How far from the observation do you want to look?", min = 0.005, max = 0.5, value = 0.05),
+      sliderInput("lat", label="What latitude are you interested in?", min = 8, max=65, value = 40),
+      sliderInput("latrange", label="Latitude:", min = 10, max = 65, value = c(10, 65)),
+      sliderInput("longrange", label="Longitude:", min = -140, max = -55, value = c(-140, -55)),
+      leafletOutput("map", height = "500px")
     ),
     mainPanel(
       plotOutput(outputId = "plot",
@@ -223,7 +223,7 @@ server <- function(input, output, session) {
     leaflet() %>% addTiles() %>%
       setView(lng = -101, lat = 47, zoom = 3)
   })
-
+  
   observe({
     lat1 <- input$latrange[1]
     lat2 <- input$latrange[2]
@@ -299,7 +299,7 @@ server <- function(input, output, session) {
       filtered_observations <- observations %>%
         filter(grepl(paste(sapply(search_terms, escapeRegex), collapse="|"), binom, ignore.case = TRUE))
     }
-  
+    
     filtered_species_limits <- species_limits %>%
       filter(
         # Check if the species range overlaps with selected bounds
@@ -310,216 +310,216 @@ server <- function(input, output, session) {
     filtered_observations %>%
       # Use semi_join instead of inner_join to keep all observations for matching species
       semi_join(filtered_species_limits, by = "binom")
-})
-
-plotted <- reactive({
-  if (!is.null(match())){
-  plotted <- filter(match(), phenophase %in% input$phen)
-  plotted$dateUse <- as.Date(as.numeric(plotted$doy), origin = "1970-01-01")
-  return(plotted)
-  }
   })
-
-output$no_data <- renderText({
-  if (nrow(plotted())==0)
-  {"There are no observations matching this query."}
-  else {""}
-})
-
-lineCalc <- reactive({
-  function(side, var, thr){
-    tf <- y()[which(between(y()[[var]], (side-thr), (side+thr))),]
-    tf <- unique(tf)
-    tf <- tf %>% group_by(latitude)
-    if (length(tf$doy) > 0) {
-      tf <- tf %>% filter(doy == min(doy))
-    } else {
-      tf <- NULL
-    }  
-    if (is_true(dim(tf)[1]>2)){
-      mod <- lm(tf$latitude~tf$doy)
-      param <- coefficients(mod)
-    } else {
-      param <- c(-9999,0)
+  
+  plotted <- reactive({
+    if (!is.null(match())){
+      plotted <- filter(match(), phenophase %in% input$phen)
+      plotted$dateUse <- as.Date(as.numeric(plotted$doy), origin = "1970-01-01")
+      return(plotted)
     }
-    return(param)
-  }
-})
-
-doyLatCalc <- reactive({
-  function (df){
-    if (dim(df)[1]>0){
-      print(paste("Range is", max(df$seasind)-min(df$seasind)))
-      print(paste("min Seasind is", min(df$seasind)))
-      if ((max(df$seasind)-min(df$seasind)<0.07)&&min(df$seasind)<0.94){
-        print("Narrow range corrected")
-        if (max(df$doy)>171){
-          print("seasind")
-          left <- 0.85*mean(df$seasind)
-          right <- ifelse(1.15 * mean(df$seasind)> 1, 1, 1.15 * mean(df$seasind))
-          var <- "seasind"
-          thr <- 0.02
-        } else {
-          var <- "acchours"
-          if (mean(df$acchours)>0){
-            left <- 0.8*mean(df$acchours)
-            right <- 1.2*mean(df$acchours)
+  })
+  
+  output$no_data <- renderText({
+    if (nrow(plotted())==0)
+    {"There are no observations matching this query."}
+    else {""}
+  })
+  
+  lineCalc <- reactive({
+    function(side, var, thr){
+      tf <- y()[which(between(y()[[var]], (side-thr), (side+thr))),]
+      tf <- unique(tf)
+      tf <- tf %>% group_by(latitude)
+      if (length(tf$doy) > 0) {
+        tf <- tf %>% filter(doy == min(doy))
+      } else {
+        tf <- NULL
+      }  
+      if (is_true(dim(tf)[1]>2)){
+        mod <- lm(tf$latitude~tf$doy)
+        param <- coefficients(mod)
+      } else {
+        param <- c(-9999,0)
+      }
+      return(param)
+    }
+  })
+  
+  doyLatCalc <- reactive({
+    function (df){
+      if (dim(df)[1]>0){
+        print(paste("Range is", max(df$seasind)-min(df$seasind)))
+        print(paste("min Seasind is", min(df$seasind)))
+        if ((max(df$seasind)-min(df$seasind)<0.07)&&min(df$seasind)<0.94){
+          print("Narrow range corrected")
+          if (max(df$doy)>171){
+            print("seasind")
+            left <- 0.85*mean(df$seasind)
+            right <- ifelse(1.15 * mean(df$seasind)> 1, 1, 1.15 * mean(df$seasind))
+            var <- "seasind"
+            thr <- 0.02
           } else {
-            left <- 0
-            right <- 1000
+            var <- "acchours"
+            if (mean(df$acchours)>0){
+              left <- 0.8*mean(df$acchours)
+              right <- 1.2*mean(df$acchours)
+            } else {
+              left <- 0
+              right <- 1000
+            }
+            thr <- ((left+right)/2)*0.12
           }
-          thr <- ((left+right)/2)*0.12
         }
-      }
-      
-      else {
-        doy <- sort(df$doy)
-        diffs <- diff(doy)
-        max_diff <- max(diffs)
         
-        # range <- max(df$doy, na.rm=TRUE) - min(df$doy, na.rm=TRUE)
-        
-        if (max_diff>85|min(df$doy)>171){
-          
-          # Find the index of the element that precedes the largest gap
-          split_index <- which(diffs == max_diff)
-          
-          # Divide the dataset into two subsets based on the split index
-          spring <- df[df$doy <= doy[split_index], ]
-          fall <- df[df$doy > doy[split_index], ]
-          
-          var <- "seasind"
-          thr <- 0.02
-          
-          left <- mean(unique(spring[spring$doy==max(spring$doy),"seasind"]))
-          right <- mean(unique(fall[fall$doy==min(fall$doy),"seasind"]))
-          
-        }
         else {
-          # if (range>35){
-          var <- "acchours"
-          left <-  min(df$acchours)
-          right <-  max(df$acchours)
+          doy <- sort(df$doy)
+          diffs <- diff(doy)
+          max_diff <- max(diffs)
           
-          thr <- ((left+right)/2)*0.12
-          # }
-          # else {
-          #   var <- "seasind"
-          #   left <- min(df$seasind)
-          #   right <- max(df$seasind)
-          #   thr <- 0.02
-          # }
+          # range <- max(df$doy, na.rm=TRUE) - min(df$doy, na.rm=TRUE)
+          
+          if (max_diff>85|min(df$doy)>171){
+            
+            # Find the index of the element that precedes the largest gap
+            split_index <- which(diffs == max_diff)
+            
+            # Divide the dataset into two subsets based on the split index
+            spring <- df[df$doy <= doy[split_index], ]
+            fall <- df[df$doy > doy[split_index], ]
+            
+            var <- "seasind"
+            thr <- 0.02
+            
+            left <- mean(unique(spring[spring$doy==max(spring$doy),"seasind"]))
+            right <- mean(unique(fall[fall$doy==min(fall$doy),"seasind"]))
+            
+          }
+          else {
+            # if (range>35){
+            var <- "acchours"
+            left <-  min(df$acchours)
+            right <-  max(df$acchours)
+            
+            thr <- ((left+right)/2)*0.12
+            # }
+            # else {
+            #   var <- "seasind"
+            #   left <- min(df$seasind)
+            #   right <- max(df$seasind)
+            #   thr <- 0.02
+            # }
+          }
         }
+        
+        low <- lineCalc()(left, var, thr)
+        high <- lineCalc()(right, var, thr)
+        
+      } else {
+        low <- c(-9999,0)
+        high <- c(-9999,0)
       }
       
-      low <- lineCalc()(left, var, thr)
-      high <- lineCalc()(right, var, thr)
+      coef <- rbind(low,high)
       
+      lowslope <- coef[1,2]
+      lowyint <- coef[1,1]
+      highslope <- coef[2,2]
+      highyint <- coef[2,1]
+      
+      if ((lowslope<0&&highslope<0)&&abs(lowslope-highslope)<0.05) {
+        print("Fixing similar slopes")
+        highslope <- 10^10
+        highyint <- -10^10*365 
+      }
+      
+      param <- as.data.frame(t(c(lowslope,lowyint,highslope,highyint)))
+      colnames(param) <- c("lowslope","lowyint","highslope","highyint")
+      return(param)
+    }
+  })
+  
+  P <- reactive({
+    req(nrow(plotted())>0)
+    select <- match()
+    
+    sexrear <- filter(select, viability == "viable" & generation == "sexgen")
+    sexem <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & generation == "sexgen")
+    agrear <- filter(select, viability == "viable" & generation == "agamic")
+    agem <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & generation == "agamic")
+    rear <- filter(select, viability == "viable" & (is.na(generation) | generation == "NA"))
+    em <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & (is.na(generation)|generation == "NA"))
+    
+    sexrearparam <- doyLatCalc()(sexrear)
+    sexemparam <- doyLatCalc()(sexem)
+    agrearparam <- doyLatCalc()(agrear)
+    agemparam <- doyLatCalc()(agem)
+    rearparam <- doyLatCalc()(rear)
+    emparam <- doyLatCalc()(em)
+    
+    plotted <- plotted()
+    
+    # Assign colors to different groups of points
+    plotted$color <- ifelse(is.na(plotted$generation), "Blank",
+                            ifelse(plotted$generation == "agamic", "agamic",
+                                   ifelse(plotted$generation == "sexgen", "sexgen", "Blank")))
+    
+    # Assign alpha to different groups of points
+    plotted$lifestage[plotted$lifestage == ""] <- NA
+    for (i in 1:dim(plotted)[1]){
+      plotted$alpha[i] <- ifelse(isTRUE(!is.na(plotted$lifestage[i]) | plotted$viability[i] == "viable"), 1, 0.2)
+    }
+    
+    if (min(plotted$latitude) < 20) {
+      ymin <- min(plotted$latitude)-2
     } else {
-      low <- c(-9999,0)
-      high <- c(-9999,0)
+      ymin <- 20
     }
     
-    coef <- rbind(low,high)
-    
-    lowslope <- coef[1,2]
-    lowyint <- coef[1,1]
-    highslope <- coef[2,2]
-    highyint <- coef[2,1]
-    
-    if ((lowslope<0&&highslope<0)&&abs(lowslope-highslope)<0.05) {
-      print("Fixing similar slopes")
-      highslope <- 10^10
-      highyint <- -10^10*365 
+    if (max(plotted$latitude) > 55) {
+      ymax <- max(plotted$latitude)+2
+    } else {
+      ymax <- 55
     }
     
-    param <- as.data.frame(t(c(lowslope,lowyint,highslope,highyint)))
-    colnames(param) <- c("lowslope","lowyint","highslope","highyint")
-    return(param)
-  }
-})
-
-P <- reactive({
-  req(nrow(plotted())>0)
-  select <- match()
-  
-  sexrear <- filter(select, viability == "viable" & generation == "sexgen")
-  sexem <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & generation == "sexgen")
-  agrear <- filter(select, viability == "viable" & generation == "agamic")
-  agem <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & generation == "agamic")
-  rear <- filter(select, viability == "viable" & (is.na(generation) | generation == "NA"))
-  em <- filter(select, phenophase %in% c("maturing", "perimature", "Adult") & (is.na(generation)|generation == "NA"))
-  
-  sexrearparam <- doyLatCalc()(sexrear)
-  sexemparam <- doyLatCalc()(sexem)
-  agrearparam <- doyLatCalc()(agrear)
-  agemparam <- doyLatCalc()(agem)
-  rearparam <- doyLatCalc()(rear)
-  emparam <- doyLatCalc()(em)
-
-plotted <- plotted()
-
-# Assign colors to different groups of points
-plotted$color <- ifelse(is.na(plotted$generation), "Blank",
-                        ifelse(plotted$generation == "agamic", "agamic",
-                               ifelse(plotted$generation == "sexgen", "sexgen", "Blank")))
-
-# Assign alpha to different groups of points
-plotted$lifestage[plotted$lifestage == ""] <- NA
-for (i in 1:dim(plotted)[1]){
-  plotted$alpha[i] <- ifelse(isTRUE(!is.na(plotted$lifestage[i]) | plotted$viability[i] == "viable"), 1, 0.2)
-}
-
-if (min(plotted$latitude) < 20) {
-  ymin <- min(plotted$latitude)-2
-} else {
-  ymin <- 20
-}
-
-if (max(plotted$latitude) > 55) {
-  ymax <- max(plotted$latitude)+2
-} else {
-  ymax <- 55
-}
-
-p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=phenophase, size=22)) +
-  geom_point(aes(alpha = alpha))+
-  scale_linetype_manual(name = "Line Type", values = c("Rearing" = "dotted", "Emergence" = "solid", "Prediction Latitude" = "dashed", "Selection bounds" = "twodash"))+
-  ylim(ymin,ymax)+
-  scale_x_date(date_labels = "%b", limits = as.Date(c("1970-01-01", "1971-01-02")))+
-  scale_color_manual(values = c("Blank"="black","sexgen" = "blue", "agamic"="red", "Selection bounds" = "green"))+
-  scale_shape_manual(values= shapes)+
-  scale_size(guide = "none")+
-  scale_alpha(guide = "none")+
-  theme(
-    axis.text = element_text(size = rel(1.5)),
-    axis.title = element_text(size = rel(1.5)),
-    legend.text = element_text(size = rel(1.5)),
-    legend.title = element_text(size = rel(1.5))
-  )+
-  guides(shape = guide_legend(override.aes = list(size = 5)))+
-  guides(color = guide_legend(override.aes = list(size = 7)))+
-  guides(linetype = guide_legend(override.aes = list(lwd = 0.75)))+
-  labs(x = "", y = "Latitude", title = "")
-
-  if (input$lines == "Yes") {
-  p <- p + geom_abline(aes(intercept = sexrearparam$lowyint[1], slope=sexrearparam$lowslope[1], linetype="Rearing"), color="blue")+
-  geom_abline(aes(intercept = sexrearparam$highyint[1], slope=sexrearparam$highslope[1], linetype="Rearing"), color="blue")+
-  geom_abline(aes(intercept = sexemparam$lowyint[1], slope=sexemparam$lowslope[1], linetype="Emergence"), color="blue")+
-  geom_abline(aes(intercept = sexemparam$highyint[1], slope=sexemparam$highslope[1], linetype="Emergence"), color="blue")+
-  geom_abline(aes(intercept = agrearparam$lowyint[1], slope=agrearparam$lowslope[1], linetype="Rearing"), color="red")+
-  geom_abline(aes(intercept = agrearparam$highyint[1], slope=agrearparam$highslope[1], linetype="Rearing"), color="red")+
-  geom_abline(aes(intercept = agemparam$lowyint[1], slope=agemparam$lowslope[1], linetype="Emergence"), color="red")+
-  geom_abline(aes(intercept = agemparam$highyint[1], slope=agemparam$highslope[1], linetype="Emergence"), color="red")+
-  geom_abline(aes(intercept = rearparam$lowyint[1], slope=rearparam$lowslope[1], linetype="Rearing"), color="black")+
-  geom_abline(aes(intercept = rearparam$highyint[1], slope=rearparam$highslope[1], linetype="Rearing"), color="black")+
-  geom_abline(aes(intercept = emparam$lowyint[1], slope=emparam$lowslope[1], linetype="Emergence"), color="black")+
-  geom_abline(aes(intercept = emparam$highyint[1], slope=emparam$highslope[1], linetype="Emergence"), color="black")
-} 
-  if (input$display == "Calculate dates") {
-    p <- p + geom_hline(yintercept = input$lat, linetype = "dashed")
-  } 
- if (input$mode == "Date range") {
+    p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=phenophase, size=22)) +
+      geom_point(aes(alpha = alpha))+
+      scale_linetype_manual(name = "Line Type", values = c("Rearing" = "dotted", "Emergence" = "solid", "Prediction Latitude" = "dashed", "Selection bounds" = "twodash"))+
+      ylim(ymin,ymax)+
+      scale_x_date(date_labels = "%b", limits = as.Date(c("1970-01-01", "1971-01-02")))+
+      scale_color_manual(values = c("Blank"="black","sexgen" = "blue", "agamic"="red", "Selection bounds" = "green"))+
+      scale_shape_manual(values= shapes)+
+      scale_size(guide = "none")+
+      scale_alpha(guide = "none")+
+      theme(
+        axis.text = element_text(size = rel(1.5)),
+        axis.title = element_text(size = rel(1.5)),
+        legend.text = element_text(size = rel(1.5)),
+        legend.title = element_text(size = rel(1.5))
+      )+
+      guides(shape = guide_legend(override.aes = list(size = 5)))+
+      guides(color = guide_legend(override.aes = list(size = 7)))+
+      guides(linetype = guide_legend(override.aes = list(lwd = 0.75)))+
+      labs(x = "", y = "Latitude", title = "")
+    
+    if (input$lines == "Yes") {
+      p <- p + geom_abline(aes(intercept = sexrearparam$lowyint[1], slope=sexrearparam$lowslope[1], linetype="Rearing"), color="blue")+
+        geom_abline(aes(intercept = sexrearparam$highyint[1], slope=sexrearparam$highslope[1], linetype="Rearing"), color="blue")+
+        geom_abline(aes(intercept = sexemparam$lowyint[1], slope=sexemparam$lowslope[1], linetype="Emergence"), color="blue")+
+        geom_abline(aes(intercept = sexemparam$highyint[1], slope=sexemparam$highslope[1], linetype="Emergence"), color="blue")+
+        geom_abline(aes(intercept = agrearparam$lowyint[1], slope=agrearparam$lowslope[1], linetype="Rearing"), color="red")+
+        geom_abline(aes(intercept = agrearparam$highyint[1], slope=agrearparam$highslope[1], linetype="Rearing"), color="red")+
+        geom_abline(aes(intercept = agemparam$lowyint[1], slope=agemparam$lowslope[1], linetype="Emergence"), color="red")+
+        geom_abline(aes(intercept = agemparam$highyint[1], slope=agemparam$highslope[1], linetype="Emergence"), color="red")+
+        geom_abline(aes(intercept = rearparam$lowyint[1], slope=rearparam$lowslope[1], linetype="Rearing"), color="black")+
+        geom_abline(aes(intercept = rearparam$highyint[1], slope=rearparam$highslope[1], linetype="Rearing"), color="black")+
+        geom_abline(aes(intercept = emparam$lowyint[1], slope=emparam$lowslope[1], linetype="Emergence"), color="black")+
+        geom_abline(aes(intercept = emparam$highyint[1], slope=emparam$highslope[1], linetype="Emergence"), color="black")
+    } 
+    if (input$display == "Calculate dates") {
+      p <- p + geom_hline(yintercept = input$lat, linetype = "dashed")
+    } 
+    if (input$mode == "Date range") {
       doy <- as.integer(format(as.Date(input$date),"%j"))
       low <- as.Date(((doy - input$days) %% 365), origin = "1970-01-01")
       high <- as.Date(((doy + input$days) %% 365), origin = "1970-01-01")
@@ -528,10 +528,10 @@ p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=
         xmax = high,
         ymin=ymin,
         ymax=ymax)
-
+      
       p <- p +
-      # geom_rect(data = rect, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill = "gray", alpha = 0.4, inherit.aes = FALSE)
-       geom_vline(xintercept = low, linetype = "twodash", color="green") + geom_vline(xintercept = high, linetype = "twodash", color="green") 
+        # geom_rect(data = rect, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill = "gray", alpha = 0.4, inherit.aes = FALSE)
+        geom_vline(xintercept = low, linetype = "twodash", color="green") + geom_vline(xintercept = high, linetype = "twodash", color="green") 
     }
     if (input$mode == "Season index") {
       doy <- as.integer(format(as.Date(input$date),"%j"))
@@ -542,38 +542,38 @@ p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape=
       high <- lineCalc()(max, "seasind", 0.02)
       p <- p + geom_abline(aes(intercept = low[1], slope=low[2]), linetype = "twodash", color="green")+
         geom_abline(aes(intercept = high[1], slope=high[2]), linetype = "twodash", color="green")
-
+      
       highline  <- function(x) as.integer(format(as.Date(x),"%j"))*high[2]+high[1]
       lowline <- function(x) as.integer(format(as.Date(x),"%j"))*low[2]+low[1]
-
-#       if (high[2]<0&&low[2]>0){
-#       #  triangles
-#         print("triangles in")
-#         p <- p + geom_ribbon(mapping = aes(ymin = after_stat(lowline(y)), ymax = after_stat(highline(y)) ),
-#                              fill = 'lightblue', alpha = 0.5, color="transparent", inherit.aes = FALSE)
-# 
-# 
-#       } else if (high[2]>0&&low[2]<0) {
-#         #triangles backwards
-#         print("triangles out")
-#         
-#         p <- p + geom_polygon(stat = 'function', fun = highline,
-#                              mapping = aes(ymin = after_stat(y), ymax = Inf),
-#                              fill = 'lightblue', alpha = 0.5, color="transparent", inherit.aes = FALSE)+
-#           geom_polygon(stat = 'function', fun = lowline,
-#                       mapping = aes(ymin = after_stat(y), ymax = Inf),
-#                       fill = 'lightblue', alpha = 0.5, color="transparent", inherit.aes = FALSE)
-# }
-
+      
+      #       if (high[2]<0&&low[2]>0){
+      #       #  triangles
+      #         print("triangles in")
+      #         p <- p + geom_ribbon(mapping = aes(ymin = after_stat(lowline(y)), ymax = after_stat(highline(y)) ),
+      #                              fill = 'lightblue', alpha = 0.5, color="transparent", inherit.aes = FALSE)
+      # 
+      # 
+      #       } else if (high[2]>0&&low[2]<0) {
+      #         #triangles backwards
+      #         print("triangles out")
+      #         
+      #         p <- p + geom_polygon(stat = 'function', fun = highline,
+      #                              mapping = aes(ymin = after_stat(y), ymax = Inf),
+      #                              fill = 'lightblue', alpha = 0.5, color="transparent", inherit.aes = FALSE)+
+      #           geom_polygon(stat = 'function', fun = lowline,
+      #                       mapping = aes(ymin = after_stat(y), ymax = Inf),
+      #                       fill = 'lightblue', alpha = 0.5, color="transparent", inherit.aes = FALSE)
+      # }
+      
     }
-  return(p)
-})
-
-
-output$plot <- renderPlot({
-  P()
-})
-
+    return(p)
+  })
+  
+  
+  output$plot <- renderPlot({
+    P()
+  })
+  
   output$sexemRange <- renderText({
     req(any(match()$generation=="sexgen"))
     select <- match()
@@ -616,7 +616,7 @@ output$plot <- renderPlot({
     rearparam <- doyLatCalc()(rear)
     return(dateText(rearparam, input$lat, "galls can likely be successfully collected for rearing"))
   })
-
+  
   data <- reactive({
     doy <- as.integer(format(as.Date(input$date),"%j"))
     if (input$mode == "Click and drag"){
@@ -643,7 +643,7 @@ output$plot <- renderPlot({
         si_data <- subset(plotted(), seasind >= min & seasind <= max)
       }
       return(si_data) 
-  }
+    }
   })
   
   species_list <- reactive({
@@ -684,7 +684,7 @@ output$plot <- renderPlot({
                            render = JS("function(data, type, row, meta) {\n if (type === 'display') {\n return '<a href=' + data + ' target=\\'_blank\\'>' + data + '</a>';\n } else {\n return data;\n }\n }"))
                     )))
   })
-
+  
   output$species_count <- renderText({
     if (nrow(species_list()) == 0) {
       "There are no matching species."
@@ -708,6 +708,6 @@ output$plot <- renderPlot({
         }
       }
     )
-
+  
 }
 shinyApp(ui = ui, server = server)
