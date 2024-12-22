@@ -174,7 +174,7 @@ translations <- list(
       oviscar = "Cicatriz de Oviposición",
       developing = "En Desarrollo",
       dormant = "Dormante",
-      maturing = "Madurando",
+      maturing = "Emergiendo",
       Adult = "Adulto",
       perimature = "Recién Emergido"
     ),
@@ -248,6 +248,7 @@ shapes <- c(8,1,0,17,18,2)
 names(shapes) <- c('oviscar','developing','dormant','maturing','Adult','perimature')
 
 ui <- fluidPage(
+  tags$head(tags$title("Gall Phenology Tool")),
   useShinyjs(),
   selectInput("lang", "Language / Idioma",
               choices = c("English" = "en", "Español" = "es"),
@@ -269,7 +270,7 @@ ui <- fluidPage(
         `data-toggle` = "popover",
         `data-placement` = "bottom",
         `data-html` = "true",
-        title = "Phenophases", 
+        title = "", 
         `data-content` = ""
       ),
       tags$style(
@@ -509,13 +510,13 @@ server <- function(input, output, session) {
                        translations[[input$lang]]$key_button,
                        translations[[input$lang]]$phenophases_title,
                        if(input$lang == "es") {
-                         sprintf('<b>Oviscar:</b> %s<br><br><b>Developing:</b> %s<br><br><b>Dormant:</b> %s<br><br><b>Maturing:</b> %s<br><br><b>Adult:</b> %s<br><br><b>Perimature:</b> %s',
-                                 phenophase_translations$oviscar,
-                                 phenophase_translations$developing,
-                                 phenophase_translations$dormant,
-                                 phenophase_translations$maturing,
-                                 phenophase_translations$Adult,
-                                 phenophase_translations$perimature)
+                         sprintf('<b>%s:</b> %s<br><br><b>%s:</b> %s<br><br><b>%s:</b> %s<br><br><b>%s:</b> %s<br><br><b>%s:</b> %s<br><br><b>%s:</b> %s',
+                                 translations[[input$lang]]$phenophase_names$oviscar, phenophase_translations$oviscar,
+                                 translations[[input$lang]]$phenophase_names$developing, phenophase_translations$developing,
+                                 translations[[input$lang]]$phenophase_names$dormant, phenophase_translations$dormant,
+                                 translations[[input$lang]]$phenophase_names$maturing, phenophase_translations$maturing,
+                                 translations[[input$lang]]$phenophase_names$Adult, phenophase_translations$Adult,
+                                 translations[[input$lang]]$phenophase_names$perimature, phenophase_translations$perimature)
                        } else {
                          '<b>Oviscar:</b> Scars indicate eggs have been laid, but no gall is evident. Refers to generation of egg, not mother.<br><br><b>Developing:</b> Gall is actively growing; inducer needs continued contact with the plant.<br><br><b>Dormant:</b> Gall development is complete; inducer can mature if gall is removed from the plant.<br><br><b>Maturing:</b> Inducer was observed emerging from the gall on this day.<br><br><b>Adult:</b> A free-living inducer was observed apart from its gall.<br><br><b>Perimature:</b> Inducer was inferred to have emerged from the gall shortly before this day.'
                        },
@@ -836,7 +837,7 @@ server <- function(input, output, session) {
     p <- ggplot(data = plotted, aes(x = dateUse, y = latitude, color = color, shape = phenophase)) +
       geom_point(aes(alpha = alpha), size = 3) +
       scale_linetype_manual(
-        name = "Line Type",
+        name = if (input$lang == "es") "Tipo de Línea" else "Line Type",
         values = c("Rearing" = "dotted",
                    "Emergence" = "solid",
                    "Prediction Latitude" = "dashed",
@@ -870,6 +871,7 @@ server <- function(input, output, session) {
         name = if (input$lang == "es") "Generación" else "Generation"
       ) +
       scale_shape_manual(
+        name = if (input$lang == "es") "Fenofase" else "Phenophase",
         values = shapes,
         labels = sapply(names(shapes), function(name) translations[[input$lang]]$phenophase_names[[name]])
       ) +
