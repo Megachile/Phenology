@@ -1355,6 +1355,39 @@ async function performActions(actions) {
 
 async function performSingleAction(action, observationId, isIdentifyPage) {
     switch (action.type) {
+        case 'withdrawId':
+            try {
+                const currentUserId = await getCurrentUserId();
+                console.log('Looking up current user ID:', currentUserId);
+                
+                // Get current identification so we can store it for undo
+                const response = await makeAPIRequest(`/observations/${observationId}`);
+                const observation = response.results[0];
+                const userIdentifications = observation.identifications
+                    .filter(id => id.user.id === currentUserId && id.current)
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                
+                const currentIdentification = userIdentifications[0];
+                if (!currentIdentification) {
+                    return { success: false, error: 'No active identification found to withdraw' };
+                }
+        
+                // Withdraw the identification by setting current to false
+                await makeAPIRequest(`/identifications/${currentIdentification.uuid}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ current: false })
+                });
+                
+                return { 
+                    success: true, 
+                    identificationUUID: currentIdentification.uuid,
+                    taxonId: currentIdentification.taxon.id,
+                    taxonName: currentIdentification.taxon.name
+                };
+            } catch (error) {
+                console.error('Error withdrawing identification:', error);
+                return { success: false, error: error.toString() };
+            }
         case 'observationField':
             return addObservationField(observationId, action.fieldId, action.fieldValue);
         case 'copyObservationField':
@@ -2843,6 +2876,9 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
         observations: {}
     };
 
+    const currentUserId = await getCurrentUserId();
+    console.log('Current user ID:', currentUserId);
+
     for (const observationId of observationIds) {
         if (!preActionStates[observationId]) {
             console.warn(`No pre-action state found for observation ${observationId}`);
@@ -2853,9 +2889,24 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
             undoActions: []
         };
 
+        let currentIdentification; // Declare once, outside of the switch
+
         for (const actionItem of action.actions) {
             let undoAction;
+
             switch (actionItem.type) {
+                case 'withdrawId':
+                    currentIdentification = preActionStates[observationId].identifications
+                        .filter(id => id.user.id === currentUserId && id.current)
+                        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+                    if (currentIdentification) {
+                        undoAction = {
+                            type: 'restoreIdentification',
+                            identificationUUID: currentIdentification.uuid
+                        };
+                    }
+                    break;
                 case 'observationField':
                     undoAction = {
                         type: 'updateObservationField',
@@ -2885,15 +2936,12 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
                     };
                     break;
                 case 'addTaxonId':
-                    const currentUserId = await getCurrentUserId();
-                    console.log('Current user ID:', currentUserId);
-                    
                     const userIdentifications = preActionStates[observationId].identifications
                         .filter(id => id.user.id === currentUserId && id.current)
                         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                     console.log('User active identifications:', userIdentifications);
 
-                    const currentIdentification = userIdentifications[0];
+                    currentIdentification = userIdentifications[0]; // Assign here without redeclaring
                     console.log('Current active identification:', currentIdentification);
 
                     undoAction = {
@@ -3532,6 +3580,9 @@ function updateActionDescription(actionSelect) {
             selectedAction.actions.forEach(action => {
                 let actionDesc = '';
                 switch(action.type) {
+                    case 'withdrawId' :
+                        actionDesc = `Withdraw your current identification`;
+                        break;  
                     case 'observationField':
                         const displayValue = action.displayValue || action.fieldValue;
                         actionDesc = `Set field "${action.fieldName}" to "${displayValue}"`;

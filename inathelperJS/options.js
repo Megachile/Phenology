@@ -123,6 +123,8 @@ function extractActionsFromForm() {
         const action = { type: actionType };
 
         switch (actionType) {
+            case 'withdrawId' :
+                break;
             case 'observationField':
                 action.fieldId = actionDiv.querySelector('.fieldId').value.trim();
                 action.fieldName = actionDiv.querySelector('.fieldName').value.trim();
@@ -255,6 +257,8 @@ function validateCommonConfiguration(config) {
 
     config.actions.forEach(action => {
         switch (action.type) {
+            case 'withdrawId' :
+                break;
             case 'observationField':
                 if (!action.fieldId || !action.fieldName || !action.fieldValue) {
                     throw new Error("Please enter Field Name, ID, and Value for all Observation Field actions.");
@@ -434,6 +438,8 @@ function populateActionInputs(actionDiv, action) {
     actionType.dispatchEvent(new Event('change'));
 
     switch (action.type) {
+        case 'withdrawId' :
+            break;
         case 'observationField':
             actionDiv.querySelector('.fieldName').value = action.fieldName || '';
             actionDiv.querySelector('.fieldId').value = action.fieldId || '';
@@ -594,6 +600,7 @@ function addActionToForm(action = null) {
             <option value="observationField">Observation Field</option>
             <option value="annotation">Annotation</option>
             <option value="addTaxonId">Add Taxon ID</option>
+            <option value="withdrawId">Withdraw ID</option> 
             <option value="addComment">Add Comment</option>            
             <option value="addToProject">Add to Project</option>
             <option value="qualityMetric">Data Quality Indicators</option>
@@ -793,6 +800,8 @@ function addActionToForm(action = null) {
         actionType.dispatchEvent(new Event('change'));
         
         switch (action.type) {
+            case 'withdrawId' :
+                break;
             case 'observationField':
                 fieldNameInput.value = action.fieldName || '';
                 fieldIdInput.value = action.fieldId;
@@ -1026,6 +1035,8 @@ async function formatAction(action) {
             return `Quality Metric: "${metricLabel}" - ${action.vote}`;
         case 'copyObservationField':
             return `Copy value from "${action.sourceFieldName}" to "${action.targetFieldName}"`;
+        case 'withdrawId' :
+            return 'Withdraw active identification';
         case 'addToList':
             const listName = await getListName(action.listId);
             return action.remove ? 

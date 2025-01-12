@@ -844,6 +844,27 @@ async function performSingleUndoAction(observationId, undoAction) {
                 console.error('Identification UUID not found for undo action');
                 return { success: false, error: 'Identification UUID not found' };
             }
+        case 'restoreIdentification':
+            if (undoAction.identificationUUID) {
+                try {
+                    console.log('Restoring withdrawn identification:', undoAction.identificationUUID);
+                    await makeAPIRequest(`/identifications/${undoAction.identificationUUID}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ current: true })
+                    });
+                    return { 
+                        success: true, 
+                        action: 'restoreIdentification', 
+                        message: 'Withdrawn identification restored'
+                    };
+                } catch (error) {
+                    console.error('Error in restoreIdentification action:', error);
+                    return { success: false, error: error.toString() };
+                }
+            } else {
+                console.error('Identification UUID not found for undo action');
+                return { success: false, error: 'Identification UUID not found' };
+            }    
         case 'qualityMetric':
             if (undoAction.vote === 'remove') {
                 console.log('Skipping undo for DQI removal as it\'s not supported');
