@@ -123,6 +123,12 @@ function extractActionsFromForm() {
         const action = { type: actionType };
 
         switch (actionType) {
+            case 'follow':
+                action.follow = actionDiv.querySelector('input[name^="followToggle"]:checked').value; // Extract "follow" or "unfollow"
+                break;
+            case 'reviewed':
+                action.reviewed = actionDiv.querySelector('input[name^="reviewedToggle"]:checked').value; // Extract "mark" or "unmark"
+                break;                  
             case 'withdrawId' :
                 break;
             case 'observationField':
@@ -257,6 +263,16 @@ function validateCommonConfiguration(config) {
 
     config.actions.forEach(action => {
         switch (action.type) {
+            case 'follow':
+                if (!['follow', 'unfollow'].includes(action.follow)) {
+                    throw new Error("Invalid follow action type. Must be 'follow' or 'unfollow'.");
+                }
+                break;
+            case 'reviewed':
+                if (!['mark', 'unmark'].includes(action.reviewed)) {
+                    throw new Error("Invalid reviewed action type. Must be 'mark' or 'unmark'.");
+                }
+                break;                      
             case 'withdrawId' :
                 break;
             case 'observationField':
@@ -438,6 +454,10 @@ function populateActionInputs(actionDiv, action) {
     actionType.dispatchEvent(new Event('change'));
 
     switch (action.type) {
+        case 'follow' :
+            break;
+        case 'reviewed' :
+            break;
         case 'withdrawId' :
             break;
         case 'observationField':
@@ -601,12 +621,30 @@ function addActionToForm(action = null) {
             <option value="annotation">Annotation</option>
             <option value="addTaxonId">Add Taxon ID</option>
             <option value="withdrawId">Withdraw ID</option> 
+            <option value="follow">Follow/Unfollow Observation</option>
+            <option value="reviewed">Mark Observation as Reviewed/Unreviewed</option>                         
             <option value="addComment">Add Comment</option>            
-            <option value="addToProject">Add to Project</option>
+            <option value="addToProject">Add to/Remove from Project</option>
             <option value="qualityMetric">Data Quality Indicators</option>
             <option value="copyObservationField">Copy Observation Field</option>
             <option value="addToList">Add/Remove Observation To/From List</option>
         </select>
+       <div class="follow-options" style="display: none;">
+            <div class="inline-radio">
+                <input type="radio" id="follow" name="followToggle" value="follow" checked>
+                <label for="follow">Follow</label>
+                <input type="radio" id="unfollow" name="followToggle" value="unfollow">
+                <label for="unfollow">Unfollow</label>
+            </div>
+        </div>
+        <div class="reviewed-options" style="display: none;">
+            <div class="inline-radio">
+                <input type="radio" id="markReviewed" name="reviewedToggle" value="mark" checked>
+                <label for="markReviewed">Mark as Reviewed</label>
+                <input type="radio" id="unmarkReviewed" name="reviewedToggle" value="unmark">
+                <label for="unmarkReviewed">Mark as Unreviewed</label>
+            </div>
+        </div>
         <div class="ofInputs">
             <input type="text" class="fieldName" placeholder="Observation Field Name">
             <input type="number" class="fieldId" placeholder="Field ID" readonly>
@@ -663,6 +701,8 @@ function addActionToForm(action = null) {
     document.getElementById('actionsContainer').appendChild(actionDiv);
 
     const actionType = actionDiv.querySelector('.actionType');
+    const followOptions = actionDiv.querySelector('.follow-options');
+    const reviewedOptions = actionDiv.querySelector('.reviewed-options');
     const ofInputs = actionDiv.querySelector('.ofInputs');
     const annotationInputs = actionDiv.querySelector('.annotationInputs');
     const projectInputs = actionDiv.querySelector('.projectInputs');
@@ -695,6 +735,9 @@ function addActionToForm(action = null) {
         qualityMetricInputs.style.display = actionType.value === 'qualityMetric' ? 'block' : 'none';
         copyObservationFieldInputs.style.display = actionType.value === 'copyObservationField' ? 'block' : 'none';
         addToListInputs.style.display = actionType.value === 'addToList' ? 'block' : 'none';
+        followOptions.style.display = actionType.value === 'follow' ? 'block' : 'none'; // Add this line
+        reviewedOptions.style.display = actionType.value === 'reviewed' ? 'block' : 'none'; // Add this line
+    
         if (actionType.value === 'addToList') {
             console.log('Add to List selected, refreshing list select');
             refreshListSelect(listSelect);
@@ -800,6 +843,10 @@ function addActionToForm(action = null) {
         actionType.dispatchEvent(new Event('change'));
         
         switch (action.type) {
+            case 'follow' :
+                break;
+            case 'reviewed' :
+                break;
             case 'withdrawId' :
                 break;
             case 'observationField':
@@ -1010,6 +1057,10 @@ async function displayConfigurations() {
 
 async function formatAction(action) {
     switch (action.type) {
+        case 'follow':
+            return action.follow === 'follow' ? 'Follow the observation' : 'Unfollow the observation';
+        case 'reviewed':
+            return action.reviewed === 'mark' ? 'Mark the observation as reviewed' : 'Mark the observation as unreviewed';        
         case 'observationField':
             let displayValue = action.displayValue || action.fieldValue;
             return `Add value "${displayValue}" to ${action.fieldName || `Field ${action.fieldId}`}`;

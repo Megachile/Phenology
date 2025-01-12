@@ -701,6 +701,46 @@ function markRecordAsUndone(recordId) {
 async function performSingleUndoAction(observationId, undoAction) {
     console.log('Performing undo action:', undoAction, 'for observation:', observationId);
     switch (undoAction.type) {
+            case 'follow':
+                if (undoAction.alreadyInDesiredState) {
+                    console.log('No follow toggle needed for undo; already in desired state.');
+                    return { success: true, message: 'No action needed for follow undo' };
+                }
+            
+                console.log('Restoring original follow state:', undoAction.originalState);
+                try {
+                    const result = await toggleFollowObservation(observationId, undoAction.originalState === 'followed');
+                    return {
+                        success: true,
+                        action: 'follow',
+                        message: `Follow state restored to ${undoAction.originalState}`
+                    };
+                } catch (error) {
+                    console.error('Error restoring follow state:', error);
+                    return { success: false, error: error.toString() };
+                }
+            case 'reviewed':
+                console.log('Undo action for review:', {
+                    undoAction,
+                    originalState: undoAction.originalState,
+                    observationId
+                });
+                const shouldMarkAsReviewed = undoAction.originalState === 'reviewed';
+                console.log('Should mark as reviewed?', {
+                    shouldMarkAsReviewed,
+                    originalState: undoAction.originalState,
+                    comparison: undoAction.originalState === 'reviewed'
+                });
+                try {
+                    const result = await markObservationReviewed(observationId, shouldMarkAsReviewed);                return {
+                    success: true,
+                    action: 'reviewed',
+                    message: `Restored reviewed state to ${undoAction.originalState}`
+                };
+            } catch (error) {
+                console.error('Error restoring reviewed state for undo:', error);
+                return { success: false, error: error.toString() };
+            }    
             case 'removeAnnotation':
                 if (undoAction.uuid) {
                     try {
@@ -1238,5 +1278,77 @@ function compareFieldValues(existingValue, newValue, datatype) {
             return new Date(existingValue).getTime() !== new Date(newValue).getTime();
         default:
             return existingValue !== newValue;
+    }
+}
+
+async function markObservationReviewed(observationId, markAsReviewed) {
+    const jwt = await getJWT(); // Ensure the user is authenticated
+    if (!jwt) {
+        console.error('No JWT found');
+        return { success: false, error: 'No JWT found' };
+    }
+
+    // Step 1: Check the current reviewed state
+    const checkUrl = `https://api.inaturalist.org/v1/observations/${observationId}`;
+    try {
+        const response = await fetch(checkUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${jwt}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to check reviewed state. Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const observation = data.results[0]; // Assuming the observation is the first result
+        const isCurrentlyReviewed = observation.reviewed;
+
+        // Step 2: Determine if action is needed
+        if (markAsReviewed === isCurrentlyReviewed) {
+            console.log(`Observation ${observationId} is already in the desired reviewed state (${markAsReviewed ? 'reviewed' : 'unreviewed'}). No action taken.`);
+            return { success: true, originalState: isCurrentlyReviewed ? 'reviewed' : 'unreviewed' };
+        }
+
+        // Step 3: Perform the action
+        const url = `https://api.inaturalist.org/v1/observations/${observationId}/review`;
+        const method = markAsReviewed ? 'POST' : 'DELETE';
+        const body = markAsReviewed ? JSON.stringify({ reviewed: "true" }) : null;
+
+        const actionResponse = await fetch(url, {
+            method,
+            headers: {
+                'Authorization': `Bearer ${jwt}`,
+                'Content-Type': 'application/json',
+            },
+            body,
+        });
+
+        if (!actionResponse.ok) {
+            throw new Error(`Failed to mark as ${markAsReviewed ? 'reviewed' : 'unreviewed'}. Status: ${actionResponse.status}`);
+        }
+
+        console.log(`Successfully marked observation ${observationId} as ${markAsReviewed ? 'reviewed' : 'unreviewed'}`);
+        return { success: true, originalState: isCurrentlyReviewed ? 'reviewed' : 'unreviewed' };
+    } catch (error) {
+        console.error(`Error marking observation ${observationId} as reviewed/unreviewed:`, error);
+        throw error;
+    }
+}
+
+async function toggleFollowObservation(observationId) {
+    try {
+        const response = await makeAPIRequest(`/subscriptions/Observation/${observationId}/subscribe`, {
+            method: 'POST'
+        });
+
+        console.log(`Successfully toggled follow state for observation ${observationId}`);
+        return { success: true };
+    } catch (error) {
+        console.error(`Error toggling follow state for observation ${observationId}:`, error);
+        return { success: false, error: error.toString() };
     }
 }

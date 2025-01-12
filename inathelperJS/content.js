@@ -1355,6 +1355,19 @@ async function performActions(actions) {
 
 async function performSingleAction(action, observationId, isIdentifyPage) {
     switch (action.type) {
+        case 'follow':
+            const followState = await makeAPIRequest(`/observations/${observationId}/subscriptions`);
+            const isCurrentlyFollowed = followState.results && followState.results.length > 0;
+            const shouldBeFollowed = action.follow === 'follow';
+            
+            if (isCurrentlyFollowed === shouldBeFollowed) {
+                console.log(`Observation ${observationId} already in desired follow state:`, shouldBeFollowed);
+                return { success: true, message: 'Already in desired state' };
+            }
+            
+            return toggleFollowObservation(observationId, shouldBeFollowed);
+        case 'reviewed':
+            return markObservationReviewed(observationId, action.reviewed === 'mark'); // Pass true for "mark as reviewed"
         case 'withdrawId':
             try {
                 const currentUserId = await getCurrentUserId();
@@ -1420,6 +1433,7 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
             return Promise.resolve();
     }
 }
+
 
 async function getCurrentQualityMetricState(observationId) {
     console.log(`Getting current quality metric state for observation ${observationId}`);
@@ -2550,6 +2564,8 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
     try {
         // Get the pre-action states for all observations first
         const preActionStates = await generatePreActionStates(observationIds);
+        console.log('Pre-action states:', preActionStates);
+
         // Generate preliminary undo record with these states
         const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedAction, observationIds, preActionStates);
 
@@ -2809,14 +2825,14 @@ function downloadTextFile(content, filename) {
 
 async function generatePreActionStates(observationIds) {
     const preActionStates = {};
-    const batchSize = 20; // Increased batch size
+    const batchSize = 20;
     const maxRetries = 3;
-    const baseDelay = 200; // 200ms base delay
+    const baseDelay = 200;
 
     async function fetchWithRetry(url, retries = 0) {
         try {
             const response = await fetch(url);
-            if (response.status === 429) { // Too Many Requests
+            if (response.status === 429) {
                 if (retries < maxRetries) {
                     const delay = baseDelay * Math.pow(2, retries);
                     console.log(`Rate limited, retrying after ${delay}ms`);
@@ -2837,24 +2853,31 @@ async function generatePreActionStates(observationIds) {
     }
 
     for (let i = 0; i < observationIds.length; i += batchSize) {
+        const batchStart = Date.now(); // Added this line
         const batch = observationIds.slice(i, i + batchSize);
         
-        const batchStart = Date.now();
         await Promise.all(batch.map(async (id) => {
             try {
-                const data = await fetchWithRetry(`https://api.inaturalist.org/v1/observations/${id}`);
-                preActionStates[id] = data.results[0];
+                const obsData = await fetchWithRetry(`https://api.inaturalist.org/v1/observations/${id}`);
+                preActionStates[id] = obsData.results[0];
+                
+                try {
+                    const subscriptionData = await makeAPIRequest(`/observations/${id}/subscriptions`);
+                    preActionStates[id].isSubscribed = subscriptionData.results && 
+                        subscriptionData.results.length > 0;
+                } catch (error) {
+                    console.error(`Error fetching subscription data for observation ${id}:`, error);
+                    preActionStates[id].isSubscribed = false;
+                }
             } catch (error) {
                 console.error(`Failed to fetch pre-action state for observation ${id}:`, error);
             }
         }));
-        const batchDuration = Date.now() - batchStart;
 
-        // Provide progress update
+        const batchDuration = Date.now() - batchStart;
         const progress = Math.min(100, ((i + batchSize) / observationIds.length) * 100);
         updateProgressBar(document.querySelector('.progress-fill'), progress);
 
-        // Add a delay only if we processed this batch faster than 1 second
         if (batchDuration < 1000 && i + batchSize < observationIds.length) {
             await delay(1000 - batchDuration);
         }
@@ -2895,6 +2918,32 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
             let undoAction;
 
             switch (actionItem.type) {
+                case 'follow':
+                    const isCurrentlyFollowed = preActionStates[observationId].isSubscribed;
+                    const willBeFollowed = actionItem.follow === 'follow';
+                    undoAction = {
+                        type: 'follow',
+                        alreadyInDesiredState: isCurrentlyFollowed === willBeFollowed,
+                        originalState: isCurrentlyFollowed ? 'followed' : 'unfollowed'
+                    };
+                    console.log('Follow state for observation', observationId, ':', {
+                        current: isCurrentlyFollowed,
+                        willBe: willBeFollowed,
+                        originalState: undoAction.originalState
+                    });
+                    break;
+                case 'reviewed':
+                    // Check if current user is in the reviewed_by array
+                    const isCurrentlyReviewed = preActionStates[observationId].reviewed_by &&
+                        preActionStates[observationId].reviewed_by.includes(currentUserId);
+                    undoAction = {
+                        type: 'reviewed',
+                        originalState: isCurrentlyReviewed ? 'reviewed' : 'unreviewed'
+                    };
+                    console.log(`Original reviewed state for observation ${observationId}:`, 
+                        isCurrentlyReviewed, 
+                        'reviewed_by:', preActionStates[observationId].reviewed_by);
+                    break;           
                 case 'withdrawId':
                     currentIdentification = preActionStates[observationId].identifications
                         .filter(id => id.user.id === currentUserId && id.current)
@@ -3580,6 +3629,12 @@ function updateActionDescription(actionSelect) {
             selectedAction.actions.forEach(action => {
                 let actionDesc = '';
                 switch(action.type) {
+                    case 'reviewed':
+                        actionDesc = `Mark the observation as ${action.reviewed === 'mark' ? 'reviewed' : 'unreviewed'}`;
+                        break;                          
+                    case 'follow':
+                        actionDesc = `${action.follow === 'follow' ? 'Follow' : 'Unfollow'} the observation`;
+                        break;                     
                     case 'withdrawId' :
                         actionDesc = `Withdraw your current identification`;
                         break;  
@@ -4657,9 +4712,13 @@ async function createValidationModal(validationResults, selectedAction, onConfir
             summary.innerHTML += `<p>Total observations to process: ${validationResults.total}</p>`;
         }
     } else {
+        const hasObservationFieldActions = selectedAction.actions.some(action => 
+            action.type === 'observationField'
+        );
+    
         summary.innerHTML = `
             <p>All ${validationResults.total} selected observation(s) will be processed.</p>
-            <p>No existing values found.</p>
+            ${hasObservationFieldActions ? '<p>No existing values found.</p>' : ''}
         `;
     }
 
