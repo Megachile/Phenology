@@ -22,6 +22,46 @@ let onMouseDown;
 let onMouseMove;
 let onMouseUp;
 
+// Track ongoing operations for each observation and action type
+const pendingOperations = new Map();
+
+function createOperationKey(observationId, action) {
+    // Create a unique key based on observation ID and action details
+    const actionKey = JSON.stringify(action);
+    return `${observationId}-${actionKey}`;
+}
+
+// Debounce function with operation tracking
+function debouncedOperation(func, wait = 1000) {
+    let timeout;
+    let inProgress = false;
+
+    return async function(...args) {
+        // If operation is in progress, ignore the call
+        if (inProgress) {
+            console.log('Operation already in progress, ignoring duplicate call');
+            return;
+        }
+
+        // Clear any pending timeout
+        clearTimeout(timeout);
+
+        return new Promise((resolve, reject) => {
+            timeout = setTimeout(async () => {
+                try {
+                    inProgress = true;
+                    const result = await func.apply(this, args);
+                    resolve(result);
+                } catch (error) {
+                    reject(error);
+                } finally {
+                    inProgress = false;
+                }
+            }, wait);
+        });
+    };
+}
+
 async function getCurrentUserId() {
     if (currentUserId) return currentUserId;
     
@@ -1991,6 +2031,7 @@ function toggleEditMode() {
 
 function createButton(config) {
     debugButtonCreation(config);
+    
     function hasNonASCII(str) {
         return /[^\u0000-\u007f]/.test(str);
     }
@@ -2026,28 +2067,63 @@ function createButton(config) {
         buttonWrapper.appendChild(tooltip);
     }
     
+    // Create a debounced version of performActions for this button
+    const debouncedPerformActions = debouncedOperation(async () => {
+        const observationId = await ensureCorrectObservationId();
+        if (!observationId) {
+            alert('Please open an observation before using this button.');
+            return;
+        }
+
+        // Check if any actions for this observation are pending
+        for (const action of config.actions) {
+            const operationKey = createOperationKey(observationId, action);
+            if (pendingOperations.get(operationKey)) {
+                console.log(`Operation ${operationKey} already in progress, skipping`);
+                return;
+            }
+        }
+
+        // Mark all actions as pending
+        for (const action of config.actions) {
+            const operationKey = createOperationKey(observationId, action);
+            pendingOperations.set(operationKey, true);
+        }
+
+        try {
+            const results = await performActions(config.actions);
+            const resultsArray = Array.isArray(results) ? results : [results];
+            const allSuccessful = resultsArray.every(r => r.success);
+            animateButtonResult(button, allSuccessful);
+            
+            if (!allSuccessful) {
+                console.error('Some actions failed:', resultsArray.filter(r => !r.success));
+            }
+            
+            if (allSuccessful && refreshEnabled) {
+                refreshObservation();
+            }
+        } catch (error) {
+            console.error('Error performing actions:', error);
+            animateButtonResult(button, false);
+        } finally {
+            // Clear pending status for all actions
+            for (const action of config.actions) {
+                const operationKey = createOperationKey(observationId, action);
+                pendingOperations.delete(operationKey);
+            }
+        }
+    });
+
     button.onclick = function(e) {
         animateButton(this);
-        performActions(config.actions)
-            .then((results) => {
-                const resultsArray = Array.isArray(results) ? results : [results];
-                const allSuccessful = resultsArray.every(r => r.success);
-                animateButtonResult(this, allSuccessful);
-                if (!allSuccessful) {
-                    console.error('Some actions failed:', resultsArray.filter(r => !r.success));
-                }
-                // Add refresh here if successful
-                if (allSuccessful && refreshEnabled) {
-                    refreshObservation();
-                }
-            })
-            .catch(error => {
-                console.error('Error performing actions:', error);
-                animateButtonResult(this, false);
-            });
+        debouncedPerformActions().catch(error => {
+            console.error('Error in debounced operation:', error);
+            animateButtonResult(this, false);
+        });
     };
-    
-    buttonWrapper.style.display = config.buttonHidden ? 'none' : 'inline-block';
+
+    buttonWrapper.appendChild(button);
     buttonContainer.appendChild(buttonWrapper);
     if (config.shortcut) {
         customShortcuts.push({
