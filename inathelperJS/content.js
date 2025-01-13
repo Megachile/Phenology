@@ -22,6 +22,14 @@ let onMouseDown;
 let onMouseMove;
 let onMouseUp;
 
+const pendingOperations = new Map();
+
+function createOperationKey(observationId, action) {
+    // Create a unique key based on observation ID and action details
+    const actionKey = JSON.stringify(action);
+    return `${observationId}-${actionKey}`;
+}
+
 async function getCurrentUserId() {
     if (currentUserId) return currentUserId;
     
@@ -1342,8 +1350,28 @@ async function performActions(actions) {
     const results = [];
     try {
         for (const action of actions) {
-            const result = await performSingleAction(action, observationId);
-            results.push(result);
+            // Create unique key for this observation+action combination
+            const operationKey = createOperationKey(observationId, action);
+            
+            // If this exact operation is already in progress, skip it
+            if (pendingOperations.get(operationKey)) {
+                console.log(`Skipping duplicate operation: ${operationKey}`);
+                continue;
+            }
+
+            // Mark operation as in progress
+            pendingOperations.set(operationKey, true);
+
+            try {
+                const result = await performSingleAction(action, observationId);
+                results.push(result);
+            } catch (error) {
+                console.error('Error in performAction:', error);
+                alert(`Error performing action: ${error.message}`);
+            } finally {
+                // Clear the pending status regardless of success/failure
+                pendingOperations.delete(operationKey);
+            }
         }
     } catch (error) {
         console.error('Error in performActions:', error);
