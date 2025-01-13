@@ -21,11 +21,9 @@ let currentAvailableActions = [];
 let onMouseDown;
 let onMouseMove;
 let onMouseUp;
-let actionStartTimes = new Map();
 
 // Track ongoing operations for each observation and action type
 const pendingOperations = new Map();
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function createOperationKey(observationId, action) {
     // Create a unique key based on observation ID and action details
@@ -34,7 +32,7 @@ function createOperationKey(observationId, action) {
 }
 
 // Debounce function with operation tracking
-function debouncedOperation(func, wait = 200) {
+function debouncedOperation(func, wait = 1000) {
     let timeout;
     let inProgress = false;
 
@@ -396,26 +394,12 @@ let lastLoggedState = {
 
 function extractObservationId() {
     const currentUrl = window.location.href;
-    const lastActionTime = actionStartTimes.get(currentObservationId);
-    
-    // If there's an ongoing action, don't update the observation ID
-    if (lastActionTime && (Date.now() - lastActionTime) < 5000) {
-        console.log('Action in progress, maintaining current observation ID:', currentObservationId);
-        return;
-    }
-
     const currentState = {
         url: currentUrl,
         observationId: null,
         modalFound: false,
         gridFound: false
     };
-    
-        // If there's an ongoing action, don't update the observation ID
-        if (currentState.lastActionTime && (Date.now() - currentState.lastActionTime) < 5000) {
-            console.log('Action in progress, maintaining current observation ID:', currentObservationId);
-            return;
-        }
 
     // Check if we're on an individual observation page
     if (window.location.pathname.match(/^\/observations\/\d+$/)) {
@@ -1369,7 +1353,8 @@ function clearObservationId() {
     console.log('Observation ID cleared');
 }
 
-async function performActions(actions, observationId) {
+async function performActions(actions) {
+    let observationId = await ensureCorrectObservationId();
     if (!observationId) {
         alert('Please open an observation before using this button.');
         return [];
@@ -1379,7 +1364,6 @@ async function performActions(actions, observationId) {
         browserAPI.storage.local.get('safeMode', resolve)
     );
 
-    // Use the passed observation ID rather than getting a new one
     for (const action of actions) {
         if (action.type === 'observationField') {
             try {
@@ -2084,19 +2068,16 @@ function createButton(config) {
     }
     
     // Create a debounced version of performActions for this button
-    const debouncedPerformActions = debouncedOperation(async (actionObservationId) => {
-        // Use the observation ID that was captured at click time
-        if (!actionObservationId) {
+    const debouncedPerformActions = debouncedOperation(async () => {
+        const observationId = await ensureCorrectObservationId();
+        if (!observationId) {
             alert('Please open an observation before using this button.');
             return;
         }
-    
-        // Record when this action started for this observation
-        actionStartTimes.set(actionObservationId, Date.now());
-    
+
         // Check if any actions for this observation are pending
         for (const action of config.actions) {
-            const operationKey = createOperationKey(actionObservationId, action);
+            const operationKey = createOperationKey(observationId, action);
             if (pendingOperations.get(operationKey)) {
                 console.log(`Operation ${operationKey} already in progress, skipping`);
                 return;
@@ -2105,13 +2086,12 @@ function createButton(config) {
 
         // Mark all actions as pending
         for (const action of config.actions) {
-            const operationKey = createOperationKey(actionObservationId, action);
+            const operationKey = createOperationKey(observationId, action);
             pendingOperations.set(operationKey, true);
         }
 
         try {
-            // Pass the captured observation ID to performActions
-            const results = await performActions(config.actions, actionObservationId);
+            const results = await performActions(config.actions);
             const resultsArray = Array.isArray(results) ? results : [results];
             const allSuccessful = resultsArray.every(r => r.success);
             animateButtonResult(button, allSuccessful);
@@ -2120,8 +2100,7 @@ function createButton(config) {
                 console.error('Some actions failed:', resultsArray.filter(r => !r.success));
             }
             
-            // Only refresh if we're still on the same observation and refresh is enabled
-            if (allSuccessful && refreshEnabled && currentObservationId === actionObservationId) {
+            if (allSuccessful && refreshEnabled) {
                 refreshObservation();
             }
         } catch (error) {
@@ -2130,25 +2109,15 @@ function createButton(config) {
         } finally {
             // Clear pending status for all actions
             for (const action of config.actions) {
-                const operationKey = createOperationKey(actionObservationId, action);
+                const operationKey = createOperationKey(observationId, action);
                 pendingOperations.delete(operationKey);
             }
-            
-            // Clean up the start time
-            actionStartTimes.delete(actionObservationId);
         }
     });
 
     button.onclick = function(e) {
-        // Capture the observation ID immediately when button is clicked
-        const clickedObservationId = currentObservationId;
-        if (!clickedObservationId) {
-            alert('Please open an observation before using this button.');
-            return;
-        }
-        
         animateButton(this);
-        debouncedPerformActions(clickedObservationId).catch(error => {
+        debouncedPerformActions().catch(error => {
             console.error('Error in debounced operation:', error);
             animateButtonResult(this, false);
         });
@@ -2167,7 +2136,6 @@ function createButton(config) {
         });
     }
     debugLog("Button created and added to DOM:", buttonWrapper.outerHTML);
-    return buttonWrapper;
 }
 
 function formatShortcut(shortcut) {
@@ -3903,6 +3871,10 @@ browserAPI.storage.onChanged.addListener(function(changes, namespace) {
 
 // Initial load
 loadConfigurationSets();
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 function createErrorModal(errorMessages) {
     const modal = document.createElement('div');
