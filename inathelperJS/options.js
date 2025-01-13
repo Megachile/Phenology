@@ -1054,7 +1054,6 @@ async function displayConfigurations() {
     }
 }
 
-
 async function formatAction(action) {
     switch (action.type) {
         case 'follow':
