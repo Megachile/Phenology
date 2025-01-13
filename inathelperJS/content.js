@@ -22,31 +22,89 @@ let onMouseDown;
 let onMouseMove;
 let onMouseUp;
 let actionStartTimes = new Map();
+const actionQueue = new Map();
 
 // Track ongoing operations for each observation and action type
 const pendingOperations = new Map();
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function createOperationKey(observationId, action) {
-    // Create a unique key based on observation ID and action details
-    const actionKey = JSON.stringify(action);
+    const actionKey = JSON.stringify(action); // Serialize action details
     return `${observationId}-${actionKey}`;
 }
 
+async function processQueue(key) {
+    const actionData = actionQueue.get(key);
+    if (!actionData) return;
+
+    const { observationId, action, resolve, reject } = actionData;
+
+    try {
+        console.log(`Processing action for ${key}`);
+        const result = await performSingleAction(action, observationId); // Call your existing action logic
+        resolve(result); // Resolve the promise with the result
+    } catch (error) {
+        console.error(`Error processing action for ${key}:`, error);
+        reject(error); // Reject the promise on error
+    } finally {
+        actionQueue.delete(key); // Clean up the queue
+        console.log(`Finished processing action for ${key}`);
+    }
+}
+
+// Add an action to the queue
+function queueAction(observationId, action) {
+    const key = createOperationKey(observationId, action);
+
+    // If the action is already queued or running, skip it
+    if (actionQueue.has(key)) {
+        console.log(`Action for ${key} is already in progress, skipping.`);
+        return Promise.resolve(); // Optional: Resolve immediately if action is redundant
+    }
+
+    // Add the action to the queue
+    const actionPromise = new Promise((resolve, reject) => {
+        actionQueue.set(key, { observationId, action, resolve, reject });
+    });
+
+    processQueue(key); // Start processing the action
+
+    return actionPromise;
+}
+
+async function handleActionButtonClick(action) {
+    const observationId = extractObservationId(); // Extract the current observation ID dynamically
+    if (!observationId) {
+        console.error("No observation selected. Action cannot proceed.");
+        return;
+    }
+
+    // Queue the action instead of executing directly
+    queueAction(observationId, action)
+        .then((result) => {
+            console.log("Action completed successfully:", result);
+        })
+        .catch((error) => {
+            console.error("Action failed:", error);
+        });
+}
+
 // Debounce function with operation tracking
-function debouncedOperation(func, wait = 200) {
+function debouncedOperation(func, wait = 200) {  // Reduced wait time
     let timeout;
     let inProgress = false;
+    let lastOperation = 0;
 
     return async function(...args) {
-        // If operation is in progress, ignore the call
-        if (inProgress) {
-            console.log('Operation already in progress, ignoring duplicate call');
+        const now = Date.now();
+        // Only block if operation is in progress AND it's been less than wait time since last operation
+        if (inProgress && (now - lastOperation < wait)) {
+            console.log('Operation too recent, ignoring call');
             return;
         }
 
-        // Clear any pending timeout
         clearTimeout(timeout);
+        lastOperation = now;
 
         return new Promise((resolve, reject) => {
             timeout = setTimeout(async () => {
@@ -1409,7 +1467,9 @@ async function performActions(actions, observationId) {
     return results;
 }
 
-async function performSingleAction(action, observationId, isIdentifyPage) {
+async function performSingleAction(action, observationId) {
+    console.log(`Performing action ${JSON.stringify(action)} for observation ${observationId}`);
+ 
     switch (action.type) {
         case 'follow':
             const followState = await makeAPIRequest(`/observations/${observationId}/subscriptions`);
@@ -1488,6 +1548,8 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
             console.warn(`Unknown action type: ${action.type}`);
             return Promise.resolve();
     }
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API delay
+    return { success: true, action, observationId }; // Simulate success
 }
 
 
