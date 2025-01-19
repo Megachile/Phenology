@@ -759,192 +759,204 @@ async function performSingleUndoAction(observationId, undoAction) {
                     console.error('Annotation UUID not found for undo action');
                     return { success: false, error: 'Annotation UUID not found' };
                 }
-                case 'updateObservationField':
-                    // First, get the current state of the observation
-                    const observationResponse = await makeAPIRequest(`/observations/${observationId}`);
-                    console.log('Current observation state:', observationResponse.results[0]);
-                    
-                    const ofv = observationResponse.results[0].ofvs.find(ofv => ofv.field_id === parseInt(undoAction.fieldId));
-                    
-                    if (ofv) {
-                        console.log('Found existing OFV:', ofv);
-                        
-                        // Delete the current value
-                        const deleteResult = await makeAPIRequest(`/observation_field_values/${ofv.id}`, {
-                            method: 'DELETE'
-                        });
-                        console.log('Delete result:', deleteResult);
-                        
-                        // Verify the deletion
-                        const checkResponse = await makeAPIRequest(`/observations/${observationId}`);
-                        const checkOfv = checkResponse.results[0].ofvs.find(ofv => ofv.field_id === parseInt(undoAction.fieldId));
-                        
-                        if (!checkOfv) {
-                            // Deletion successful, now restore original value if it exists
-                            if (undoAction.originalValue !== undefined && undoAction.originalValue !== null) {
-                                console.log('Restoring original value:', undoAction.originalValue);
-                                const restoreResult = await makeAPIRequest('/observation_field_values', {
-                                    method: 'POST',
-                                    body: JSON.stringify({
-                                        observation_field_value: {
-                                            observation_id: observationId,
-                                            observation_field_id: undoAction.fieldId,
-                                            value: undoAction.originalValue
-                                        }
-                                    })
-                                });
-                                return { success: true, action: 'restored', fieldId: undoAction.fieldId, value: undoAction.originalValue };
-                            }
-                            return { success: true, action: 'deleted', fieldId: undoAction.fieldId };
-                        } else {
-                            console.error('Field value not deleted successfully');
-                            return { success: false, error: 'Failed to delete field value' };
-                        }
-                    } else if (undoAction.originalValue) {
-                        // No current value but we have an original value to restore
-                        console.log('No current value, restoring original:', undoAction.originalValue);
-                        const restoreResult = await makeAPIRequest('/observation_field_values', {
-                            method: 'POST',
-                            body: JSON.stringify({
-                                observation_field_value: {
-                                    observation_id: observationId,
-                                    observation_field_id: undoAction.fieldId,
-                                    value: undoAction.originalValue
-                                }
-                            })
-                        });
-                        return { success: true, action: 'restored', fieldId: undoAction.fieldId, value: undoAction.originalValue };
-                    }
-                    
-                    console.warn(`No action needed for field ID ${undoAction.fieldId} on observation ${observationId}`);
-                    return { success: true, message: 'No action needed' };
-        case 'removeFromProject':
-            try {
-                const response = await makeAPIRequest(`/projects/${undoAction.projectId}/remove?observation_id=${observationId}`, {
-                    method: 'DELETE'
-                });
+            case 'updateObservationField':
+                // First, get the current state of the observation
+                const observationResponse = await makeAPIRequest(`/observations/${observationId}`);
+                console.log('Current observation state:', observationResponse.results[0]);
                 
-                // Check if the response contains the expected data
-                if (response && response.id && response.project_id && response.observation_id) {
-                    console.log(`Successfully removed observation ${observationId} from project ${undoAction.projectId}`);
-                    return { success: true, data: response };
-                } else {
-                    console.error('Unexpected response format:', response);
-                    return { success: false, error: 'Unexpected response format' };
-                }
-            } catch (error) {
-                console.error('Error removing observation from project:', error);
-                return { success: false, error: error.toString() };
-            }
-        case 'removeComment':
-            console.log('Attempting to remove comment:', undoAction);
-            if (undoAction.commentUUID) {
-                try {
-                    const response = await makeAPIRequest(`/comments/${undoAction.commentUUID}`, { method: 'DELETE' });
-                    console.log('Comment deletion response:', response);
-                    return { success: true, action: 'removeComment', message: 'Comment removed successfully' };
-                } catch (error) {
-                    console.error('Error removing comment:', error);
-                    if (error.message && error.message.includes('HTTP error! status: 404')) {
-                        console.log('Comment not found (404). It may have been already deleted.');
-                        return { success: true, action: 'removeComment', message: 'Comment already removed or not found' };
+                const ofv = observationResponse.results[0].ofvs.find(ofv => ofv.field_id === parseInt(undoAction.fieldId));
+                
+                if (ofv) {
+                    console.log('Found existing OFV:', ofv);
+                    
+                    // Delete the current value
+                    const deleteResult = await makeAPIRequest(`/observation_field_values/${ofv.id}`, {
+                        method: 'DELETE'
+                    });
+                    console.log('Delete result:', deleteResult);
+                    
+                    // Verify the deletion
+                    const checkResponse = await makeAPIRequest(`/observations/${observationId}`);
+                    const checkOfv = checkResponse.results[0].ofvs.find(ofv => ofv.field_id === parseInt(undoAction.fieldId));
+                    
+                    if (!checkOfv) {
+                        // Deletion successful, now restore original value if it exists
+                        if (undoAction.originalValue !== undefined && undoAction.originalValue !== null) {
+                            console.log('Restoring original value:', undoAction.originalValue);
+                            const restoreResult = await makeAPIRequest('/observation_field_values', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    observation_field_value: {
+                                        observation_id: observationId,
+                                        observation_field_id: undoAction.fieldId,
+                                        value: undoAction.originalValue
+                                    }
+                                })
+                            });
+                            return { success: true, action: 'restored', fieldId: undoAction.fieldId, value: undoAction.originalValue };
+                        }
+                        return { success: true, action: 'deleted', fieldId: undoAction.fieldId };
+                    } else {
+                        console.error('Field value not deleted successfully');
+                        return { success: false, error: 'Failed to delete field value' };
                     }
-                    return { success: false, error: error.toString() };
+                } else if (undoAction.originalValue) {
+                    // No current value but we have an original value to restore
+                    console.log('No current value, restoring original:', undoAction.originalValue);
+                    const restoreResult = await makeAPIRequest('/observation_field_values', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            observation_field_value: {
+                                observation_id: observationId,
+                                observation_field_id: undoAction.fieldId,
+                                value: undoAction.originalValue
+                            }
+                        })
+                    });
+                    return { success: true, action: 'restored', fieldId: undoAction.fieldId, value: undoAction.originalValue };
                 }
-            } else {
-                console.error('Comment UUID not found for undo action:', undoAction);
-                return { success: false, error: 'Comment UUID not found' };
-            }
-        case 'removeIdentification':
-            if (undoAction.identificationUUID) {
+                
+                console.warn(`No action needed for field ID ${undoAction.fieldId} on observation ${observationId}`);
+                return { success: true, message: 'No action needed' };
+            case 'removeFromProject':
+                if (!undoAction.actionApplied) {
+                    console.log(`Skipping undo for observation ${observationId} - original action wasn't applied. Reason: ${undoAction.reason}`);
+                    return {
+                        success: true,
+                        message: 'No undo needed - original action was not applied',
+                        reason: undoAction.reason
+                    };
+                }
+            
                 try {
-                    console.log('Removing identification:', undoAction.identificationUUID);
-                    await makeAPIRequest(`/identifications/${undoAction.identificationUUID}`, { method: 'DELETE' });
-                    console.log('Identification successfully deleted');
-        
-                    if (undoAction.previousIdentificationUUID) {
-                        console.log('Restoring previous identification:', undoAction.previousIdentificationUUID);
-                        await makeAPIRequest(`/identifications/${undoAction.previousIdentificationUUID}`, {
+                    // Pass the remove parameter so that "remove: true" calls the removal path.
+                    const result = await performProjectAction(
+                        observationId, 
+                        undoAction.projectId, 
+                        undoAction.remove
+                    );
+                    return result;
+                } catch (error) {
+                    console.error('Error in project undo action:', error);
+                    return {
+                        success: false,
+                        error: error.toString(),
+                        projectId: undoAction.projectId,
+                        projectName: undoAction.projectName
+                    };
+                }
+                        
+            case 'removeComment':
+                console.log('Attempting to remove comment:', undoAction);
+                if (undoAction.commentUUID) {
+                    try {
+                        const response = await makeAPIRequest(`/comments/${undoAction.commentUUID}`, { method: 'DELETE' });
+                        console.log('Comment deletion response:', response);
+                        return { success: true, action: 'removeComment', message: 'Comment removed successfully' };
+                    } catch (error) {
+                        console.error('Error removing comment:', error);
+                        if (error.message && error.message.includes('HTTP error! status: 404')) {
+                            console.log('Comment not found (404). It may have been already deleted.');
+                            return { success: true, action: 'removeComment', message: 'Comment already removed or not found' };
+                        }
+                        return { success: false, error: error.toString() };
+                    }
+                } else {
+                    console.error('Comment UUID not found for undo action:', undoAction);
+                    return { success: false, error: 'Comment UUID not found' };
+                }
+            case 'removeIdentification':
+                if (undoAction.identificationUUID) {
+                    try {
+                        console.log('Removing identification:', undoAction.identificationUUID);
+                        await makeAPIRequest(`/identifications/${undoAction.identificationUUID}`, { method: 'DELETE' });
+                        console.log('Identification successfully deleted');
+            
+                        if (undoAction.previousIdentificationUUID) {
+                            console.log('Restoring previous identification:', undoAction.previousIdentificationUUID);
+                            await makeAPIRequest(`/identifications/${undoAction.previousIdentificationUUID}`, {
+                                method: 'PUT',
+                                body: JSON.stringify({ current: true })
+                            });
+                            console.log('Previous identification restored');
+                        }
+            
+                        return { 
+                            success: true, 
+                            action: 'removeIdentification', 
+                            message: 'Identification removed and previous restored if available'
+                        };
+                    } catch (error) {
+                        console.error('Error in removeIdentification action:', error);
+                        return { success: false, error: error.toString() };
+                    }
+                } else {
+                    console.error('Identification UUID not found for undo action');
+                    return { success: false, error: 'Identification UUID not found' };
+                }
+            case 'restoreIdentification':
+                if (undoAction.identificationUUID) {
+                    try {
+                        console.log('Restoring withdrawn identification:', undoAction.identificationUUID);
+                        await makeAPIRequest(`/identifications/${undoAction.identificationUUID}`, {
                             method: 'PUT',
                             body: JSON.stringify({ current: true })
                         });
-                        console.log('Previous identification restored');
+                        return { 
+                            success: true, 
+                            action: 'restoreIdentification', 
+                            message: 'Withdrawn identification restored'
+                        };
+                    } catch (error) {
+                        console.error('Error in restoreIdentification action:', error);
+                        return { success: false, error: error.toString() };
                     }
-        
-                    return { 
-                        success: true, 
-                        action: 'removeIdentification', 
-                        message: 'Identification removed and previous restored if available'
-                    };
-                } catch (error) {
-                    console.error('Error in removeIdentification action:', error);
-                    return { success: false, error: error.toString() };
+                } else {
+                    console.error('Identification UUID not found for undo action');
+                    return { success: false, error: 'Identification UUID not found' };
+                }    
+            case 'qualityMetric':
+                if (undoAction.vote === 'remove') {
+                    console.log('Skipping undo for DQI removal as it\'s not supported');
+                    return { success: true, action: 'qualityMetric', message: 'Undo of DQI removal not supported' };
                 }
-            } else {
-                console.error('Identification UUID not found for undo action');
-                return { success: false, error: 'Identification UUID not found' };
-            }
-        case 'restoreIdentification':
-            if (undoAction.identificationUUID) {
-                try {
-                    console.log('Restoring withdrawn identification:', undoAction.identificationUUID);
-                    await makeAPIRequest(`/identifications/${undoAction.identificationUUID}`, {
-                        method: 'PUT',
-                        body: JSON.stringify({ current: true })
-                    });
-                    return { 
-                        success: true, 
-                        action: 'restoreIdentification', 
-                        message: 'Withdrawn identification restored'
-                    };
-                } catch (error) {
-                    console.error('Error in restoreIdentification action:', error);
-                    return { success: false, error: error.toString() };
-                }
-            } else {
-                console.error('Identification UUID not found for undo action');
-                return { success: false, error: 'Identification UUID not found' };
-            }    
-        case 'qualityMetric':
-            if (undoAction.vote === 'remove') {
-                console.log('Skipping undo for DQI removal as it\'s not supported');
-                return { success: true, action: 'qualityMetric', message: 'Undo of DQI removal not supported' };
-            }
-            
-            const isNeedsId = undoAction.metric === 'needs_id';
-            const endpoint = isNeedsId
-                ? `/votes/unvote/observation/${observationId}?scope=needs_id`
-                : `/observations/${observationId}/quality/${undoAction.metric}`;
-            
-            try {
-                const response = await makeAPIRequest(endpoint, { method: 'DELETE' });
-                console.log(`Quality metric vote removal response for ${undoAction.metric}:`, response);
                 
-                return {
-                    success: true,
-                    action: 'qualityMetric',
-                    message: `Removed ${undoAction.metric} vote`
-                };
-            } catch (error) {
-                console.error(`Error in quality metric undo action for ${undoAction.metric}:`, error);
-                return { success: false, error: error.toString() };
+                const isNeedsId = undoAction.metric === 'needs_id';
+                const endpoint = isNeedsId
+                    ? `/votes/unvote/observation/${observationId}?scope=needs_id`
+                    : `/observations/${observationId}/quality/${undoAction.metric}`;
+                
+                try {
+                    const response = await makeAPIRequest(endpoint, { method: 'DELETE' });
+                    console.log(`Quality metric vote removal response for ${undoAction.metric}:`, response);
+                    
+                    return {
+                        success: true,
+                        action: 'qualityMetric',
+                        message: `Removed ${undoAction.metric} vote`
+                    };
+                } catch (error) {
+                    console.error(`Error in quality metric undo action for ${undoAction.metric}:`, error);
+                    return { success: false, error: error.toString() };
+                }
+            case 'addToList':
+                try {
+                    const result = await addOrRemoveObservationFromList(observationId, undoAction.listId, undoAction.remove);
+                    return {
+                        success: true,
+                        action: undoAction.remove ? 'removedFromList' : 'addedToList',
+                        listId: undoAction.listId,
+                        message: result.message
+                    };
+                } catch (error) {
+                    console.error('Error in undo addToList action:', error);
+                    return { success: false, error: error.toString() };
             }
-        case 'addToList':
-            try {
-                const result = await addOrRemoveObservationFromList(observationId, undoAction.listId, undoAction.remove);
-                return {
-                    success: true,
-                    action: undoAction.remove ? 'removedFromList' : 'addedToList',
-                    listId: undoAction.listId,
-                    message: result.message
-                };
-            } catch (error) {
-                console.error('Error in undo addToList action:', error);
-                return { success: false, error: error.toString() };
-        }
-        default:
-            console.warn(`Unknown undo action type: ${undoAction.type}`);
-            return Promise.resolve({ success: false, error: 'Unknown undo action type' });
+            default:
+                console.warn(`Unknown undo action type: ${undoAction.type}`);
+                return Promise.resolve({ success: false, error: 'Unknown undo action type' }
+
+                );
     }
 }
 
@@ -993,41 +1005,36 @@ async function updateProgressBar(progressFill, progress) {
     });
 }
 
-
 async function makeAPIRequest(endpoint, options = {}) {
     const jwt = await getJWT();
     if (!jwt) {
         console.error('No JWT available');
         throw new Error('No JWT available');
     }
-
     const headers = {
         ...options.headers,
         'Authorization': `Bearer ${jwt}`
     };
-
     let fullUrl = `${API_URL}${endpoint}`;
     if (options.method === 'DELETE') {
         fullUrl += '?delete=true';
     }
-
     console.log(`Making ${options.method || 'GET'} request to: ${fullUrl}`);
-
     try {
         const response = await fetch(fullUrl, {
             ...options,
             headers
         });
-
         console.log(`Response status: ${response.status}`);
         console.log('Response headers:', response.headers);
-
         const responseText = await response.text();
-
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
+            // This is where we modify the error object
+            const error = new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
+            error.status = response.status;
+            error.responseBody = responseText;
+            throw error;
         }
-
         if (responseText) {
             try {
                 const responseData = JSON.parse(responseText);
@@ -1036,7 +1043,6 @@ async function makeAPIRequest(endpoint, options = {}) {
                 return responseText;
             }
         }
-
         return null;
     } catch (error) {
         console.error('API request failed:', error);
@@ -1351,4 +1357,278 @@ async function toggleFollowObservation(observationId) {
         console.error(`Error toggling follow state for observation ${observationId}:`, error);
         return { success: false, error: error.toString() };
     }
+}
+
+async function performProjectAction(observationId, projectId, remove = false) {
+    try {
+        // Fetch observation details
+        const observation = await makeAPIRequest(`/observations/${observationId}`);
+        
+        if (!observation || !observation.results || !observation.results[0]) {
+            console.error('Failed to fetch observation details:', observation);
+            return {
+                success: false,
+                message: 'Failed to fetch observation details',
+                explicitlyRemoved: false,
+                reason: 'fetch_error'
+            };
+        }
+
+        const isExplicitlyInProject = observation.results[0].project_observations.some(
+            po => po.project.id === parseInt(projectId)
+        );
+
+        // For adding observations
+        if (!remove) {
+            // If already in project, consider it a success but flag it as no action needed
+            if (isExplicitlyInProject) {
+                return {
+                    success: true,
+                    message: 'Already in project',
+                    reason: 'already_member',
+                    noActionNeeded: true
+                };
+            }
+
+            try {
+                const response = await makeAPIRequest('/project_observations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        project_observation: {
+                            observation_id: observationId,
+                            project_id: projectId
+                        }
+                    })
+                });
+
+                if (response.uuid) {
+                    return {
+                        success: true,
+                        message: 'Added to project successfully',
+                        additionUUID: response.uuid
+                    };
+                } else {
+                    throw new Error(`Failed to add to project: ${response.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error adding to project:', error);
+                return {
+                    success: false,
+                    message: error.toString(),
+                    reason: 'addition_failed'
+                };
+            }
+        }
+        
+        // For removing observations
+        else {
+            // If not explicitly in project, check for dynamic inclusion
+            if (!isExplicitlyInProject) {
+                const dynamicInclusionCheck = await makeAPIRequest(`/observations?project_id=${projectId}&id=${observationId}`);
+                const isDynamicallyIncluded = dynamicInclusionCheck.total_results > 0;
+
+                if (isDynamicallyIncluded) {
+                    return {
+                        success: false,
+                        message: 'Cannot remove - observation is automatically included',
+                        reason: 'dynamic_inclusion',
+                        requiresWarning: true
+                    };
+                } else {
+                    return {
+                        success: true,
+                        message: 'Not in project, no action needed',
+                        reason: 'not_in_project',
+                        noActionNeeded: true
+                    };
+                }
+            }
+            
+            try {
+                await makeAPIRequest(`/projects/${projectId}/remove?observation_id=${observationId}`, {
+                    method: 'DELETE'
+                });
+                return { 
+                    success: true, 
+                    message: 'Observation removed successfully', 
+                    explicitlyRemoved: true 
+                };
+            } catch (error) {
+                if (error.message && error.message.includes("you don't have permission to remove")) {
+                    return {
+                        success: false,
+                        message: 'Permission denied',
+                        reason: 'permission_denied',
+                        requiresWarning: true
+                    };
+                }
+                throw error;
+            }
+        }
+    } catch (error) {
+        console.error('Unexpected error:', error);
+        return { 
+            success: false, 
+            message: error.toString(), 
+            reason: 'unexpected_error' 
+        };
+    }
+}
+
+
+function handleProjectActionResults(results) {
+    const summary = {
+        success: [],
+        skipped: [],
+        failed: [],
+        warnings: []
+    };
+
+    results.forEach(result => {
+        const observationId = result.observationId;
+
+        if (result.success) {
+            if (result.noActionNeeded) {
+                summary.skipped.push({
+                    observationId,
+                    reason: result.reason,
+                    message: result.message
+                });
+            } else {
+                summary.success.push({
+                    observationId,
+                    message: result.message,
+                    additionUUID: result.additionUUID,
+                    explicitlyRemoved: result.explicitlyRemoved
+                });
+            }
+        } else {
+            if (result.requiresWarning) {
+                summary.warnings.push({
+                    observationId,
+                    message: result.message,
+                    reason: result.reason
+                });
+            }
+            summary.failed.push({
+                observationId,
+                message: result.message,
+                reason: result.reason
+            });
+        }
+    });
+
+    return summary;
+}
+
+function createProjectActionResultsModal(summary, projectName, wasRemoval = false) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        max-width: 80%;
+        max-height: 80%;
+        overflow-y: auto;
+    `;
+
+    let contentHTML = `<h2>Project Action Results</h2>`;
+
+    // Success section
+    if (summary.success.length > 0) {
+        contentHTML += `
+            <div style="margin: 15px 0;">
+                <h3>Successful Actions (${summary.success.length})</h3>
+                <p>${wasRemoval ? 'Removed from' : 'Added to'} project "${projectName}"</p>
+                <div class="observation-list">
+                    ${generateObservationList(summary.success.map(s => s.observationId))}
+                </div>
+            </div>
+        `;
+    }
+
+    // Skipped section
+    if (summary.skipped.length > 0) {
+        contentHTML += `
+            <div style="margin: 15px 0; padding: 10px; background: #fff3e0; border-radius: 4px;">
+                <h3>Skipped Actions (${summary.skipped.length})</h3>
+                <p>Observations already in desired state (if this is surprising, confirm you selected the right project)</p>
+                <div class="observation-list">
+                    ${generateObservationList(summary.skipped.map(s => s.observationId))}
+                </div>
+            </div>
+        `;
+    }
+
+    // Warnings section
+    if (summary.warnings.length > 0) {
+        contentHTML += `
+            <div style="margin: 15px 0; padding: 10px; background: #ffebee; border-radius: 4px;">
+                <h3>Warnings (${summary.warnings.length})</h3>
+                <ul>
+                    ${summary.warnings.map(warning => `
+                        <li>
+                            <strong>Observation ${warning.observationId}:</strong> ${warning.message}
+                            ${
+                                warning.reason === 'dynamic_inclusion' 
+                                    ? ' (Automatically included by project rules)'
+                                    : warning.reason === 'permission_denied'
+                                        ? ' (Insufficient permissions)'
+                                        : ''
+                            }
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    // Failed section (excluding ones that are also in warnings)
+    const nonWarningFailures = summary.failed.filter(f => 
+        !summary.warnings.some(w => w.observationId === f.observationId)
+    );
+    if (nonWarningFailures.length > 0) {
+        contentHTML += `
+            <div style="margin: 15px 0; padding: 10px; background: #ffebee; border-radius: 4px;">
+                <h3>Failed Actions (${nonWarningFailures.length})</h3>
+                <ul>
+                    ${nonWarningFailures.map(failure => `
+                        <li>
+                            <strong>Observation ${failure.observationId}:</strong> ${failure.message}
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    contentHTML += `<button onclick="this.closest('.modal').remove()" class="modal-button">Close</button>`;
+    
+    content.innerHTML = contentHTML;
+    modal.appendChild(content);
+    modal.className = 'modal';
+
+    return modal;
+}
+
+function generateObservationList(observationIds) {
+    const url = generateObservationURL(observationIds);
+    return `<a href="${url}" target="_blank">View ${observationIds.length} observation${observationIds.length !== 1 ? 's' : ''}</a>`;
 }

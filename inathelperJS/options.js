@@ -145,6 +145,7 @@ function extractActionsFromForm() {
             case 'addToProject':
                 action.projectId = actionDiv.querySelector('.projectId').value.trim();
                 action.projectName = actionDiv.querySelector('.projectName').value.trim();
+                action.remove = actionDiv.querySelector('.removeFromProject').checked;
                 break;
             case 'addComment':
                 action.commentBody = actionDiv.querySelector('.commentBody').value.trim();
@@ -454,9 +455,23 @@ function populateActionInputs(actionDiv, action) {
     actionType.dispatchEvent(new Event('change'));
 
     switch (action.type) {
-        case 'follow' :
+        case 'follow':
+            const followRadios = actionDiv.querySelectorAll('input[name^="followToggle"]');
+            followRadios.forEach(radio => {
+                if (radio.value === action.follow) {
+                    radio.checked = true;
+                }
+            });
             break;
-        case 'reviewed' :
+        case 'reviewed':
+            const reviewedRadios = actionDiv.querySelectorAll('input[name^="reviewedToggle"]');
+            reviewedRadios.forEach(radio => {
+                if (radio.value === action.reviewed) {
+                    radio.checked = true;
+                }
+            });
+            break;
+        case 'withdrawId':
             break;
         case 'withdrawId' :
             break;
@@ -474,6 +489,10 @@ function populateActionInputs(actionDiv, action) {
         case 'addToProject':
             actionDiv.querySelector('.projectName').value = action.projectName || '';
             actionDiv.querySelector('.projectId').value = action.projectId || '';
+            const removeCheckbox = actionDiv.querySelector('.removeFromProject');
+            if (removeCheckbox) {
+                removeCheckbox.checked = action.remove || false;
+            }
             break;
         case 'addComment':
             actionDiv.querySelector('.commentBody').value = action.commentBody || '';
@@ -660,6 +679,12 @@ function addActionToForm(action = null) {
         <div class="projectInputs" style="display:none;">
             <input type="text" class="projectName" placeholder="Project Name">
             <input type="number" class="projectId" placeholder="Project ID" readonly>
+            <div class="checkboxContainer" style="display: flex; align-items: center; margin-top: 10px;">
+                <input type="checkbox" id="removeFromProject-${Date.now()}" class="removeFromProject">
+                <label for="removeFromProject-${Date.now()}" style="margin-left: 5px; font-size: 14px; cursor: pointer;">
+                    Remove from project instead of adding (NOTE: observations cannot be removed from projects with automatic inclusion! You also may not have permission to remove observations other users have added to projects.)
+                </label>
+            </div>
         </div>
         <div class="commentInput" style="display:none;">
             <textarea class="commentBody" placeholder="Enter comment"></textarea>
@@ -697,6 +722,7 @@ function addActionToForm(action = null) {
             </div>
         </div>
         <button class="removeActionButton">Remove Action</button>
+
     `;
     document.getElementById('actionsContainer').appendChild(actionDiv);
 
@@ -705,8 +731,8 @@ function addActionToForm(action = null) {
     const reviewedOptions = actionDiv.querySelector('.reviewed-options');
     const ofInputs = actionDiv.querySelector('.ofInputs');
     const annotationInputs = actionDiv.querySelector('.annotationInputs');
-    const projectInputs = actionDiv.querySelector('.projectInputs');
     const commentInput = actionDiv.querySelector('.commentInput');
+    const projectInputs = actionDiv.querySelector('.projectInputs');
     const taxonIdInputs = actionDiv.querySelector('.taxonIdInputs');
     const qualityMetricInputs = actionDiv.querySelector('.qualityMetricInputs');
     const copyObservationFieldInputs = actionDiv.querySelector('.copyObservationFieldInputs');
@@ -1068,8 +1094,10 @@ async function formatAction(action) {
             const fieldName = getAnnotationFieldName(action.annotationField);
             const valueName = getAnnotationValueName(action.annotationField, action.annotationValue);
             return `Set "${fieldName}" to "${valueName}"`;
-        case 'addToProject':
-            return `Add to project: ${action.projectName || action.projectId}`;
+            case 'addToProject':
+                return action.remove ? 
+                    `Remove from project: ${action.projectName || action.projectId}` :
+                    `Add to project: ${action.projectName || action.projectId}`;            
         case 'addComment':
             return `Add comment: "${action.commentBody.substring(0, 30)}${action.commentBody.length > 30 ? '...' : ''}"`;
         case 'addTaxonId':

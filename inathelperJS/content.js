@@ -1442,7 +1442,28 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
             const annotationResult = await addAnnotation(observationId, action.annotationField, action.annotationValue);
             return { ...annotationResult, annotationUUID: annotationResult.uuid };
         case 'addToProject':
-            return addObservationToProject(observationId, action.projectId);
+            try {
+                const result = await performProjectAction(observationId, action.projectId, action.remove);
+                
+                // For single actions, still display warnings:
+                if (result.requiresWarning) {
+                    displayWarning(`Observation ${observationId}: ${result.message}`);
+                }
+
+                // Show warning for not_in_project if the user might have selected the wrong project
+                if (result.reason === 'not_in_project') {
+                    displayWarning(`This observation isn't in that project - please make sure you've selected the correct project.`);
+                }
+
+                if (result.noActionNeeded) {
+                    console.log(`No action needed for observation ${observationId}: ${result.message}`);
+                }
+
+                return result;
+            } catch (error) {
+                console.error('Error in project action:', error);
+                return { success: false, error: error.toString() };
+            }
         case 'addComment':
             const commentResult = await addComment(observationId, action.commentBody);
             return { ...commentResult, commentUUID: commentResult.uuid };
@@ -1462,6 +1483,31 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
     }
 }
 
+
+
+
+function displayWarning(message) {
+    const warningDiv = document.createElement('div');
+    warningDiv.style.cssText = `
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background-color: #ffcc00;
+        color: #000;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        z-index: 10000;
+    `;
+    warningDiv.textContent = message;
+
+    document.body.appendChild(warningDiv);
+
+    // Auto-remove the warning after 5 seconds
+    setTimeout(() => {
+        document.body.removeChild(warningDiv);
+    }, 5000);
+}
 
 async function getCurrentQualityMetricState(observationId) {
     console.log(`Getting current quality metric state for observation ${observationId}`);
@@ -2590,11 +2636,11 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
     modal.appendChild(statusElement);
 
     try {
-        // Get the pre-action states for all observations first
+        // Get the pre-action states
         const preActionStates = await generatePreActionStates(observationIds);
         console.log('Pre-action states:', preActionStates);
 
-        // Generate preliminary undo record with these states
+        // Generate preliminary undo record
         const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedAction, observationIds, preActionStates);
 
         for (const observationId of observationIds) {
@@ -2606,32 +2652,16 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
             let shouldSkip = false;
             const existingFieldValues = {};
 
-            // Check for existing values
-            for (const action of selectedAction.actions) {
-                if (action.type === 'observationField') {
-                    const existingValue = await getFieldValueDetails(observationId, action.fieldId);
-                    if (existingValue) {
-                        if (safeMode) {
+            // Safe Mode skip-check for observation fields
+            if (safeMode) {
+                for (const action of selectedAction.actions) {
+                    if (action.type === 'observationField') {
+                        const existingValue = await getFieldValueDetails(observationId, action.fieldId);
+                        if (existingValue) {
                             shouldSkip = true;
                             skippedObservations.push(observationId);
-                        } else {
-                            // Store both the values and ensure the undo record has the original value
-                            existingFieldValues[action.fieldName] = {
-                                oldValue: existingValue.value,
-                                newValue: action.fieldValue
-                            };
-                            
-                            // Make sure the undo record for this observation has the correct original value
-                            if (preliminaryUndoRecord.observations[observationId]) {
-                                const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
-                                    ua => ua.type === 'updateObservationField' && ua.fieldId === action.fieldId
-                                );
-                                if (undoAction) {
-                                    undoAction.originalValue = existingValue.value;
-                                }
-                            }
+                            break;
                         }
-                        break;
                     }
                 }
             }
@@ -2639,11 +2669,41 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
             if (!shouldSkip) {
                 for (const action of selectedAction.actions) {
                     try {
-                        const result = await performSingleAction(action, observationId);
-                        if (result.success && Object.keys(existingFieldValues).length > 0) {
+                        let actionResult;
+                        if (action.type === 'addToProject') {
+                            // Perform the project action directly
+                            actionResult = await performProjectAction(
+                                observationId, 
+                                action.projectId, 
+                                action.remove
+                            );
+
+                            // Update the undo record based on actual result
+                            if (preliminaryUndoRecord.observations[observationId]) {
+                                const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
+                                    ua => ua.type === 'removeFromProject' && ua.projectId === action.projectId
+                                );
+                                if (undoAction) {
+                                    // Mark if the action was truly applied
+                                    undoAction.actionApplied = actionResult.success && !actionResult.noActionNeeded;
+                                    if (actionResult.reason) {
+                                        undoAction.reason = actionResult.reason;
+                                    }
+                                }
+                            }
+                        } else {
+                            actionResult = await performSingleAction(
+                                action, 
+                                observationId, 
+                                preActionStates[observationId]
+                            );
+                        }
+
+                        if (actionResult.success && Object.keys(existingFieldValues).length > 0) {
                             overwrittenValues[observationId] = existingFieldValues;
                         }
-                        results.push({ ...result, observationId });
+
+                        results.push({ ...actionResult, observationId, action: action.type });
                     } catch (error) {
                         console.error(`Error executing action for observation ${observationId}:`, error);
                         errorMessages.push(`Error processing observation ${observationId}: ${error.message}`);
@@ -2656,30 +2716,37 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
             await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
         }
 
-        // Generate final undo record with all the collected information
+        // Generate final undo record
         const finalUndoRecord = generateUndoRecord(preliminaryUndoRecord, results, overwrittenValues);
         await storeUndoRecord(finalUndoRecord);
 
         document.body.removeChild(modal);
 
-        const overwrittenCount = Object.keys(overwrittenValues).length;
-        const skippedURL = generateObservationURL(skippedObservations);
-        
-        createActionResultsModal(
-            results,
-            skippedObservations.length,
-            skippedURL,
-            overwrittenCount,
-            overwrittenValues,
-            errorMessages
-        );
+        // If this bulk action includes "addToProject", show project results in a special modal
+        if (selectedAction.actions.some(a => a.type === 'addToProject')) {
+            const projectAction = selectedAction.actions.find(a => a.type === 'addToProject');
+            const summary = handleProjectActionResults(results);
+            const resultsModal = createProjectActionResultsModal(
+                summary,
+                projectAction.projectName,
+                projectAction.remove
+            );
+            document.body.appendChild(resultsModal);
+        } else {
+            // Otherwise use your existing standard results modal
+            const overwrittenCount = Object.keys(overwrittenValues).length;
+            const skippedURL = generateObservationURL(skippedObservations);
+            createActionResultsModal(
+                results,
+                skippedObservations.length,
+                skippedURL,
+                overwrittenCount,
+                overwrittenValues,
+                errorMessages
+            );
+        }
 
-        return { 
-            results, 
-            skippedObservations, 
-            overwrittenValues,
-            errorMessages 
-        };
+        return { results, skippedObservations, overwrittenValues, errorMessages };
     } catch (error) {
         console.error('Error in bulk action execution:', error);
         statusElement.textContent = `Error: ${error.message}`;
@@ -3000,17 +3067,44 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
                     };
                     break;
                 case 'addToProject':
-                    undoRecord.observations[observationId].undoActions.push({
-                        type: 'removeFromProject',
-                        projectId: actionItem.projectId
-                    });
-                    break;
-                case 'addComment':
-                    undoAction = {
-                        type: 'removeComment',
-                        commentBody: actionItem.commentBody,
-                        commentUUID: null // This will be filled in after the action is performed
-                    };
+                    try {
+                        const isInProject = preActionStates[observationId].project_observations.some(
+                            po => po.project.id === parseInt(actionItem.projectId)
+                        );
+
+                        if (actionItem.remove) {
+                            // Removing from project
+                            undoAction = {
+                                type: 'removeFromProject',
+                                projectId: actionItem.projectId,
+                                projectName: actionItem.projectName,
+                                remove: !actionItem.remove, // Invert the action for undo
+                                alreadyInDesiredState: !isInProject,
+                                shouldUndo: isInProject, // We only undo if the original remove was actually applied
+                                originalState: isInProject ? 'in_project' : 'not_in_project'
+                            };
+                        } else {
+                            // Adding to project
+                            undoAction = {
+                                type: 'removeFromProject',
+                                projectId: actionItem.projectId,
+                                projectName: actionItem.projectName,
+                                remove: !actionItem.remove,
+                                alreadyInDesiredState: isInProject,
+                                shouldUndo: !isInProject, // We only undo if the original add was actually applied
+                                originalState: isInProject ? 'in_project' : 'not_in_project'
+                            };
+                        }
+                    } catch (error) {
+                        console.error('Error generating undo record for project action:', error);
+                        undoAction = { 
+                            success: false, 
+                            error: error.toString(),
+                            projectId: actionItem.projectId,
+                            projectName: actionItem.projectName,
+                            type: 'removeFromProject'
+                        };
+                    }
                     break;
                 case 'addTaxonId':
                     const userIdentifications = preActionStates[observationId].identifications
@@ -3090,8 +3184,8 @@ function generateUndoSummary(undoRecord) {
                     summary += `  - Revert observation field ${undoAction.fieldId} to ${undoAction.originalValue || 'None'}\n`;
                     break;
                 case 'removeFromProject':
-                    summary += `  - Remove from project ${undoAction.projectId}\n`;
-                    break;
+                    summary += `  - ${undoAction.remove ? 'Add to' : 'Remove from'} project: ${undoAction.projectName}\n`;
+                    break;                    
                 case 'removeComment':
                     summary += `  - Remove added comment (ID: ${undoAction.commentId || 'Unknown'})\n`;
                     break;
@@ -3674,7 +3768,7 @@ function updateActionDescription(actionSelect) {
                         actionDesc = `Add annotation: ${action.annotationDisplay}`;
                         break;
                     case 'addToProject':
-                        actionDesc = `Add to project: ${action.projectName}`;
+                        actionDesc = `${action.remove ? 'Remove from' : 'Add to'} project: ${action.projectName}`;
                         break;
                     case 'addComment':
                         actionDesc = `Add comment: "${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}"`;
