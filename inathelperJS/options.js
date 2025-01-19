@@ -636,16 +636,16 @@ function addActionToForm(action = null) {
     actionDiv.className = 'action-item';
     actionDiv.innerHTML = `
         <select class="actionType">
-            <option value="observationField">Observation Field</option>
-            <option value="annotation">Annotation</option>
             <option value="addTaxonId">Add Taxon ID</option>
-            <option value="withdrawId">Withdraw ID</option> 
-            <option value="follow">Follow/Unfollow Observation</option>
-            <option value="reviewed">Mark Observation as Reviewed/Unreviewed</option>                         
-            <option value="addComment">Add Comment</option>            
+            <option value="withdrawId">Withdraw ID</option>
+            <option value="addComment">Add Comment</option>
+            <option value="annotation">Annotation</option> 
             <option value="addToProject">Add to/Remove from Project</option>
-            <option value="qualityMetric">Data Quality Indicators</option>
+            <option value="observationField">Observation Field</option>
             <option value="copyObservationField">Copy Observation Field</option>
+            <option value="qualityMetric">Data Quality Indicators</option>
+            <option value="follow">Follow/Unfollow Observation</option>
+            <option value="reviewed">Mark Observation as Reviewed/Unreviewed</option>                                    
             <option value="addToList">Add/Remove Observation To/From List</option>
         </select>
        <div class="follow-options" style="display: none;">
