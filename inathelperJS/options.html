@@ -83,25 +83,27 @@ button:hover {
     border-radius: 4px;
 }
 
+.configuration-checkbox {
+    margin-right: 10px;
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+}
+
 .config-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     padding: 10px;
-    cursor: pointer;
+    display: flex;
+    align-items: center;
 }
 
 .config-name {
     flex: 1;
-    font-weight: bold;
+    margin-right: 10px;
 }
 
 .config-shortcut {
-    flex: 0 0 150px;
-    text-align: right;
-    white-space: nowrap;
+    margin-right: 10px;
 }
-
 .commentInput textarea {
     width: 100%;
     min-height: 100px;
@@ -372,6 +374,96 @@ button:hover {
     .set-management-button {
         margin-right: 5px;
     }
+    .selection-controls {
+    margin: 15px 0;
+    padding: 15px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+#selectAllConfigs-label {
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333;
+}
+
+#selectAllConfigs-label:hover {
+    background-color: #e0e0e0;
+}
+
+.selected-count {
+    color: #666;
+    margin-left: auto;
+}
+
+.selection-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.select-all-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.select-all-label input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+.bulk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.bulk-action-btn {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.bulk-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#deleteSelectedBtn {
+    background-color: #dc3545;
+    color: white;
+}
+
+#hideSelectedBtn, #showSelectedBtn {
+    background-color: #007bff;
+    color: white;
+}
+
+#disableSelectedBtn, #enableSelectedBtn {
+    background-color: #ffc107;
+    color: black;
+}
+
+.selection-btn {
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333;
+}
+
+.selection-btn:hover {
+    background-color: #e0e0e0;
+}
     </style>
 </head>
 <body>
@@ -424,9 +516,24 @@ button:hover {
     <h2>Existing Configurations</h2>
     <div id="configControls">
         <input type="text" id="searchInput" placeholder="Search configurations...">
-        <div id="configControls" class="sort-buttons-container">
+        <div id="sortControls" class="sort-buttons-container">
             <button id="toggleDateSort" class="sort-button">Sorted Newest First</button>
             <button id="toggleAlphaSort" class="sort-button">Sorted A-Z</button>
+        </div>
+        <div class="configuration-controls">
+            <div class="selection-header">
+                <button id="selectAllConfigs" class="selection-btn">Select All</button>
+                <button id="clearSelectionBtn" class="selection-btn">Clear Selection</button>
+                <button id="toggleAllConfigs" class="selection-btn">Expand All</button>
+                <span id="selectedCount" class="selected-count">0 selected</span>
+            </div>
+            <div class="configuration-actions">
+                <button id="deleteSelectedBtn" class="configuration-action-btn">Delete Selected</button>
+                <button id="hideSelectedBtn" class="configuration-action-btn">Hide Selected</button>
+                <button id="showSelectedBtn" class="configuration-action-btn">Show Selected</button>
+                <button id="disableSelectedBtn" class="configuration-action-btn">Disable Selected</button>
+                <button id="enableSelectedBtn" class="configuration-action-btn">Enable Selected</button>
+            </div>
         </div>
     </div>
     <div id="buttonConfigs"></div>
