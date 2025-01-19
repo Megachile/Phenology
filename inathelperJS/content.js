@@ -146,6 +146,7 @@ function createShortcutList() {
         <li>Ctrl + Shift + R: Toggle refresh</li>
         <li>Alt + H: Toggle this shortcut list</li>
         <li>Alt + S: Cycle through button sets</li>
+        <li>Alt + M: Toggle bulk action mode</li>
     `;
 
     // Add custom shortcuts
@@ -193,12 +194,23 @@ function handleAllShortcuts(event) {
     const activeElement = document.activeElement;
     const isTyping = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
 
+    // Always check for bulk action mode toggle (Alt+M), even when typing
+    if (event.altKey && !event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'm') {
+        event.preventDefault();
+        if (bulkActionModeEnabled) {
+            disableBulkActionMode();
+        } else {
+            enableBulkActionMode();
+        }
+        return;
+    }
+
     // If user is typing, don't process other shortcuts
     if (isTyping) {
         return;
     }
 
-    // Process shortcuts only if not typing
+    // Process standard shortcuts
     if (event.shiftKey && event.key.toLowerCase() === 'b') {
         toggleButtonVisibility();
         return;
@@ -223,20 +235,34 @@ function handleAllShortcuts(event) {
         return;
     }
     
-    customShortcuts.forEach(shortcut => {
-        if (event.key.toLowerCase() === shortcut.key.toLowerCase() &&
-            event.ctrlKey === shortcut.ctrlKey &&
-            event.shiftKey === shortcut.shiftKey &&
-            event.altKey === shortcut.altKey) {
-            debugLog('Custom shortcut matched:', shortcut.name);
-            if (shortcut.button && shortcut.button.isConnected) {
-                debugLog('Clicking button:', shortcut.button.innerText);
-                shortcut.button.click();
-            } else {
-                debugLog('Button not found or not connected to DOM for shortcut:', shortcut.name);
+    // If in bulk action mode, check for action shortcuts
+    if (bulkActionModeEnabled && selectedObservations.size > 0) {
+        for (const button of currentSet.buttons) {
+            if (button.shortcut && 
+                event.key.toLowerCase() === button.shortcut.key.toLowerCase() &&
+                event.ctrlKey === !!button.shortcut.ctrlKey &&
+                event.shiftKey === !!button.shortcut.shiftKey &&
+                event.altKey === !!button.shortcut.altKey) {
+                event.preventDefault();
+                handleBulkActionShortcut(button);
+                return;
             }
         }
-    });
+    }
+    
+    // Process custom shortcuts (when not in bulk mode)
+    if (!bulkActionModeEnabled) {
+        customShortcuts.forEach(shortcut => {
+            if (event.key.toLowerCase() === shortcut.key.toLowerCase() &&
+                event.ctrlKey === shortcut.ctrlKey &&
+                event.shiftKey === shortcut.shiftKey &&
+                event.altKey === shortcut.altKey) {
+                if (shortcut.button && shortcut.button.isConnected) {
+                    shortcut.button.click();
+                }
+            }
+        });
+    }
 }
 
 document.addEventListener('keydown', handleAllShortcuts);
@@ -4708,19 +4734,71 @@ async function createValidationModal(validationResults, selectedAction, onConfir
     const title = document.createElement('h2');
     title.textContent = 'Action Validation';
     title.style.marginTop = '0';
+    content.appendChild(title);
+
+    // Add action description at the top
+    const actionDescription = document.createElement('div');
+    actionDescription.style.cssText = `
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    `;
+
+    actionDescription.innerHTML = `
+        <h3 style="margin-top: 0; margin-bottom: 10px; color: #1a73e8;">
+            Action: ${selectedAction.name}
+        </h3>
+        <div style="color: #202124;">
+            ${selectedAction.actions.map(action => {
+                let actionDesc = '';
+                switch(action.type) {
+                    case 'reviewed':
+                        actionDesc = `Mark the observation as ${action.reviewed === 'mark' ? 'reviewed' : 'unreviewed'}`;
+                        break;
+                    case 'follow':
+                        actionDesc = `${action.follow === 'follow' ? 'Follow' : 'Unfollow'} the observation`;
+                        break;
+                    case 'withdrawId':
+                        actionDesc = `Withdraw your current identification`;
+                        break;
+                    case 'observationField':
+                        const displayValue = action.displayValue || action.fieldValue;
+                        actionDesc = `Set field "${action.fieldName}" to "${displayValue}"`;
+                        break;
+                    case 'annotation':
+                        actionDesc = `Add annotation: ${action.annotationDisplay}`;
+                        break;
+                    case 'addToProject':
+                        actionDesc = `${action.remove ? 'Remove from' : 'Add to'} project: ${action.projectName}`;
+                        break;
+                    case 'addComment':
+                        actionDesc = `Add comment: "${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}"`;
+                        break;
+                    case 'addTaxonId':
+                        actionDesc = `Add taxon ID: ${action.taxonName}`;
+                        break;
+                    case 'qualityMetric':
+                        const metricName = getQualityMetricName(action.metric);
+                        actionDesc = `Set quality metric: ${metricName} to ${action.vote}`;
+                        break;
+                    case 'copyObservationField':
+                        actionDesc = `Copy field: ${action.sourceFieldName} to ${action.targetFieldName}`;
+                        break;
+                }
+                return actionDesc ? `
+                    <div style="margin: 8px 0; padding-left: 20px; position: relative;">
+                        <span style="position: absolute; left: 8px; color: #1a73e8;">•</span>
+                        ${actionDesc}
+                    </div>` : '';
+            }).join('')}
+        </div>
+    `;
+    content.appendChild(actionDescription);
 
     const summary = document.createElement('div');
     summary.style.marginBottom = '20px';
-
-    // Add actions summary
-    const actionSummary = document.createElement('div');
-    actionSummary.style.marginBottom = '15px';
-    actionSummary.innerHTML = '<strong>This action will:</strong><ul>';
-    selectedAction.actions.forEach(action => {
-        if (action.type === 'observationField') {
-            actionSummary.innerHTML += `<li>Set field "${action.fieldName}" to "${action.displayValue || action.fieldValue}"</li>`;        }
-    });
-    actionSummary.innerHTML += '</ul>';
 
     if (validationResults.toSkip.length > 0 || validationResults.existingValues.size > 0) {
         if (safeMode) {
@@ -4730,50 +4808,49 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                 <p>${validationResults.toSkip.length} observations will be skipped due to existing values:</p>
             `;
 
-            const skipList = document.createElement('div');
-            skipList.style.cssText = `
-                max-height: 200px;
-                overflow-y: auto;
-                border: 1px solid #ccc;
-                padding: 10px;
-                margin: 10px 0;
-                background: #fff3e0;
-                border-radius: 4px;
-            `;
-
-            validationResults.toSkip.forEach(({ observationId, existingFields }) => {
-                const item = document.createElement('div');
-                item.style.marginBottom = '10px';
-                item.innerHTML = `
-                    <a href="https://www.inaturalist.org/observations/${observationId}" 
-                       target="_blank" 
-                       style="color: #0077cc;">
-                        Observation ${observationId}
-                    </a>:
-                    <ul style="margin: 5px 0; padding-left: 20px;">
+            if (validationResults.toSkip.length > 0) {
+                const skipList = document.createElement('div');
+                skipList.style.cssText = `
+                    max-height: 200px;
+                    overflow-y: auto;
+                    border: 1px solid #ccc;
+                    padding: 10px;
+                    margin: 10px 0;
+                    background: #fff3e0;
+                    border-radius: 4px;
                 `;
-                
-                Object.entries(existingFields).forEach(([fieldId, currentValue]) => {
-                    const fieldName = validationResults.fieldNames.get(fieldId);
-                    const matchingAction = selectedAction.actions.find(a => 
-                        a.type === 'observationField' && a.fieldId === fieldId
-                    );
-                    const newValue = matchingAction ? (matchingAction.displayValue || matchingAction.fieldValue) : '';
-                    item.innerHTML += `
-                        <li>${fieldName}:
-                            <span style="color: #666;">"${currentValue}"</span>
-                            <span style="color: #999;"> (would be set to </span>
-                            <span style="color: #666;">"${newValue}"</span>
-                            <span style="color: #999;">)</span>
-                        </li>
-                    `;
-                });
-                
-                item.innerHTML += '</ul>';
-                skipList.appendChild(item);
-            });
 
-            summary.appendChild(skipList);
+                validationResults.toSkip.forEach(({ observationId, existingFields }) => {
+                    const item = document.createElement('div');
+                    item.style.marginBottom = '10px';
+                    item.innerHTML = `
+                        <a href="https://www.inaturalist.org/observations/${observationId}" 
+                           target="_blank" 
+                           style="color: #0077cc;">
+                            Observation ${observationId}
+                        </a>:
+                        <ul style="margin: 5px 0; padding-left: 20px;">
+                    `;
+                    
+                    Object.entries(existingFields).forEach(([fieldId, value]) => {
+                        const fieldName = validationResults.fieldNames.get(fieldId);
+                        const proposedValue = validationResults.proposedValues.get(fieldId);
+                        item.innerHTML += `
+                            <li>${fieldName}: 
+                                <span style="color: #666;">"${value}"</span>
+                                <span style="color: #999;"> (would be set to </span>
+                                <span style="color: #666;">"${proposedValue}"</span>
+                                <span style="color: #999;">)</span>
+                            </li>
+                        `;
+                    });
+                    
+                    item.innerHTML += '</ul>';
+                    skipList.appendChild(item);
+                });
+
+                summary.appendChild(skipList);
+            }
 
             if (validationResults.toProcess.length === 0) {
                 summary.innerHTML += `
@@ -4811,17 +4888,14 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                     <ul style="margin: 5px 0; padding-left: 20px;">
                 `;
                 
-                Object.entries(info.existingFields).forEach(([fieldId, currentValue]) => {
+                Object.entries(info.existingFields).forEach(([fieldId, value]) => {
                     const fieldName = validationResults.fieldNames.get(fieldId);
-                    const matchingAction = selectedAction.actions.find(a => 
-                        a.type === 'observationField' && a.fieldId === fieldId
-                    );
-                    const newValue = matchingAction ? (matchingAction.displayValue || matchingAction.fieldValue) : '';
+                    const proposedValue = validationResults.proposedValues.get(fieldId);
                     item.innerHTML += `
                         <li>${fieldName}: 
-                            <span style="color: #666;">"${currentValue}"</span>
+                            <span style="color: #666;">"${value}"</span>
                             <span style="color: #999;"> → </span>
-                            <span style="color: #666;">"${newValue}"</span>
+                            <span style="color: #666;">"${proposedValue}"</span>
                         </li>
                     `;
                 });
@@ -4834,15 +4908,13 @@ async function createValidationModal(validationResults, selectedAction, onConfir
             summary.innerHTML += `<p>Total observations to process: ${validationResults.total}</p>`;
         }
     } else {
-        const hasObservationFieldActions = selectedAction.actions.some(action => 
-            action.type === 'observationField'
-        );
-    
         summary.innerHTML = `
             <p>All ${validationResults.total} selected observation(s) will be processed.</p>
-            ${hasObservationFieldActions ? '<p>No existing values found.</p>' : ''}
+            <p>No existing values found that would conflict with this action.</p>
         `;
     }
+
+    content.appendChild(summary);
 
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = `
@@ -4876,10 +4948,6 @@ async function createValidationModal(validationResults, selectedAction, onConfir
 
     buttonContainer.appendChild(cancelButton);
     buttonContainer.appendChild(confirmButton);
-
-    content.appendChild(title);
-    content.appendChild(actionSummary);
-    content.appendChild(summary);
     content.appendChild(buttonContainer);
     modal.appendChild(content);
 
@@ -4944,4 +5012,140 @@ function createProgressModal() {
     modal.appendChild(content);
 
     return modal;
+}
+
+// Bulk action shortcut handler
+async function handleBulkActionShortcut(selectedAction) {
+    try {
+        const observationIds = Array.from(selectedObservations);
+        const validationResults = await validateBulkAction(selectedAction, observationIds);
+        
+        // Get the safe mode setting
+        const { safeMode = true } = await new Promise(resolve => 
+            browserAPI.storage.local.get('safeMode', resolve)
+        );
+
+        // Get observations to highlight based on validation results
+        const observationsToHighlight = safeMode ? 
+            validationResults.toSkip.map(item => ({
+                observationId: item.observationId,
+                fieldValues: Object.fromEntries(
+                    Object.entries(item.existingFields).map(([fieldId, value]) => [
+                        validationResults.fieldNames.get(fieldId),
+                        {
+                            current: value,
+                            proposed: validationResults.proposedValues.get(fieldId)
+                        }
+                    ])
+                )
+            })) :
+            Array.from(validationResults.existingValues.entries()).map(([observationId, info]) => ({
+                observationId,
+                fieldValues: Object.fromEntries(
+                    Object.entries(info.existingFields).map(([fieldId, value]) => [
+                        validationResults.fieldNames.get(fieldId),
+                        {
+                            current: value,
+                            proposed: validationResults.proposedValues.get(fieldId)
+                        }
+                    ])
+                )
+            }));
+
+        // Show warnings for observations with existing values
+        highlightObservationsWithExistingValues(observationsToHighlight, selectedAction);
+
+        const validationModal = await createValidationModal(
+            validationResults,
+            selectedAction,
+            async () => {
+                // Clear highlights when proceeding
+                highlightObservationsWithExistingValues([], null, true);
+                const progressModal = createProgressModal();
+                document.body.appendChild(progressModal);
+                await executeBulkAction(selectedAction, progressModal, () => false);
+            },
+            () => {
+                // Clear highlights when cancelling
+                highlightObservationsWithExistingValues([], null, true);
+                console.log('Validation cancelled');
+            }
+        );
+        
+        document.body.appendChild(validationModal);
+    } catch (error) {
+        console.error('Error in bulk action shortcut:', error);
+        alert(`Error: ${error.message}`);
+        highlightObservationsWithExistingValues([], null, true);
+    }
+}
+
+// Helper function to create action description HTML
+function createActionDescription(selectedAction) {
+    const container = document.createElement('div');
+    container.style.cssText = `
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    `;
+
+    container.innerHTML = `
+        <h3 style="margin-top: 0; margin-bottom: 10px; color: #1a73e8;">Action: ${selectedAction.name}</h3>
+        <div class="action-details" style="color: #202124;">
+            ${selectedAction.actions.map(action => {
+                let actionDesc = '';
+                switch(action.type) {
+                    case 'reviewed':
+                        actionDesc = `Mark the observation as ${action.reviewed === 'mark' ? 'reviewed' : 'unreviewed'}`;
+                        break;
+                    case 'follow':
+                        actionDesc = `${action.follow === 'follow' ? 'Follow' : 'Unfollow'} the observation`;
+                        break;
+                    case 'withdrawId':
+                        actionDesc = `Withdraw your current identification`;
+                        break;
+                    case 'observationField':
+                        const displayValue = action.displayValue || action.fieldValue;
+                        actionDesc = `Set field "${action.fieldName}" to "${displayValue}"`;
+                        break;
+                    case 'annotation':
+                        actionDesc = `Add annotation: ${action.annotationDisplay}`;
+                        break;
+                    case 'addToProject':
+                        actionDesc = `${action.remove ? 'Remove from' : 'Add to'} project: ${action.projectName}`;
+                        break;
+                    case 'addComment':
+                        actionDesc = `Add comment: "${action.commentBody.substring(0, 50)}${action.commentBody.length > 50 ? '...' : ''}"`;
+                        break;
+                    case 'addTaxonId':
+                        actionDesc = `Add taxon ID: ${action.taxonName}`;
+                        break;
+                    case 'qualityMetric':
+                        const metricName = getQualityMetricName(action.metric);
+                        actionDesc = `Set quality metric: ${metricName} to ${action.vote}`;
+                        break;
+                    case 'copyObservationField':
+                        actionDesc = `Copy field: ${action.sourceFieldName} to ${action.targetFieldName}`;
+                        break;
+                }
+                return actionDesc ? `
+                    <div class="action-item" style="
+                        margin: 8px 0;
+                        padding-left: 20px;
+                        position: relative;
+                    ">
+                        <span style="
+                            position: absolute;
+                            left: 8px;
+                            color: #1a73e8;
+                        ">•</span>
+                        ${actionDesc}
+                    </div>` : '';
+            }).join('')}
+        </div>
+    `;
+
+    return container;
 }

@@ -25,7 +25,8 @@ const forbiddenShortcuts = [
     { ctrlKey: true, shiftKey: true, key: 'R' },  // Toggle refresh
     { altKey: true, key: 'H' },     // Toggle shortcut list
     { shiftKey: true, key: 'V' },     // Toggle bulk action box
-    { altKey: true, key: 'S' }     // Cycle button sets
+    { altKey: true, key: 'S' },     // Cycle button sets
+    { altKey: true, key: 'M' }    // Toggle bulk action mode
 ];
 
 const qualityMetrics = [
