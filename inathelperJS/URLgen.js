@@ -1384,102 +1384,51 @@ function normalizeLongitude(lng) {
 }
 
 function saveInputs() {
-    const savedState = {
-        inputs: {},
-        dynamicFields: [],
-        qualityGrade: [],
-        reviewedStatus: '',
-        searchOn: '',
-        licenses: {
-            photo: [],
-            sound: []
-        },
-        observationSources: [],
-        geographicBoundingBox: {},
-        disabledStates: [] // Added this field
-    };
+    const savedState = JSON.parse(localStorage.getItem('urlGenState') || '{}');
 
-    const container = document.getElementById('customListsContainer');
-    const selectedCheckboxes = container.querySelectorAll('input[type="checkbox"]:checked');
-    savedState.selectedCustomLists = Array.from(selectedCheckboxes).map(checkbox => checkbox.value);
-  
-    // Save static inputs
-    document.querySelectorAll('input, select, textarea').forEach(input => {
-        if (input.id) {
-            if (input.type === 'checkbox' || input.type === 'radio') {
-                savedState.inputs[input.id] = input.checked;
-            } else {
-                savedState.inputs[input.id] = input.value;
-            }
-        }
-    });
-
-    // Save quality grade checkboxes
-    document.querySelectorAll('input[name="quality_grade"]:checked').forEach(checkbox => {
-        savedState.qualityGrade.push(checkbox.value);
-    });
-
-    // Save reviewed status
-    const reviewedStatus = document.querySelector('input[name="reviewed"]:checked');
-    if (reviewedStatus) {
-        savedState.reviewedStatus = reviewedStatus.value;
-    }
-
-    // Save "search on" toggle
-    const searchOn = document.querySelector('input[name="searchOn"]:checked');
-    if (searchOn) {
-        savedState.searchOn = searchOn.value;
-    }
-
-    // Save licenses
-    document.querySelectorAll('#photoLicenses input:checked').forEach(checkbox => {
-        savedState.licenses.photo.push(checkbox.value);
-    });
-    document.querySelectorAll('#soundLicenses input:checked').forEach(checkbox => {
-        savedState.licenses.sound.push(checkbox.value);
-    });
-
-    // Save observation sources
-    document.querySelectorAll('#observationSources input:checked').forEach(checkbox => {
-        savedState.observationSources.push(checkbox.value);
-    });
-
-    // Save geographic bounding box
-    const boundingBoxInputs = ['nelat', 'nelng', 'swlat', 'swlng'];
-    boundingBoxInputs.forEach(id => {
-        const input = document.getElementById(id);
-        if (input) {
-            savedState.geographicBoundingBox[id] = input.value;
-        }
-    });
-
-    // Save dynamic fields and their disabled states
     const actionsContainer = document.getElementById('actionsContainer');
     if (actionsContainer) {
+        // Reset the dynamic fields array
+        savedState.dynamicFields = [];
+        
         actionsContainer.querySelectorAll('.action-box').forEach(actionBox => {
-            const actionTypeEl = actionBox.querySelector('.action-type');
-            const actionType = actionTypeEl.textContent;
-            console.log('Saving field type:', actionType);
+            const actionType = actionBox.querySelector('.action-type').textContent;
+            const inputs = Array.from(actionBox.querySelectorAll('input, select'));
             
-            if (actionType === 'observationField') {
-                const valueContainer = actionBox.querySelector('.fieldValueContainer');
-                const valueInput = valueContainer?.querySelector('.fieldValue');
-                console.log('OF value container:', valueContainer);
-                console.log('OF value input:', valueInput);
-                console.log('OF value:', valueInput?.value);
-            }
-            const inputs = Array.from(actionBox.querySelectorAll('input, select')).map(input => ({
-                type: input.type,
-                value: input.type === 'checkbox' ? input.checked : input.value,
-                id: input.id,
-                className: input.className
-            }));
-            // THIS is where we need to actually save it:
-            savedState.dynamicFields.push({
+            const fieldData = {
                 type: actionType,
-                inputs: inputs,
-                disabled: actionBox.classList.contains('disabled')
-            });
+                disabled: actionBox.classList.contains('disabled'),
+                inputs: []
+            };
+
+            // For fields with name-ID pairs from lookups, ensure both values exist
+            if (['taxon', 'user', 'project', 'place', 'identifier'].includes(actionType)) {
+                const nameInput = inputs.find(input => input.id?.startsWith(actionType) && !input.id?.includes('Id'));
+                const idInput = inputs.find(input => input.id?.includes('Id'));
+                
+                // Only save if both name and ID exist
+                if (nameInput?.value && idInput?.value) {
+                    fieldData.inputs = inputs.map(input => ({
+                        type: input.type,
+                        value: input.type === 'checkbox' ? input.checked : input.value,
+                        id: input.id,
+                        className: input.className
+                    }));
+                }
+            } else {
+                // For other field types, save all inputs as before
+                fieldData.inputs = inputs.map(input => ({
+                    type: input.type,
+                    value: input.type === 'checkbox' ? input.checked : input.value,
+                    id: input.id,
+                    className: input.className
+                }));
+            }
+
+            // Only add the field if we have inputs to save
+            if (fieldData.inputs.length > 0) {
+                savedState.dynamicFields.push(fieldData);
+            }
         });
     }
 
@@ -1801,5 +1750,28 @@ function setupActionBoxToggle(actionBox) {
         // Regenerate URL and save state
         generateURL();
         saveInputs();
+    });
+}
+
+function verifyNameIdConsistency() {
+    const actionsContainer = document.getElementById('actionsContainer');
+    if (!actionsContainer) return;
+
+    actionsContainer.querySelectorAll('.action-box').forEach(actionBox => {
+        const actionType = actionBox.querySelector('.action-type').textContent;
+        
+        if (['taxon', 'user', 'project', 'place', 'identifier'].includes(actionType)) {
+            const nameInput = actionBox.querySelector(`input[id^="${actionType}"][id$="Id"]`);
+            const idInput = actionBox.querySelector(`input[id^="${actionType}Id"]`);
+            
+            // If one exists without the other, clear both
+            if (nameInput && idInput) {
+                if ((!nameInput.value && idInput.value) || (nameInput.value && !idInput.value)) {
+                    console.log(`Clearing mismatched ${actionType} field`);
+                    nameInput.value = '';
+                    idInput.value = '';
+                }
+            }
+        }
     });
 }

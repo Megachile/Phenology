@@ -1972,43 +1972,6 @@ function processListImportChoices(results, existingLists) {
     });
 }
 
-function resolveListConflicts(conflicts, callback) {
-    if (conflicts.length === 0) {
-        callback([]);
-        return;
-    }
-
-    const conflict = conflicts.shift();
-    const choice = prompt(
-        `List "${conflict.existing.name}" already exists. Choose an action:\n` +
-        `1. Keep existing\n2. Replace with imported\n3. Merge observations\n\n` +
-        `Enter the number of your choice:`
-    );
-
-    let resolvedList;
-    switch (choice) {
-        case '1':
-            resolvedList = conflict.existing;
-            break;
-        case '2':
-            resolvedList = conflict.imported;
-            break;
-        case '3':
-            resolvedList = {
-                ...conflict.existing,
-                observations: [...new Set([...conflict.existing.observations, ...conflict.imported.observations])]
-            };
-            break;
-        default:
-            alert('Invalid choice. Keeping the existing list.');
-            resolvedList = conflict.existing;
-    }
-
-    resolveListConflicts(conflicts, function(resolvedLists) {
-        callback([resolvedList, ...resolvedLists]);
-    });
-}
-
 function finalizeMerge(existingLists, listsToAdd) {
     const updatedLists = [...existingLists, ...listsToAdd];
     browserAPI.storage.local.set({customLists: updatedLists}, function() {
