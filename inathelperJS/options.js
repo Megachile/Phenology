@@ -1485,30 +1485,55 @@ function importConfigurations(event) {
 
 function processImportedSets(importedSets) {
     let setsToAdd = [];
-    let duplicateSets = [];
+    let duplicateContentSets = [];
+    let duplicateNameSets = [];
 
     importedSets.forEach(importedSet => {
-        const existingSetIndex = configurationSets.findIndex(set => isSetEqual(set, importedSet));
-        if (existingSetIndex === -1) {
-            setsToAdd.push(importedSet);
+        const existingSetByContent = configurationSets.find(set => isSetEqual(set, importedSet));
+        const existingSetByName = configurationSets.find(set => set.name === importedSet.name);
+        
+        if (existingSetByContent) {
+            duplicateContentSets.push(importedSet.name);
+        } else if (existingSetByName) {
+            // If there's a name conflict but content is different,
+            // generate a unique name by appending a number
+            let newName = importedSet.name;
+            let counter = 1;
+            while (configurationSets.some(set => set.name === newName)) {
+                newName = `${importedSet.name} (${counter})`;
+                counter++;
+            }
+            duplicateNameSets.push({
+                oldName: importedSet.name,
+                newName: newName
+            });
+            const modifiedSet = { ...importedSet, name: newName };
+            setsToAdd.push(modifiedSet);
         } else {
-            duplicateSets.push(importedSet.name);
+            setsToAdd.push(importedSet);
         }
     });
 
-    if (duplicateSets.length > 0) {
-        alert(`The following sets are exact duplicates and will be skipped: ${duplicateSets.join(', ')}`);
+    let messages = [];
+    if (duplicateContentSets.length > 0) {
+        messages.push(`The following sets are exact duplicates and will be skipped: ${duplicateContentSets.join(', ')}`);
+    }
+    if (duplicateNameSets.length > 0) {
+        messages.push(`The following sets had name conflicts and were renamed:\n${duplicateNameSets.map(set => 
+            `"${set.oldName}" -> "${set.newName}"`).join('\n')}`);
     }
 
     if (setsToAdd.length > 0) {
         configurationSets.push(...setsToAdd);
         currentSetName = setsToAdd[setsToAdd.length - 1].name;
         saveConfigurationSets();
-        alert(`Successfully imported ${setsToAdd.length} new configuration set(s).`);
+        messages.push(`Successfully imported ${setsToAdd.length} new configuration set(s).`);
     } else {
-        alert('No new configuration sets were imported.');
+        messages.push('No new configuration sets were imported.');
     }
-}
+
+    alert(messages.join('\n\n'));
+}    
 
 function isSetEqual(set1, set2) {
     return JSON.stringify(set1) === JSON.stringify(set2);
