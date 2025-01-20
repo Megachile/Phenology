@@ -1449,19 +1449,26 @@ function importConfigurations(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             try {
                 const importedData = JSON.parse(e.target.result);
                 console.log('Imported data:', importedData);
                 
                 if (importedData.configurationSets) {
-                    // New format
-                    processImportedSets(importedData.configurationSets);
-                    if (importedData.customLists) {
-                        mergeLists(importedData.customLists);
+                    try {
+                        const importResults = await createImportModal(importedData.configurationSets);
+                        processImportChoices(importResults);
+                        if (importedData.customLists) {
+                            mergeLists(importedData.customLists);
+                        }
+                    } catch (error) {
+                        if (error.message !== 'Import cancelled') {
+                            console.error('Import error:', error);
+                            alert('Error during import process');
+                        }
                     }
                 } else if (importedData.customButtons) {
-                    // Old format
+                    // Handle old format
                     const setName = prompt("Enter a name for the imported set:", `Imported Set ${new Date().toLocaleString()}`);
                     if (setName) {
                         const newSet = {
@@ -1481,6 +1488,8 @@ function importConfigurations(event) {
         };
         reader.readAsText(file);
     }
+    // Reset the file input to allow re-importing the same file
+    event.target.value = '';
 }
 
 function processImportedSets(importedSets) {
@@ -1888,31 +1897,78 @@ function saveConfigurationSets(callback, refreshDisplay = true) {
 }
 
 function mergeLists(importedLists) {
-    browserAPI.storage.local.get('customLists', function(data) {
+    browserAPI.storage.local.get('customLists', async function(data) {
         let existingLists = data.customLists || [];
-        let listsToAdd = [];
-        let listConflicts = [];
-
-        importedLists.forEach(importedList => {
-            const existingListIndex = existingLists.findIndex(list => list.id === importedList.id);
-            if (existingListIndex === -1) {
-                listsToAdd.push(importedList);
-            } else {
-                listConflicts.push({existing: existingLists[existingListIndex], imported: importedList});
+        
+        try {
+            const importResults = await createListImportModal(importedLists, existingLists);
+            processListImportChoices(importResults, existingLists);
+        } catch (error) {
+            if (error.message !== 'Import cancelled') {
+                console.error('Error during list import:', error);
+                alert('Error importing lists');
             }
-        });
-
-        if (listConflicts.length > 0) {
-            resolveListConflicts(listConflicts, function(resolvedLists) {
-                existingLists = existingLists.map(list => {
-                    const resolved = resolvedLists.find(r => r.id === list.id);
-                    return resolved || list;
-                });
-                finalizeMerge(existingLists, listsToAdd);
-            });
-        } else {
-            finalizeMerge(existingLists, listsToAdd);
         }
+    });
+}
+
+function processListImportChoices(results, existingLists) {
+    let listsToAdd = [];
+    let listsToMerge = [];
+    let skippedLists = [];
+
+    results.forEach(result => {
+        switch (result.action) {
+            case 'new':
+                listsToAdd.push(result.list);
+                break;
+            case 'rename':
+                listsToAdd.push({ 
+                    ...result.list, 
+                    name: result.newName,
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9)
+                });
+                break;
+            case 'merge':
+                listsToMerge.push(result.list);
+                break;
+            case 'skip':
+                skippedLists.push(result.list.name);
+                break;
+        }
+    });
+
+    // Handle merges first
+    listsToMerge.forEach(listToMerge => {
+        const existingList = existingLists.find(list => list.id === listToMerge.id);
+        if (existingList) {
+            // Merge observations, removing duplicates
+            existingList.observations = [...new Set([
+                ...existingList.observations,
+                ...listToMerge.observations
+            ])];
+        }
+    });
+
+    // Add new lists
+    if (listsToAdd.length > 0) {
+        existingLists = [...existingLists, ...listsToAdd];
+    }
+
+    // Save changes
+    browserAPI.storage.local.set({customLists: existingLists}, function() {
+        console.log('Lists updated');
+        
+        // Show summary
+        let summary = [];
+        if (listsToAdd.length > 0) summary.push(`Added ${listsToAdd.length} new list(s)`);
+        if (listsToMerge.length > 0) summary.push(`Merged ${listsToMerge.length} list(s)`);
+        if (skippedLists.length > 0) summary.push(`Skipped ${skippedLists.length} identical list(s): ${skippedLists.join(', ')}`);
+        
+        alert(summary.join('\n'));
+        
+        // Refresh the lists display
+        displayLists();
     });
 }
 
@@ -2164,4 +2220,294 @@ function expandConfigurations(configIds) {
         }
     });
     updateToggleAllButton();
+}
+
+function createImportModal(importedSets) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    `;
+
+    const content = document.createElement('div');
+    content.className = 'modal-content';
+    content.style.cssText = `
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 80%;
+        max-height: 80%;
+        overflow-y: auto;
+    `;
+
+    let html = '<h2>Import Configuration Sets</h2>';
+    html += '<p>Please select how to handle each configuration set:</p>';
+    
+    importedSets.forEach((set, index) => {
+        const existingSet = configurationSets.find(existing => existing.name === set.name);
+        const isIdentical = existingSet ? isSetEqual(existingSet, set) : false;
+        
+        html += `
+            <div class="import-set-item" style="margin: 10px 0; padding: 10px; border: 1px solid #ccc;">
+                <h3>${set.name}</h3>
+                <p>Contains ${set.buttons.length} buttons</p>
+                ${existingSet ? 
+                    isIdentical ? 
+                        '<p style="color: #666;">This set is identical to an existing set and will be skipped</p>' :
+                        `<select id="action-${index}" class="import-action">
+                            <option value="rename">Import as new set with different name</option>
+                            <option value="merge">Merge with existing set</option>
+                            <option value="skip">Skip this set</option>
+                        </select>
+                        <div id="rename-${index}" style="margin-top: 10px;">
+                            <input type="text" id="newname-${index}" value="${set.name} (New)" 
+                                style="width: 200px; margin-right: 10px;">
+                        </div>`
+                    : '<p style="color: green;">Will be imported as new set</p>'
+                }
+            </div>`;
+    });
+
+    html += `
+        <div style="margin-top: 20px; text-align: right;">
+            <button id="import-cancel" style="margin-right: 10px;">Cancel</button>
+            <button id="import-confirm">Import</button>
+        </div>
+    `;
+
+    content.innerHTML = html;
+    modal.appendChild(content);
+
+    // Add event listeners for action selects
+    importedSets.forEach((set, index) => {
+        const existingSet = configurationSets.find(existing => existing.name === set.name);
+        if (existingSet && !isSetEqual(existingSet, set)) {
+            setTimeout(() => {
+                const actionSelect = document.getElementById(`action-${index}`);
+                const renameDiv = document.getElementById(`rename-${index}`);
+                if (actionSelect && renameDiv) {
+                    actionSelect.addEventListener('change', () => {
+                        renameDiv.style.display = actionSelect.value === 'rename' ? 'block' : 'none';
+                    });
+                }
+            }, 0);
+        }
+    });
+
+    return new Promise((resolve, reject) => {
+        document.body.appendChild(modal);
+
+        document.getElementById('import-cancel').onclick = () => {
+            document.body.removeChild(modal);
+            reject(new Error('Import cancelled'));
+        };
+
+        document.getElementById('import-confirm').onclick = () => {
+            const results = importedSets.map((set, index) => {
+                const existingSet = configurationSets.find(existing => existing.name === set.name);
+                if (!existingSet) {
+                    return { action: 'new', set: set };
+                }
+                if (isSetEqual(existingSet, set)) {
+                    return { action: 'skip', set: set };
+                }
+                const actionSelect = document.getElementById(`action-${index}`);
+                const newNameInput = document.getElementById(`newname-${index}`);
+                return {
+                    action: actionSelect.value,
+                    set: set,
+                    newName: newNameInput ? newNameInput.value : null
+                };
+            });
+            document.body.removeChild(modal);
+            resolve(results);
+        };
+    });
+}
+
+function processImportChoices(results) {
+    let setsToAdd = [];
+    let setsToMerge = [];
+    let skippedSets = [];
+
+    results.forEach(result => {
+        switch (result.action) {
+            case 'new':
+                setsToAdd.push(result.set);
+                break;
+            case 'rename':
+                setsToAdd.push({ ...result.set, name: result.newName });
+                break;
+            case 'merge':
+                setsToMerge.push(result.set);
+                break;
+            case 'skip':
+                skippedSets.push(result.set.name);
+                break;
+        }
+    });
+
+    // Handle merges first
+    setsToMerge.forEach(setToMerge => {
+        const existingSet = configurationSets.find(set => set.name === setToMerge.name);
+        if (existingSet) {
+            existingSet.buttons = [...existingSet.buttons, ...setToMerge.buttons];
+            existingSet.observationFieldMap = { 
+                ...existingSet.observationFieldMap, 
+                ...setToMerge.observationFieldMap 
+            };
+        }
+    });
+
+    // Add new sets
+    if (setsToAdd.length > 0) {
+        configurationSets.push(...setsToAdd);
+        currentSetName = setsToAdd[setsToAdd.length - 1].name;
+    }
+
+    // Save changes
+    saveConfigurationSets();
+
+    // Show summary
+    let summary = [];
+    if (setsToAdd.length > 0) summary.push(`Added ${setsToAdd.length} new set(s)`);
+    if (setsToMerge.length > 0) summary.push(`Merged ${setsToMerge.length} set(s)`);
+    if (skippedSets.length > 0) summary.push(`Skipped ${skippedSets.length} identical set(s): ${skippedSets.join(', ')}`);
+    
+    alert(summary.join('\n'));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const importInput = document.getElementById('importInput');
+    const importButton = document.getElementById('importButton');
+    
+    if (importInput && importButton) {
+        importInput.addEventListener('change', importConfigurations);
+        importButton.addEventListener('click', () => {
+            importInput.click();
+        });
+    }
+});
+
+function createListImportModal(importedLists, existingLists) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    `;
+
+    const content = document.createElement('div');
+    content.className = 'modal-content';
+    content.style.cssText = `
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 80%;
+        max-height: 80%;
+        overflow-y: auto;
+    `;
+
+    let html = '<h2>Import Lists</h2>';
+    html += '<p>Please select how to handle each list:</p>';
+    
+    importedLists.forEach((list, index) => {
+        const existingList = existingLists.find(existing => existing.id === list.id);
+        const isIdentical = existingList ? 
+            JSON.stringify(existingList.observations.sort()) === JSON.stringify(list.observations.sort()) : 
+            false;
+        
+        html += `
+            <div class="import-list-item" style="margin: 10px 0; padding: 10px; border: 1px solid #ccc;">
+                <h3>${list.name}</h3>
+                <p>Contains ${list.observations.length} observations</p>
+                ${existingList ? 
+                    isIdentical ? 
+                        '<p style="color: #666;">This list is identical to an existing list and will be skipped</p>' :
+                        `<select id="list-action-${index}" class="import-action">
+                            <option value="rename">Import as new list with different name</option>
+                            <option value="merge">Merge with existing list</option>
+                            <option value="skip">Skip this list</option>
+                        </select>
+                        <div id="list-rename-${index}" style="margin-top: 10px;">
+                            <input type="text" id="list-newname-${index}" value="${list.name} (New)" 
+                                style="width: 200px; margin-right: 10px;">
+                        </div>`
+                    : '<p style="color: green;">Will be imported as new list</p>'
+                }
+            </div>`;
+    });
+
+    html += `
+        <div style="margin-top: 20px; text-align: right;">
+            <button id="list-import-cancel" style="margin-right: 10px;">Cancel</button>
+            <button id="list-import-confirm">Import</button>
+        </div>
+    `;
+
+    content.innerHTML = html;
+    modal.appendChild(content);
+
+    // Add event listeners for action selects
+    importedLists.forEach((list, index) => {
+        const existingList = existingLists.find(existing => existing.id === list.id);
+        if (existingList && !JSON.stringify(existingList.observations.sort()) === JSON.stringify(list.observations.sort())) {
+            setTimeout(() => {
+                const actionSelect = document.getElementById(`list-action-${index}`);
+                const renameDiv = document.getElementById(`list-rename-${index}`);
+                if (actionSelect && renameDiv) {
+                    actionSelect.addEventListener('change', () => {
+                        renameDiv.style.display = actionSelect.value === 'rename' ? 'block' : 'none';
+                    });
+                }
+            }, 0);
+        }
+    });
+
+    return new Promise((resolve, reject) => {
+        document.body.appendChild(modal);
+
+        document.getElementById('list-import-cancel').onclick = () => {
+            document.body.removeChild(modal);
+            reject(new Error('Import cancelled'));
+        };
+
+        document.getElementById('list-import-confirm').onclick = () => {
+            const results = importedLists.map((list, index) => {
+                const existingList = existingLists.find(existing => existing.id === list.id);
+                if (!existingList) {
+                    return { action: 'new', list: list };
+                }
+                if (JSON.stringify(existingList.observations.sort()) === JSON.stringify(list.observations.sort())) {
+                    return { action: 'skip', list: list };
+                }
+                const actionSelect = document.getElementById(`list-action-${index}`);
+                const newNameInput = document.getElementById(`list-newname-${index}`);
+                return {
+                    action: actionSelect.value,
+                    list: list,
+                    newName: newNameInput ? newNameInput.value : null
+                };
+            });
+            document.body.removeChild(modal);
+            resolve(results);
+        };
+    });
 }
