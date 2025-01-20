@@ -1406,6 +1406,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('duplicateSetButton').addEventListener('click', duplicateCurrentSet);
     document.getElementById('renameSetButton').addEventListener('click', renameCurrentSet);
     document.getElementById('removeSetButton').addEventListener('click', removeCurrentSet);
+
+    loadAutoFollowSettings();
+    
+    document.getElementById('preventTaxonFollow').addEventListener('change', saveAutoFollowSettings);
+    document.getElementById('preventFieldFollow').addEventListener('change', saveAutoFollowSettings);
 });
 
 function showUndoRecordsModal() {
@@ -2473,4 +2478,19 @@ function createListImportModal(importedLists, existingLists) {
             resolve(results);
         };
     });
+}
+
+function loadAutoFollowSettings() {
+    browserAPI.storage.local.get(['preventTaxonFollow', 'preventFieldFollow'], function(data) {
+        document.getElementById('preventTaxonFollow').checked = !!data.preventTaxonFollow;
+        document.getElementById('preventFieldFollow').checked = !!data.preventFieldFollow;
+    });
+}
+
+function saveAutoFollowSettings() {
+    const settings = {
+        preventTaxonFollow: document.getElementById('preventTaxonFollow').checked,
+        preventFieldFollow: document.getElementById('preventFieldFollow').checked
+    };
+    browserAPI.storage.local.set(settings);
 }

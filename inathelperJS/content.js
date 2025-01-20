@@ -1354,54 +1354,76 @@ async function performActions(actions) {
         return [];
     }
 
-    const { safeMode = true } = await new Promise(resolve => 
-        browserAPI.storage.local.get('safeMode', resolve)
+    // Get auto-follow prevention settings
+    const { preventTaxonFollow, preventFieldFollow } = await new Promise(resolve => 
+        browserAPI.storage.local.get(['preventTaxonFollow', 'preventFieldFollow'], resolve)
     );
+    console.log('Prevention settings:', { preventTaxonFollow, preventFieldFollow });
 
-    for (const action of actions) {
-        if (action.type === 'observationField') {
-            try {
-                const existingValue = await getFieldValueDetails(observationId, action.fieldId);
-                if (existingValue && safeMode) {
-                    console.log(`Skipping observation ${observationId} - existing value: ${existingValue.value}`);
-                    alert(`This observation already has a value for this field: ${existingValue.value}\nSkipping in safe mode.`);
-                    return [];
-                }
-            } catch (error) {
-                console.error('Error checking existing values:', error);
-            }
-        }
-    }
+    const hasTaxonAction = actions.some(action => action.type === 'addTaxonId');
+    const hasFieldAction = actions.some(action => action.type === 'observationField');
+    const hasExplicitFollowAction = actions.some(action => action.type === 'follow');
+    console.log('Action types:', { hasTaxonAction, hasFieldAction, hasExplicitFollowAction });
+
+    const shouldPreventFollow = !hasExplicitFollowAction && (
+        // Just taxon ID action - check taxon prevention
+        (hasTaxonAction && !hasFieldAction && preventTaxonFollow) ||
+        // Just field action - check field prevention  
+        (!hasTaxonAction && hasFieldAction && preventFieldFollow) ||
+        // Both actions - require both preventions
+        (hasTaxonAction && hasFieldAction && preventTaxonFollow && preventFieldFollow)
+    );
+    console.log('Should prevent follow:', shouldPreventFollow);
+
+    // Get initial follow state
+    const initialFollowState = await makeAPIRequest(`/observations/${observationId}/subscriptions`);
+    const originalFollowState = initialFollowState.results && 
+        initialFollowState.results.some(sub => sub.resource_type === "Observation");
 
     const results = [];
     try {
+        // Perform all actions
         for (const action of actions) {
-            // Create unique key for this observation+action combination
-            const operationKey = createOperationKey(observationId, action);
-            
-            // If this exact operation is already in progress, skip it
-            if (pendingOperations.get(operationKey)) {
-                console.log(`Skipping duplicate operation: ${operationKey}`);
-                continue;
-            }
+            console.log('Performing action:', action.type);
+            const result = await performSingleAction(action, observationId);
+            results.push(result);
+        }
 
-            // Mark operation as in progress
-            pendingOperations.set(operationKey, true);
+        // After actions, check if we need to prevent follow
+        if (shouldPreventFollow) {
+            console.log('Starting follow prevention check...');
+            console.log('Waiting for auto-follow to take effect...');
+            await delay(500);
 
-            try {
-                const result = await performSingleAction(action, observationId);
-                results.push(result);
-            } catch (error) {
-                console.error('Error in performAction:', error);
-                alert(`Error performing action: ${error.message}`);
-            } finally {
-                // Clear the pending status regardless of success/failure
-                pendingOperations.delete(operationKey);
+    const currentState = await makeAPIRequest(`/observations/${observationId}/subscriptions`);
+    const isCurrentlyFollowed = currentState.results && 
+    currentState.results.some(sub => sub.resource_type === "Observation");
+    
+    if (!originalFollowState && isCurrentlyFollowed) {
+        console.log('Attempting to unfollow...');
+        try {
+            const unfollowResponse = await makeAPIRequest(`/subscriptions/Observation/${observationId}/subscribe`, {
+                method: 'POST'
+            });
+            console.log('Unfollow response:', unfollowResponse);
+    
+            // Verify the unfollow worked
+            const finalState = await makeAPIRequest(`/observations/${observationId}/subscriptions`);
+            console.log('Final follow state:', finalState);
+        } catch (error) {
+            console.error('Error during unfollow:', error);
+        }
+    } else {
+                console.log('No unfollow needed:', {
+                    originalFollowState,
+                    isCurrentlyFollowed
+                });
             }
+        } else {
+            console.log('No follow prevention needed');
         }
     } catch (error) {
         console.error('Error in performActions:', error);
-        alert(`Error performing actions: ${error.message}`);
     }
 
     return results;
