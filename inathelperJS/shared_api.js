@@ -1480,6 +1480,7 @@ async function performProjectAction(observationId, projectId, remove = false) {
 
 
 function handleProjectActionResults(results) {
+    console.log('Raw results:', results);
     const summary = {
         success: [],
         skipped: [],
@@ -1489,7 +1490,7 @@ function handleProjectActionResults(results) {
 
     results.forEach(result => {
         const observationId = result.observationId;
-
+        console.log('Processing result:', result);
         if (result.success) {
             if (result.noActionNeeded) {
                 summary.skipped.push({
@@ -1604,14 +1605,25 @@ function createProjectActionResultsModal(summary, projectName, wasRemoval = fals
     const nonWarningFailures = summary.failed.filter(f => 
         !summary.warnings.some(w => w.observationId === f.observationId)
     );
+    console.log('Failures to display:', nonWarningFailures);
     if (nonWarningFailures.length > 0) {
         contentHTML += `
             <div style="margin: 15px 0; padding: 10px; background: #ffebee; border-radius: 4px;">
                 <h3>Failed Actions (${nonWarningFailures.length})</h3>
+                <p><a href="https://www.inaturalist.org/observations/identify?quality_grade=casual,needs_id,research&reviewed=any&verifiable=any&place_id=any&id=${nonWarningFailures.map(f => f.observationId).join(',')}" 
+                      target="_blank" 
+                      style="color: #0077cc; text-decoration: underline;">
+                    View all failed observations
+                </a></p>
                 <ul>
                     ${nonWarningFailures.map(failure => `
                         <li>
-                            <strong>Observation ${failure.observationId}:</strong> ${failure.message}
+                            <a href="https://www.inaturalist.org/observations/${failure.observationId}" 
+                               target="_blank"
+                               style="color: #0077cc; text-decoration: underline;">
+                                Observation ${failure.observationId}
+                            </a>: 
+                            ${getCleanErrorMessage(failure.message)}
                         </li>
                     `).join('')}
                 </ul>
@@ -1631,4 +1643,9 @@ function createProjectActionResultsModal(summary, projectName, wasRemoval = fals
 function generateObservationList(observationIds) {
     const url = generateObservationURL(observationIds);
     return `<a href="${url}" target="_blank">View ${observationIds.length} observation${observationIds.length !== 1 ? 's' : ''}</a>`;
+}
+
+function getCleanErrorMessage(error) {
+    const match = error.match(/Didn't pass rule: (.+?)"/);
+    return match ? match[1] : 'Unknown error';
 }

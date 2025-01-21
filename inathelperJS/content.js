@@ -2740,13 +2740,14 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
         if (selectedAction.actions.some(a => a.type === 'addToProject')) {
             const projectAction = selectedAction.actions.find(a => a.type === 'addToProject');
             const summary = handleProjectActionResults(results);
+            console.log('Creating modal with summary:', summary);
             const resultsModal = createProjectActionResultsModal(
                 summary,
                 projectAction.projectName,
                 projectAction.remove
             );
             document.body.appendChild(resultsModal);
-        } else {
+        }else {
             // Otherwise use your existing standard results modal
             const overwrittenCount = Object.keys(overwrittenValues).length;
             const skippedURL = generateObservationURL(skippedObservations);
