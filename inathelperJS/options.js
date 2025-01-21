@@ -1412,6 +1412,20 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('preventTaxonFollow').addEventListener('change', saveAutoFollowSettings);
     document.getElementById('preventFieldFollow').addEventListener('change', saveAutoFollowSettings);
     document.getElementById('preventTaxonReview').addEventListener('change', saveAutoFollowSettings);
+
+    const preventionToggle = document.getElementById('auto-prevention-toggle');
+    const preventionSettings = document.getElementById('auto-prevention-settings');
+
+    preventionToggle.addEventListener('click', function() {
+        if (preventionSettings.style.display === 'none') {
+            preventionSettings.style.display = 'block';
+            preventionToggle.textContent = 'Prevent Auto-reviewed/Followed [-]';
+        } else {
+            preventionSettings.style.display = 'none';
+            preventionToggle.textContent = 'Prevent Auto-reviewed/Followed [+]';
+        }
+    });
+
 });
 
 function showUndoRecordsModal() {

@@ -258,6 +258,12 @@ button:hover {
     user-select: none;
 }
 
+#auto-prevention-toggle, #hardcoded-shortcuts-toggle {
+    margin-bottom: 5px;
+    cursor: pointer;
+    user-select: none;
+}
+
 #hardcoded-shortcuts-list {
     margin-top: 10px;
     padding-left: 20px;
@@ -530,20 +536,20 @@ button:hover {
     </div>
     <button id="openBulkActionsButton">Open Advanced Filters URL Generator</button>
     <button id="showUndoRecordsButton">Show Bulk Action Records</button>
-    <div class="settings-section">
-        <h3>Auto-Follow Prevention</h3>
-        <div class="setting-item">
-            <input type="checkbox" id="preventTaxonFollow">
-            <label for="preventTaxonFollow">Prevent automatic following when adding taxon IDs</label>
-        </div>
-        <div class="setting-item">
-            <input type="checkbox" id="preventFieldFollow">
-            <label for="preventFieldFollow">Prevent automatic following when adding observation fields</label>
-        </div>
-        <h3>Auto-Review Prevention</h3>
-        <div class="setting-item">
-            <input type="checkbox" id="preventTaxonReview">
-            <label for="preventTaxonReview">Prevent automatic reviewing when adding taxon IDs</label>
+    <div class="hardcoded-shortcuts">
+        <h2 id="auto-prevention-toggle">Prevent Auto-reviewed/Followed [+]</h2>
+        <div id="auto-prevention-settings" style="display: none; margin-top: 10px;">          <div class="setting-item">
+                <input type="checkbox" id="preventTaxonFollow">
+                <label for="preventTaxonFollow">Prevent automatic following when adding taxon IDs</label>
+            </div>
+            <div class="setting-item">
+                <input type="checkbox" id="preventFieldFollow">
+                <label for="preventFieldFollow">Prevent automatic following when adding observation fields</label>
+            </div>
+            <div class="setting-item">
+                <input type="checkbox" id="preventTaxonReview">
+                <label for="preventTaxonReview">Prevent automatic reviewing when adding taxon IDs</label>
+            </div>
         </div>
     </div>
     <div class="hardcoded-shortcuts">
