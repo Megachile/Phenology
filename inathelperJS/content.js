@@ -1354,76 +1354,23 @@ async function performActions(actions) {
         return [];
     }
 
-    // Get auto-follow prevention settings
-    const { preventTaxonFollow, preventFieldFollow } = await new Promise(resolve => 
-        browserAPI.storage.local.get(['preventTaxonFollow', 'preventFieldFollow'], resolve)
-    );
-    console.log('Prevention settings:', { preventTaxonFollow, preventFieldFollow });
-
-    const hasTaxonAction = actions.some(action => action.type === 'addTaxonId');
-    const hasFieldAction = actions.some(action => action.type === 'observationField');
-    const hasExplicitFollowAction = actions.some(action => action.type === 'follow');
-    console.log('Action types:', { hasTaxonAction, hasFieldAction, hasExplicitFollowAction });
-
-    const shouldPreventFollow = !hasExplicitFollowAction && (
-        // Just taxon ID action - check taxon prevention
-        (hasTaxonAction && !hasFieldAction && preventTaxonFollow) ||
-        // Just field action - check field prevention  
-        (!hasTaxonAction && hasFieldAction && preventFieldFollow) ||
-        // Both actions - require both preventions
-        (hasTaxonAction && hasFieldAction && preventTaxonFollow && preventFieldFollow)
-    );
-    console.log('Should prevent follow:', shouldPreventFollow);
-
-    // Get initial follow state
-    const initialFollowState = await makeAPIRequest(`/observations/${observationId}/subscriptions`);
-    const originalFollowState = initialFollowState.results && 
-        initialFollowState.results.some(sub => sub.resource_type === "Observation");
+    // Get original states BEFORE actions
+    const originalStates = await handleFollowAndReviewPrevention(observationId, actions, []);
 
     const results = [];
     try {
         // Perform all actions
         for (const action of actions) {
-            console.log('Performing action:', action.type);
             const result = await performSingleAction(action, observationId);
             results.push(result);
         }
 
-        // After actions, check if we need to prevent follow
-        if (shouldPreventFollow) {
-            console.log('Starting follow prevention check...');
-            console.log('Waiting for auto-follow to take effect...');
-            await delay(500);
+        // Now check and restore states using our stored original states
+        await handleStateRestoration(observationId, actions, results, originalStates);
 
-    const currentState = await makeAPIRequest(`/observations/${observationId}/subscriptions`);
-    const isCurrentlyFollowed = currentState.results && 
-    currentState.results.some(sub => sub.resource_type === "Observation");
-    
-    if (!originalFollowState && isCurrentlyFollowed) {
-        console.log('Attempting to unfollow...');
-        try {
-            const unfollowResponse = await makeAPIRequest(`/subscriptions/Observation/${observationId}/subscribe`, {
-                method: 'POST'
-            });
-            console.log('Unfollow response:', unfollowResponse);
-    
-            // Verify the unfollow worked
-            const finalState = await makeAPIRequest(`/observations/${observationId}/subscriptions`);
-            console.log('Final follow state:', finalState);
-        } catch (error) {
-            console.error('Error during unfollow:', error);
-        }
-    } else {
-                console.log('No unfollow needed:', {
-                    originalFollowState,
-                    isCurrentlyFollowed
-                });
-            }
-        } else {
-            console.log('No follow prevention needed');
-        }
     } catch (error) {
         console.error('Error in performActions:', error);
+        alert(`Error performing actions: ${error.message}`);
     }
 
     return results;
@@ -5189,4 +5136,91 @@ function createActionDescription(selectedAction) {
     `;
 
     return container;
+}
+
+async function handleFollowAndReviewPrevention(observationId, actions, results) {
+    // Get prevention settings
+    const { preventTaxonFollow, preventFieldFollow, preventTaxonReview } = await new Promise(resolve => 
+        browserAPI.storage.local.get(['preventTaxonFollow', 'preventFieldFollow', 'preventTaxonReview'], resolve)
+    );
+    console.log('Prevention settings:', { preventTaxonFollow, preventFieldFollow, preventTaxonReview });
+
+    // Action type checks
+    const hasTaxonAction = actions.some(action => action.type === 'addTaxonId');
+    const hasFieldAction = actions.some(action => action.type === 'observationField');
+    const hasExplicitFollowAction = actions.some(action => action.type === 'follow');
+    const hasExplicitReviewAction = actions.some(action => action.type === 'reviewed');
+
+    // Follow prevention check
+    const shouldPreventFollow = !hasExplicitFollowAction && (
+        (hasTaxonAction && !hasFieldAction && preventTaxonFollow) ||
+        (!hasTaxonAction && hasFieldAction && preventFieldFollow) ||
+        (hasTaxonAction && hasFieldAction && preventTaxonFollow && preventFieldFollow)
+    );
+
+    // Review prevention check
+    const shouldPreventReview = !hasExplicitReviewAction && 
+        hasTaxonAction && 
+        preventTaxonReview;
+
+    // Get initial states BEFORE any actions occur
+    let originalFollowState = null;
+    let originalReviewState = null;
+
+    if (shouldPreventFollow) {
+        const followState = await makeAPIRequest(`/observations/${observationId}/subscriptions`);
+        originalFollowState = followState.results && 
+            followState.results.some(sub => sub.resource_type === "Observation");
+        console.log('Original follow state:', originalFollowState);
+    }
+
+    if (shouldPreventReview) {
+        const observation = await makeAPIRequest(`/observations/${observationId}`);
+        originalReviewState = observation.results[0].reviewed_by && 
+            observation.results[0].reviewed_by.includes(await getCurrentUserId());
+        console.log('Original review state:', originalReviewState);
+    }
+
+    // Store these original states for use after actions complete
+    const originalStates = { originalFollowState, originalReviewState };
+    
+    return originalStates;  // Return these to be used after actions complete
+}
+
+
+async function handleStateRestoration(observationId, actions, results, originalStates) {
+    if (results.every(r => r.success)) {
+        console.log('Actions completed successfully, checking states...');
+        await delay(500); // Wait for iNat's auto-actions to take effect
+
+        const { originalFollowState, originalReviewState } = originalStates;
+
+        // Follow check
+        if (originalFollowState !== null) {
+            const currentState = await makeAPIRequest(`/observations/${observationId}/subscriptions`);
+            const isCurrentlyFollowed = currentState.results && 
+                currentState.results.some(sub => sub.resource_type === "Observation");
+            console.log('Current follow state:', isCurrentlyFollowed);
+
+            if (!originalFollowState && isCurrentlyFollowed) {
+                console.log('Attempting to restore unfollowed state...');
+                await makeAPIRequest(`/subscriptions/Observation/${observationId}/subscribe`, {
+                    method: 'POST'
+                });
+            }
+        }
+
+        // Review check
+        if (originalReviewState !== null) {
+            const observation = await makeAPIRequest(`/observations/${observationId}`);
+            const isCurrentlyReviewed = observation.results[0].reviewed_by && 
+                observation.results[0].reviewed_by.includes(await getCurrentUserId());
+
+            if (!originalReviewState && isCurrentlyReviewed) {
+                await makeAPIRequest(`/observations/${observationId}/review`, {
+                    method: 'DELETE'
+                });
+            }
+        }
+    }
 }
