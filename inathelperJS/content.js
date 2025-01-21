@@ -4773,7 +4773,24 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                         actionDesc = `Set field "${action.fieldName}" to "${displayValue}"`;
                         break;
                     case 'annotation':
-                        actionDesc = `Add annotation: ${action.annotationDisplay}`;
+                        // Find the field name by ID
+                        let annotationFieldName = 'Unknown';
+                        let annotationValueName = 'Unknown';
+                        
+                        for (const [key, value] of Object.entries(controlledTerms)) {
+                            if (value.id === parseInt(action.annotationField)) {
+                                annotationFieldName = key;
+                                // Look up the value name
+                                for (const [valueName, valueId] of Object.entries(value.values)) {
+                                    if (valueId === parseInt(action.annotationValue)) {
+                                        annotationValueName = valueName;
+                                        break;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                        actionDesc = `Add annotation: ${annotationFieldName} = ${annotationValueName}`;
                         break;
                     case 'addToProject':
                         actionDesc = `${action.remove ? 'Remove from' : 'Add to'} project: ${action.projectName}`;
