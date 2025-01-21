@@ -2638,6 +2638,12 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
         // Generate preliminary undo record
         const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedAction, observationIds, preActionStates);
 
+        // Store prevention states for each observation
+        const preventionStates = {};
+        for (const observationId of observationIds) {
+            preventionStates[observationId] = await handleFollowAndReviewPrevention(observationId, selectedAction.actions, []);
+        }
+
         for (const observationId of observationIds) {
             if (isCancelledFunc()) {
                 statusElement.textContent = 'Action cancelled. Processing completed actions...';
@@ -2662,6 +2668,7 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
             }
 
             if (!shouldSkip) {
+                const observationResults = [];
                 for (const action of selectedAction.actions) {
                     try {
                         let actionResult;
@@ -2698,13 +2705,25 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
                             overwrittenValues[observationId] = existingFieldValues;
                         }
 
-                        results.push({ ...actionResult, observationId, action: action.type });
+                        observationResults.push({ ...actionResult, observationId, action: action.type });
                     } catch (error) {
                         console.error(`Error executing action for observation ${observationId}:`, error);
                         errorMessages.push(`Error processing observation ${observationId}: ${error.message}`);
-                        results.push({ success: false, error: error.toString(), observationId });
+                        observationResults.push({ success: false, error: error.toString(), observationId });
                     }
                 }
+
+                // Handle state restoration after all actions for this observation
+                if (observationResults.every(r => r.success)) {
+                    await handleStateRestoration(
+                        observationId, 
+                        selectedAction.actions, 
+                        observationResults, 
+                        preventionStates[observationId]
+                    );
+                }
+
+                results.push(...observationResults);
             }
 
             processedObservations++;
