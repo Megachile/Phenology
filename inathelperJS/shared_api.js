@@ -392,7 +392,7 @@ function updateFieldValueInput(field, container, existingValue = null) {
             input = document.createElement('input');
             input.type = 'text';
             input.className = 'taxonInput';
-            input.placeholder = 'Enter species name';
+            input.placeholder = 'Enter Taxon Name (or ID)';
             console.log('Setting up taxon autocomplete for field:', field);
             setupTaxonAutocomplete(input, null); 
             console.log('Created taxon input:', input);
@@ -1106,9 +1106,10 @@ function showJWTAlert() {
 
     // Add message and link
     modalContent.innerHTML = `
-        <h2 style="margin-top: 0;">JWT Required</h2>
-        <p>To use this extension, you need to log in and open an iNaturalist Identify page first.</p>
-        <a href="https://www.inaturalist.org/observations/identify" target="_blank" style="color: blue; text-decoration: underline;">Open Identify Page</a>
+        <h2 style="margin-top: 0;">Authentication Required</h2>
+        <p>This extension submits actions to the iNaturalist server using your account credentials. Please ensure you are logged into iNaturalist and have recently visited an iNaturalist page. This allows the extension to securely connect to your iNaturalist account.</p>
+        <p>After you navigate to an Identify page logged in to your account, refresh this page. If your credentials were obtained, this note should not appear.</p>
+        <a href="https://www.inaturalist.org/observations/identify" target="_blank" style="color: blue; text-decoration: underline;">Open iNaturalist Identify Page</a>
         <button id="closeJWTAlert" style="display: block; margin: 20px auto 0; padding: 10px 20px;">Close</button>
     `;
 
@@ -1120,13 +1121,17 @@ function showJWTAlert() {
 
     // Close modal when close button is clicked
     document.getElementById('closeJWTAlert').onclick = function() {
-        document.body.removeChild(modal);
+        if (modal.parentNode) { // Check if modal is still in DOM
+            document.body.removeChild(modal);
+        }
     };
 
     // Close modal when clicking outside of it
     modal.onclick = function(event) {
         if (event.target == modal) {
-            document.body.removeChild(modal);
+            if (modal.parentNode) { // Check if modal is still in DOM
+                document.body.removeChild(modal);
+            }
         }
     };
 }

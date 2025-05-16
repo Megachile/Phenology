@@ -339,7 +339,7 @@ function addField(type) {
 
     if (type === 'taxon') {
         fieldGroup.innerHTML = `
-            <input type="text" id="${type}${fieldCount}" placeholder="Enter ${type}">
+            <input type="text" id="${type}${fieldCount}" placeholder="Enter Taxon Name (or ID)">
             <input type="text" id="${type}Id${fieldCount}" placeholder="${type} ID" readonly>
             <button class="removeFieldButton">Remove</button>
             <label><input type="checkbox" class="negationCheckbox"> Without</label>
@@ -347,7 +347,7 @@ function addField(type) {
         `;
         } else if (type === 'idTaxon') {
             fieldGroup.innerHTML = `
-                <input type="text" id="${type}${fieldCount}" placeholder="Enter ID taxon">
+                <input type="text" id="${type}${fieldCount}" placeholder="Enter ID taxon (name or ID)">
                 <input type="text" id="${type}Id${fieldCount}" placeholder="ID Taxon ID" readonly>
                 <button class="removeFieldButton">Remove</button>
                 <label><input type="checkbox" class="negationCheckbox"> Without</label>

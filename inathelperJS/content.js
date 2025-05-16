@@ -4669,7 +4669,9 @@ function createActionModal() {
                 highlightObservationsWithExistingValues(observationsToHighlight, selectedAction);
 
                 // Remove the action selection modal
-                document.body.removeChild(modal);
+                if (modal.parentNode === document.body) { // Check if modal is still a child of body
+                    document.body.removeChild(modal);
+                }
                 
                 // Show validation modal and proceed with action
                 const validationModal = await createValidationModal(
@@ -4701,7 +4703,10 @@ function createActionModal() {
     };
 
     cancelButton.onclick = () => {
-        document.body.removeChild(modal);
+        highlightObservationsWithExistingValues([], null, true); // Also clear highlights on cancel
+        if (modal.parentNode === document.body) { // Check if modal is still a child of body
+            document.body.removeChild(modal);
+        }
     };
 
     return modal;
@@ -4857,12 +4862,17 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                     
                     Object.entries(existingFields).forEach(([fieldId, value]) => {
                         const fieldName = validationResults.fieldNames.get(fieldId);
-                        const proposedValue = validationResults.proposedValues.get(fieldId);
+                        const actionItemForField = selectedAction.actions.find(
+                            act => act.type === 'observationField' && act.fieldId === fieldId
+                        );
+                        const proposedDisplayValue = (actionItemForField && actionItemForField.displayValue) ? 
+                                                      actionItemForField.displayValue : 
+                                                      validationResults.proposedValues.get(fieldId);
                         item.innerHTML += `
                             <li>${fieldName}: 
                                 <span style="color: #666;">"${value}"</span>
                                 <span style="color: #999;"> (would be set to </span>
-                                <span style="color: #666;">"${proposedValue}"</span>
+                                <span style="color: #666;">"${proposedDisplayValue}"</span>
                                 <span style="color: #999;">)</span>
                             </li>
                         `;
@@ -4882,7 +4892,7 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                     </p>
                 `;
             }
-        } else {
+        } else { // Overwrite Mode
             summary.innerHTML = `
                 <p><strong>Overwrite Mode is ON</strong></p>
                 <p style="color: red;">Warning: This will overwrite existing values in ${validationResults.existingValues.size} observations:</p>
@@ -4913,12 +4923,17 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                 
                 Object.entries(info.existingFields).forEach(([fieldId, value]) => {
                     const fieldName = validationResults.fieldNames.get(fieldId);
-                    const proposedValue = validationResults.proposedValues.get(fieldId);
+                    const actionItemForField = selectedAction.actions.find(
+                        act => act.type === 'observationField' && act.fieldId === fieldId
+                    );
+                    const proposedDisplayValue = (actionItemForField && actionItemForField.displayValue) ? 
+                                                  actionItemForField.displayValue : 
+                                                  validationResults.proposedValues.get(fieldId);
                     item.innerHTML += `
                         <li>${fieldName}: 
                             <span style="color: #666;">"${value}"</span>
                             <span style="color: #999;"> → </span>
-                            <span style="color: #666;">"${proposedValue}"</span>
+                            <span style="color: #666;">"${proposedDisplayValue}"</span>
                         </li>
                     `;
                 });

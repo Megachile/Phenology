@@ -691,7 +691,7 @@ function addActionToForm(action = null) {
             <textarea class="commentBody" placeholder="Enter comment"></textarea>
         </div>
         <div class="taxonIdInputs" style="display:none;">
-            <input type="text" class="taxonName" placeholder="Taxon Name">
+            <input type="text" class="taxonName" placeholder="Taxon Name (or ID)">
             <input type="hidden" class="taxonId">
         </div>
         <div class="qualityMetricInputs" style="display:none;">
@@ -1104,7 +1104,7 @@ async function formatAction(action) {
             const fieldName = getAnnotationFieldName(action.annotationField);
             const valueName = getAnnotationValueName(action.annotationField, action.annotationValue);
             return `Set "${fieldName}" to "${valueName}"`;
-            case 'addToProject':
+        case 'addToProject':
                 return action.remove ? 
                     `Remove from project: ${action.projectName || action.projectId}` :
                     `Add to project: ${action.projectName || action.projectId}`;            
