@@ -4381,7 +4381,7 @@ function updateHighlightZIndex(element) {
 }
 
 
-async function validateBulkAction(selectedAction, observationIds) {
+async function validateBulkAction(selectedAction, observationIds, getIsCancelled) {
     console.log('Starting validateBulkAction with:', {selectedAction, observationIds});
     const results = {
         total: observationIds.length,
@@ -4389,14 +4389,19 @@ async function validateBulkAction(selectedAction, observationIds) {
         toSkip: [],
         fieldNames: new Map(),
         existingValues: new Map(),
-        proposedValues: new Map() // Add this to store new values
+        proposedValues: new Map()
     };
 
-    const { safeMode = true } = await new Promise(resolve => 
+    // Check for cancellation before any processing
+    if (getIsCancelled && getIsCancelled()) {
+        console.log("validateBulkAction: Operation cancelled at the very beginning.");
+        throw new Error('ValidationCancelled');
+    }
+
+    const { safeMode = true } = await new Promise(resolve =>
         browserAPI.storage.local.get('safeMode', resolve)
     );
 
-    // First, store the proposed values for each field
     selectedAction.actions.forEach(action => {
         if (action.type === 'observationField') {
             results.fieldNames.set(action.fieldId, action.fieldName);
@@ -4405,30 +4410,40 @@ async function validateBulkAction(selectedAction, observationIds) {
     });
 
     for (const observationId of observationIds) {
+        // Check for cancellation before processing each observation
+        if (getIsCancelled && getIsCancelled()) {
+            console.log("validateBulkAction: Operation cancelled. Aborting validation loop for observationId:", observationId);
+            throw new Error('ValidationCancelled');
+        }
+
         let hasExistingValues = false;
         const existingFields = new Map();
 
-        // Check for existing values regardless of mode
         for (const action of selectedAction.actions) {
+            // Check for cancellation before processing each action within an observation
+            if (getIsCancelled && getIsCancelled()) {
+                console.log("validateBulkAction: Operation cancelled during field check for observationId:", observationId);
+                throw new Error('ValidationCancelled');
+            }
             if (action.type === 'observationField') {
                 try {
-                    console.log('Checking field values for:', {observationId, action});
+                    // console.log('Checking field values for:', {observationId, action});
                     const existingValue = await getFieldValueDetails(observationId, action.fieldId);
-                    console.log('Got existing value:', existingValue);
+                    // console.log('Got existing value:', existingValue);
                     if (existingValue) {
                         hasExistingValues = true;
-                        results.fieldNames.set(action.fieldId, action.fieldName);
                         const valueToStore = existingValue.displayValue || existingValue.value;
-                        console.log('Storing value:', valueToStore);
+                        // console.log('Storing value:', valueToStore);
                         existingFields.set(action.fieldId, valueToStore);
                     }
                 } catch (error) {
-                    console.error(`Error checking field values for observation ${observationId}:`, error);
+                    console.error(`Error checking field values for observation ${observationId}, field ${action.fieldId}:`, error);
+                    // If a single API call fails, we might want to log it but not necessarily cancel the whole batch
+                    // unless it's a rate-limiting error, etc. For now, just log.
                 }
             }
         }
 
-        // If has existing values, handle based on mode
         if (hasExistingValues) {
             const observationInfo = {
                 observationId,
@@ -4445,7 +4460,14 @@ async function validateBulkAction(selectedAction, observationIds) {
             results.toProcess.push(observationId);
         }
     }
+    
+    // Final check before returning
+    if (getIsCancelled && getIsCancelled()) {
+        console.log("validateBulkAction: Operation cancelled just before returning results.");
+        throw new Error('ValidationCancelled');
+    }
 
+    console.log("validateBulkAction finished (not cancelled).");
     return results;
 }
 
@@ -4514,6 +4536,8 @@ async function createValidationSummary(validationResults) {
 }
 
 function createActionModal() {
+    let isActionCancelled = false; // Flag to track if the modal was cancelled
+
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed;
@@ -4535,10 +4559,11 @@ function createActionModal() {
     title.textContent = `Select Action for ${selectedObservations.size} Observations`;
     modal.appendChild(title);
 
-    const progressBar = createProgressBar();
-    modal.appendChild(progressBar);
+    // Progress bar is for the execution phase, not needed in this selection modal
+    // const progressBar = createProgressBar(); 
+    // modal.appendChild(progressBar);
+    // progressBar.style.display = 'none'; // Hide it if you keep it
 
-    // Action selection area - only create options once
     const actionSelect = document.createElement('select');
     actionSelect.id = 'bulk-action-select';
     actionSelect.style.cssText = `
@@ -4549,7 +4574,6 @@ function createActionModal() {
         border: 1px solid #ccc;
     `;
     
-    // Add default option
     const defaultOption = document.createElement('option');
     defaultOption.value = "";
     defaultOption.textContent = "Select an action";
@@ -4557,7 +4581,6 @@ function createActionModal() {
     defaultOption.selected = true;
     actionSelect.appendChild(defaultOption);
     
-    // Add options for each available action - do this only once
     currentAvailableActions.forEach(button => {
         const option = document.createElement('option');
         option.value = button.id;
@@ -4566,26 +4589,11 @@ function createActionModal() {
     });
     modal.appendChild(actionSelect);
 
-    // Description area for the selected action
     const descriptionArea = document.createElement('p');
     descriptionArea.id = 'action-description';
     descriptionArea.style.marginBottom = '10px';
     modal.appendChild(descriptionArea);
 
-    // Area for displaying validation results
-    const validationArea = document.createElement('div');
-    validationArea.id = 'validation-area';
-    validationArea.style.display = 'none';
-    modal.appendChild(validationArea);
-
-    // Disclaimer for warnings
-    const disclaimer = document.createElement('p');
-    disclaimer.id = 'action-disclaimer';
-    disclaimer.style.color = 'red';
-    disclaimer.style.display = 'none';
-    modal.appendChild(disclaimer);
-
-    // Button container
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = `
         display: flex;
@@ -4608,7 +4616,6 @@ function createActionModal() {
     buttonContainer.appendChild(applyButton);
     modal.appendChild(buttonContainer);
 
-    // Event handler for action selection
     actionSelect.onchange = () => {
         const selectedAction = currentAvailableActions.find(button => button.id === actionSelect.value);
         if (selectedAction) {
@@ -4620,98 +4627,121 @@ function createActionModal() {
         }
     };
 
-    // In createActionModal(), in the applyButton.onclick handler:
+    const removeThisModal = (isCancelledByUser = false) => {
+        if (isCancelledByUser) {
+            console.log("Action selection modal process is being explicitly cancelled.");
+        }
+        highlightObservationsWithExistingValues([], null, true); // Cleanup highlights
+        if (modal.parentNode === document.body) {
+            document.body.removeChild(modal);
+        }
+    };
+
     applyButton.onclick = async () => {
         const selectedAction = currentAvailableActions.find(button => button.id === actionSelect.value);
-        if (selectedAction) {
-            try {
-                // Show processing state immediately
-                applyButton.textContent = 'Processing...';
-                applyButton.disabled = true;
+        if (!selectedAction) return;
 
-                // Get safe mode setting
-                const { safeMode = true } = await new Promise(resolve => 
-                    browserAPI.storage.local.get('safeMode', resolve)
-                );
+        // If action was cancelled before 'Apply' fully processed (e.g. rapid clicks)
+        if (isActionCancelled) {
+            console.log("Apply clicked, but action was already cancelled by the time it could start.");
+            removeThisModal(true); // Pass true to indicate it was a user cancel
+            return;
+        }
 
-                // Perform validation in background
-                const observationIds = Array.from(selectedObservations);
-                const validationResults = await validateBulkAction(selectedAction, observationIds);
-                
-                // Add highlighting for observations with existing values
-                const observationsToHighlight = safeMode ?
-                    validationResults.toSkip.map(item => ({
-                        observationId: item.observationId,
-                        fieldValues: Object.fromEntries(
-                            Object.entries(item.existingFields).map(([fieldId, value]) => [
-                                validationResults.fieldNames.get(fieldId),
-                                {
-                                    current: value,
-                                    proposed: validationResults.proposedValues.get(fieldId)
-                                }
-                            ])
-                        )
-                    })) :
-                    Array.from(validationResults.existingValues.entries()).map(([observationId, info]) => ({
-                        observationId,
-                        fieldValues: Object.fromEntries(
-                            Object.entries(info.existingFields).map(([fieldId, value]) => [
-                                validationResults.fieldNames.get(fieldId),
-                                {
-                                    current: value,
-                                    proposed: validationResults.proposedValues.get(fieldId)
-                                }
-                            ])
-                        )
-                    }));
+        applyButton.textContent = 'Validating...';
+        applyButton.disabled = true;
+        // Keep cancelButton enabled, so the user can still cancel during validation.
 
-                // Apply the highlighting before showing validation modal
-                highlightObservationsWithExistingValues(observationsToHighlight, selectedAction);
+        let validationResults;
+        try {
+            const { safeMode = true } = await new Promise(resolve =>
+                browserAPI.storage.local.get('safeMode', resolve)
+            );
 
-                // Remove the action selection modal
-                if (modal.parentNode === document.body) { // Check if modal is still a child of body
-                    document.body.removeChild(modal);
+            const observationIds = Array.from(selectedObservations);
+            
+            // Pass a function to check `isActionCancelled`
+            validationResults = await validateBulkAction(selectedAction, observationIds, () => isActionCancelled);
+
+            // If cancellation occurred *during* validateBulkAction (it would throw 'ValidationCancelled')
+            // This path won't be hit if validateBulkAction throws, it'll go to catch.
+            // But, good to check the flag again.
+            if (isActionCancelled) {
+                console.log("Action cancelled after validation returned (but likely during). Not showing validation modal.");
+                removeThisModal(true);
+                return;
+            }
+
+            // If we reach here, validation completed and was NOT cancelled.
+            removeThisModal(false); // Remove the current action selection modal (not due to user cancel)
+
+            const observationsToHighlight = safeMode ?
+                validationResults.toSkip.map(item => ({
+                    observationId: item.observationId,
+                    fieldValues: Object.fromEntries(
+                        Object.entries(item.existingFields).map(([fieldId, value]) => [
+                            validationResults.fieldNames.get(fieldId),
+                            {
+                                current: value,
+                                proposed: validationResults.proposedValues.get(fieldId)
+                            }
+                        ])
+                    )
+                })) :
+                Array.from(validationResults.existingValues.entries()).map(([observationId, info]) => ({
+                    observationId,
+                    fieldValues: Object.fromEntries(
+                        Object.entries(info.existingFields).map(([fieldId, value]) => [
+                            validationResults.fieldNames.get(fieldId),
+                            {
+                                current: value,
+                                proposed: validationResults.proposedValues.get(fieldId)
+                            }
+                        ])
+                    )
+                }));
+
+            highlightObservationsWithExistingValues(observationsToHighlight, selectedAction);
+
+            const validationModal = await createValidationModal(
+                validationResults,
+                selectedAction,
+                async () => { // onConfirm for validationModal
+                    highlightObservationsWithExistingValues([], null, true);
+                    const progressModal = createProgressModal();
+                    document.body.appendChild(progressModal);
+                    await executeBulkAction(selectedAction, progressModal, () => false);
+                },
+                () => { // onCancel for validationModal
+                    highlightObservationsWithExistingValues([], null, true);
+                    console.log('Validation confirmation cancelled');
                 }
-                
-                // Show validation modal and proceed with action
-                const validationModal = await createValidationModal(
-                    validationResults,
-                    selectedAction,
-                    async () => {
-                        // Clear highlights when proceeding with action
-                        highlightObservationsWithExistingValues([], true);
-                        const progressModal = createProgressModal();
-                        document.body.appendChild(progressModal);
-                        await executeBulkAction(selectedAction, progressModal, () => false);
-                    },
-                    () => {
-                        // Don't clear highlights on cancel
-                        console.log('Validation cancelled');
-                    }
-                );
-                
-                document.body.appendChild(validationModal);
-            } catch (error) {
-                console.error('Error in bulk action:', error);
+            );
+            document.body.appendChild(validationModal);
+
+        } catch (error) {
+            if (error.message === 'ValidationCancelled') {
+                console.log("Validation process was explicitly cancelled by the user.");
+                removeThisModal(true); // Ensure modal is removed if cancel happened during validation
+            } else {
+                console.error('Error in bulk action apply process:', error);
                 alert(`Error: ${error.message}`);
                 applyButton.textContent = 'Apply Action';
-                applyButton.disabled = false;
-                // Clear highlights on error
-                highlightObservationsWithExistingValues([], true);
+                if (actionSelect.value) applyButton.disabled = false;
+                // Do not re-enable cancel button here as this modal should be gone.
+                removeThisModal(false); // Remove modal on other errors
             }
         }
     };
 
     cancelButton.onclick = () => {
-        highlightObservationsWithExistingValues([], null, true); // Also clear highlights on cancel
-        if (modal.parentNode === document.body) { // Check if modal is still a child of body
-            document.body.removeChild(modal);
-        }
+        console.log("Action selection modal CANCEL button clicked.");
+        isActionCancelled = true; // Set the flag
+        removeThisModal(true); // Indicate it's a user cancel
     };
 
     return modal;
 }
-
 async function createValidationModal(validationResults, selectedAction, onConfirm, onCancel) {
     const { safeMode = true } = await new Promise(resolve => 
         browserAPI.storage.local.get('safeMode', resolve)
