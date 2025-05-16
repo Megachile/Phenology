@@ -1231,27 +1231,9 @@ function formatShortcut(shortcut) {
     return parts.join(' + ');
 }
 
-function getAnnotationFieldName(fieldId) {
-    for (let [key, value] of Object.entries(controlledTerms)) {
-        if (value.id === parseInt(fieldId)) {
-            return key;
-        }
-    }
-    return 'Unknown';
-}
 
-function getAnnotationValueName(fieldId, valueId) {
-    for (let [key, value] of Object.entries(controlledTerms)) {
-        if (value.id === parseInt(fieldId)) {
-            for (let [valueName, valueIdInner] of Object.entries(value.values)) {
-                if (valueIdInner === parseInt(valueId)) {
-                    return valueName;
-                }
-            }
-        }
-    }
-    return 'Unknown';
-}
+
+
 
 function clearForm() {
     document.getElementById('buttonName').value = '';

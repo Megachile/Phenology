@@ -1484,49 +1484,80 @@ async function performProjectAction(observationId, projectId, remove = false) {
 }
 
 
-function handleProjectActionResults(results) {
-    console.log('Raw results:', results);
+function handleProjectActionResults(results, wasRemoval = false) {
+    console.log('Raw results for project action summary:', results);
     const summary = {
-        success: [],
-        skipped: [],
-        failed: [],
-        warnings: []
+        projectSuccess: [], // Observations where project action succeeded
+        projectSkipped: [], // Observations where project action was skipped (noActionNeeded)
+        projectFailed: [],  // Observations where project action failed
+        otherActionsSucceededForFailedProject: [], // Obs where project failed but other actions might have succeeded
+        warnings: [] // Warnings specifically from project action
     };
 
-    results.forEach(result => {
-        const observationId = result.observationId;
-        console.log('Processing result:', result);
-        if (result.success) {
-            if (result.noActionNeeded) {
-                summary.skipped.push({
+    // Group results by observationId
+    const resultsByObservation = results.reduce((acc, result) => {
+        acc[result.observationId] = acc[result.observationId] || [];
+        acc[result.observationId].push(result);
+        return acc;
+    }, {});
+
+    for (const observationId in resultsByObservation) {
+        const obsActions = resultsByObservation[observationId];
+        const projectActionResult = obsActions.find(r => r.action === 'addToProject' || (r.projectId && (r.explicitlyRemoved !== undefined || r.reason))); // find project-specific result
+
+        if (projectActionResult) {
+            if (projectActionResult.success) {
+                if (projectActionResult.noActionNeeded) {
+                    summary.projectSkipped.push({
+                        observationId,
+                        reason: projectActionResult.reason,
+                        message: projectActionResult.message
+                    });
+                } else {
+                    summary.projectSuccess.push({
+                        observationId,
+                        message: projectActionResult.message,
+                        additionUUID: projectActionResult.additionUUID,
+                        explicitlyRemoved: projectActionResult.explicitlyRemoved
+                    });
+                }
+            } else { // Project action failed or had warning
+                if (projectActionResult.requiresWarning) {
+                    summary.warnings.push({
+                        observationId,
+                        message: projectActionResult.message,
+                        reason: projectActionResult.reason
+                    });
+                }
+                // Even if it's a warning, if it's not a success, it's a failure in terms of project addition/removal
+                summary.projectFailed.push({
                     observationId,
-                    reason: result.reason,
-                    message: result.message
+                    message: projectActionResult.message,
+                    reason: projectActionResult.reason
                 });
-            } else {
-                summary.success.push({
-                    observationId,
-                    message: result.message,
-                    additionUUID: result.additionUUID,
-                    explicitlyRemoved: result.explicitlyRemoved
-                });
+
+                // Check if other actions for this observation succeeded despite project failure
+                const otherSuccessfulActions = obsActions.filter(
+                    r => r.action !== 'addToProject' && r.success && r.action !== (wasRemoval ? 'removedFromProject' : 'addedToProject')
+                ).length > 0;
+
+                if (otherSuccessfulActions) {
+                    summary.otherActionsSucceededForFailedProject.push(observationId);
+                }
             }
         } else {
-            if (result.requiresWarning) {
-                summary.warnings.push({
-                    observationId,
-                    message: result.message,
-                    reason: result.reason
-                });
-            }
-            summary.failed.push({
+            // This case should ideally not happen if this function is called for project actions
+            // But as a fallback, if an observation has results but no specific project action result,
+            // consider it a general failure for this summary.
+            console.warn(`Observation ${observationId} had results but no specific project action result.`);
+            summary.projectFailed.push({
                 observationId,
-                message: result.message,
-                reason: result.reason
+                message: "Project action outcome unclear, but other actions processed.",
+                reason: "missing_project_result"
             });
         }
-    });
-
+    }
+    console.log("Generated project summary:", summary);
     return summary;
 }
 
@@ -1557,49 +1588,85 @@ function createProjectActionResultsModal(summary, projectName, wasRemoval = fals
 
     let contentHTML = `<h2>Project Action Results</h2>`;
 
-    // Success section
-    if (summary.success.length > 0) {
-        const uniqueSuccessfulObservationIds = [...new Set(summary.success.map(s => s.observationId))]; // Get unique IDs
+    const allInvolvedObsIds = new Set([
+        ...summary.projectSuccess.map(s => s.observationId),
+        ...summary.projectSkipped.map(s => s.observationId),
+        ...summary.projectFailed.map(f => f.observationId),
+        ...summary.warnings.map(w => w.observationId)
+    ]);
+
+    const fullySuccessfulObs = summary.projectSuccess.map(s => s.observationId);
+    const partiallySuccessfulObsIds = summary.otherActionsSucceededForFailedProject; // ObsIds where project failed/skipped but others OK
+
+    // --- Section for Fully Successful Observations (including project action) ---
+    if (fullySuccessfulObs.length > 0) {
         contentHTML += `
             <div style="margin: 15px 0;">
-                <h3>Successful Actions (${summary.success.length})</h3>
-                <p>${wasRemoval ? 'Removed from' : 'Added to'} project "${projectName}"</p>
+                <h3>Project Action Successful (${fullySuccessfulObs.length} observations)</h3>
+                <p>The configured actions, including ${wasRemoval ? 'removal from' : 'addition to'} project "${projectName}", fully succeeded for:</p>
                 <div class="observation-list">
-                    ${generateObservationList(uniqueSuccessfulObservationIds)}
+                    ${generateObservationList(fullySuccessfulObs)}
                 </div>
             </div>
         `;
     }
+    
+    // --- Section for Partially Successful Observations (Project failed/skipped, others OK) ---
+    if (partiallySuccessfulObsIds.length > 0) {
+         contentHTML += `
+            <div style="margin: 15px 0; padding: 10px; background: #e0f2f1; border-radius: 4px;">
+                <h3>Partial Success (${partiallySuccessfulObsIds.length} observations)</h3>
+                <p>For these observations, the specific project action failed or was skipped, BUT other configured actions succeeded:</p>
+                <div class="observation-list">
+                    ${generateObservationList(partiallySuccessfulObsIds)}
+                </div>
+                 <p><small>Details for the project action's outcome for these observations can be found in the 'Project Action Warnings' or 'Project Action Failed' sections below.</small></p>
+            </div>
+        `;
+    }
 
-    // Skipped section
-    if (summary.skipped.length > 0) {
+    // --- Section for Project Action Skipped (and not a partial success) ---
+    // Filter out those already covered by partial success or full success.
+    const purelySkippedObsDetails = summary.projectSkipped.filter(s => 
+        !partiallySuccessfulObsIds.includes(s.observationId) && 
+        !fullySuccessfulObs.includes(s.observationId)
+    );
+    if (purelySkippedObsDetails.length > 0) {
         contentHTML += `
             <div style="margin: 15px 0; padding: 10px; background: #fff3e0; border-radius: 4px;">
-                <h3>Skipped Actions (${summary.skipped.length})</h3>
-                <p>Observations already in desired state (if this is surprising, confirm you selected the right project)</p>
-                <div class="observation-list">
-                    ${generateObservationList(summary.skipped.map(s => s.observationId))}
-                </div>
+                <h3>Project Action Skipped (${purelySkippedObsDetails.length} observations)</h3>
+                <p>The project action was skipped (e.g., observation already in/not in project), and no other actions led to a 'Partial Success' status for these:</p>
+                <ul>
+                    ${purelySkippedObsDetails.map(skipped => `
+                        <li>
+                            <a href="https://www.inaturalist.org/observations/${skipped.observationId}" 
+                               target="_blank" style="color: #0077cc; text-decoration: underline;">
+                                Observation ${skipped.observationId}
+                            </a>: ${skipped.message || 'No action needed'} (${skipped.reason || 'Skipped'})
+                        </li>
+                    `).join('')}
+                </ul>
             </div>
         `;
     }
-
-    // Warnings section
+    
+    // --- Section for Project Action Warnings ---
+    // This section should list ALL warnings, including those for partially successful observations.
     if (summary.warnings.length > 0) {
         contentHTML += `
-            <div style="margin: 15px 0; padding: 10px; background: #ffebee; border-radius: 4px;">
-                <h3>Warnings (${summary.warnings.length})</h3>
+            <div style="margin: 15px 0; padding: 10px; background: #fff1f0; border-radius: 4px;">
+                <h3>Project Action Warnings (${summary.warnings.length})</h3>
+                <p>These warnings are specific to the project addition/removal action:</p>
                 <ul>
                     ${summary.warnings.map(warning => `
                         <li>
-                            <strong>Observation ${warning.observationId}:</strong> ${warning.message}
-                            ${
-                                warning.reason === 'dynamic_inclusion' 
-                                    ? ' (Automatically included by project rules)'
-                                    : warning.reason === 'permission_denied'
-                                        ? ' (Insufficient permissions)'
-                                        : ''
-                            }
+                            <a href="https://www.inaturalist.org/observations/${warning.observationId}" 
+                               target="_blank" style="color: #0077cc; text-decoration: underline;">
+                                Observation ${warning.observationId}
+                            </a>: ${warning.message}
+                            ${warning.reason === 'dynamic_inclusion' ? ' (Automatically included by project rules)' : ''}
+                            ${warning.reason === 'permission_denied' ? ' (Insufficient permissions)' : ''}
+                            ${partiallySuccessfulObsIds.includes(warning.observationId) ? ' <strong style="color: #00897b;">(Also listed under Partial Success)</strong>' : ''}
                         </li>
                     `).join('')}
                 </ul>
@@ -1607,29 +1674,32 @@ function createProjectActionResultsModal(summary, projectName, wasRemoval = fals
         `;
     }
 
-    // Failed section (excluding ones that are also in warnings)
-    const nonWarningFailures = summary.failed.filter(f => 
-        !summary.warnings.some(w => w.observationId === f.observationId)
+    // --- Section for Project Action Failed ---
+    // List all project failures, indicating if they were also "Partial Success" due to other actions.
+    // Exclude failures that are already covered *as the primary reason* in the warnings section if they have the same reason.
+    const failuresToList = summary.projectFailed.filter(f => 
+        !summary.warnings.some(w => w.observationId === f.observationId && w.reason === f.reason && w.message === f.message)
     );
-    console.log('Failures to display:', nonWarningFailures);
-    if (nonWarningFailures.length > 0) {
+
+    if (failuresToList.length > 0) {
         contentHTML += `
-            <div style="margin: 15px 0; padding: 10px; background: #ffebee; border-radius: 4px;">
-                <h3>Failed Actions (${nonWarningFailures.length})</h3>
-                <p><a href="https://www.inaturalist.org/observations/identify?quality_grade=casual,needs_id,research&reviewed=any&verifiable=any&place_id=any&id=${nonWarningFailures.map(f => f.observationId).join(',')}" 
-                      target="_blank" 
-                      style="color: #0077cc; text-decoration: underline;">
-                    View all failed observations
+            <div style="margin: 15px 0; padding: 10px; background: #ffeded; border-radius: 4px;">
+                <h3>Project Action Failed (${failuresToList.length} observations)</h3>
+                 <p>The project addition/removal action failed for these observations:</p>
+                <p><a href="https://www.inaturalist.org/observations/identify?quality_grade=casual,needs_id,research&reviewed=any&verifiable=any&place_id=any&id=${failuresToList.map(f => f.observationId).join(',')}" 
+                      target="_blank" style="color: #0077cc; text-decoration: underline;">
+                    View these observations
                 </a></p>
                 <ul>
-                    ${nonWarningFailures.map(failure => `
+                    ${failuresToList.map(failure => `
                         <li>
                             <a href="https://www.inaturalist.org/observations/${failure.observationId}" 
-                               target="_blank"
-                               style="color: #0077cc; text-decoration: underline;">
+                               target="_blank" style="color: #0077cc; text-decoration: underline;">
                                 Observation ${failure.observationId}
                             </a>: 
                             ${getCleanErrorMessage(failure.message)}
+                            ${failure.reason ? `(${failure.reason})` : ''}
+                            ${partiallySuccessfulObsIds.includes(failure.observationId) ? ' <strong style="color: #00897b;">(Also listed under Partial Success)</strong>' : ''}
                         </li>
                     `).join('')}
                 </ul>
@@ -1652,6 +1722,305 @@ function generateObservationList(observationIds) {
 }
 
 function getCleanErrorMessage(error) {
-    const match = error.match(/Didn't pass rule: (.+?)"/);
-    return match ? match[1] : 'Unknown error';
+    if (typeof error === 'string') {
+        const match = error.match(/Didn't pass rule: (.+?)"/);
+        if (match && match[1]) {
+            return match[1];
+        }
+        // If no specific pattern match, return the original string error
+        // or a part of it if it's too long.
+        return error.length > 150 ? error.substring(0, 147) + "..." : error;
+    } else if (error && typeof error.toString === 'function') {
+        // If it's not a string but can be converted, try that
+        const errorString = error.toString();
+         const match = errorString.match(/Didn't pass rule: (.+?)"/);
+        if (match && match[1]) {
+            return match[1];
+        }
+        return errorString.length > 150 ? errorString.substring(0, 147) + "..." : errorString;
+    }
+    return 'Unknown error (malformed error object)';
+}
+
+// New function to summarize outcomes by action type
+function summarizeBulkActionOutcomes(allActionResults, configuredActions) {
+    console.log('Summarizing bulk action outcomes. All results:', allActionResults, 'Configured actions:', configuredActions);
+    const summaryByActionType = {};
+
+    // Initialize summary structure based on the actions in the pressed button
+    configuredActions.forEach(configAction => {
+        let key = configAction.type;
+        // Differentiate if multiple actions of the same type exist (e.g., two different OFs)
+        if (configAction.type === 'observationField') key += `-${configAction.fieldId}`;
+        if (configAction.type === 'addToProject') key += `-${configAction.projectId}`;
+        if (configAction.type === 'annotation') key += `-${configAction.annotationField}`;
+        // Add more differentiators if needed for other types
+
+        summaryByActionType[key] = {
+            actionConfig: { ...configAction }, // Store the config for display
+            success: [],
+            failed: [],
+            skipped: [], // For actions like project add/remove where 'noActionNeeded' is a distinct state
+            warnings: []  // For project-specific warnings
+        };
+    });
+
+    // Group raw results by observationId first to process all actions for one obs
+    const resultsByObservation = allActionResults.reduce((acc, result) => {
+        acc[result.observationId] = acc[result.observationId] || [];
+        acc[result.observationId].push(result);
+        return acc;
+    }, {});
+
+    for (const observationId in resultsByObservation) {
+        const obsActionResults = resultsByObservation[observationId];
+
+        obsActionResults.forEach(result => {
+            let actionKey = result.action; // result.action is the type like 'observationField'
+            
+            // Reconstruct the key used for summaryByActionType initialization
+            const originalConfigAction = configuredActions.find(ca => {
+                if (ca.type !== result.action) return false;
+                if (ca.type === 'observationField' && result.fieldId) return ca.fieldId === result.fieldId.toString();
+                if (ca.type === 'observationField' && result.data && result.data.observation_field_id) return ca.fieldId === result.data.observation_field_id.toString();
+                if (ca.type === 'addToProject' && result.projectId) return ca.projectId === result.projectId.toString();
+                if (ca.type === 'annotation' && result.data && result.data.controlled_attribute_id) return ca.annotationField === result.data.controlled_attribute_id.toString();
+                // Add more specific checks if necessary based on what `performSingleAction` returns
+                return true; // Fallback for simpler actions
+            });
+
+            if (originalConfigAction) {
+                 if (originalConfigAction.type === 'observationField') actionKey += `-${originalConfigAction.fieldId}`;
+                 if (originalConfigAction.type === 'addToProject') actionKey += `-${originalConfigAction.projectId}`;
+                 if (originalConfigAction.type === 'annotation') actionKey += `-${originalConfigAction.annotationField}`;
+            } else {
+                console.warn("Could not map result to original configured action:", result);
+                // Use a generic key if mapping fails, though this shouldn't happen often
+                actionKey = result.action + "-unknown";
+                if (!summaryByActionType[actionKey]) {
+                     summaryByActionType[actionKey] = {
+                        actionConfig: { type: result.action, name: "Unknown " + result.action },
+                        success: [], failed: [], skipped: [], warnings: []
+                     };
+                }
+            }
+
+
+            if (summaryByActionType[actionKey]) {
+                const obsDetail = { observationId, message: result.message, reason: result.reason };
+                if (result.success) {
+                    if (result.noActionNeeded) { // Typically for project actions
+                        summaryByActionType[actionKey].skipped.push(obsDetail);
+                    } else {
+                        summaryByActionType[actionKey].success.push(obsDetail);
+                    }
+                } else {
+                    summaryByActionType[actionKey].failed.push(obsDetail);
+                    if (result.requiresWarning) { // Typically for project actions
+                        summaryByActionType[actionKey].warnings.push(obsDetail);
+                    }
+                }
+            } else {
+                console.warn(`Action key ${actionKey} not found in summary structure. Result:`, result);
+            }
+        });
+    }
+    console.log("Generated summary by action type:", summaryByActionType);
+    return summaryByActionType;
+}
+
+function createDetailedActionResultsModal(summaryByActionType, actionSetName, skippedSafeModeObsIds, overwrittenValues, generalErrorMessages) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); display: flex;
+        justify-content: center; align-items: center; z-index: 10000;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background-color: white; padding: 20px; border-radius: 5px;
+        max-width: 80%; max-height: 80%; overflow-y: auto; font-size: 14px;
+    `;
+
+    let contentHTML = `<h2 style="margin-top:0;">Results for: "${actionSetName}"</h2>`;
+
+    // Helper for singular/plural
+    const pluralize = (count, singular, plural = null) => {
+        if (plural === null) plural = singular + 's';
+        return count === 1 ? singular : plural;
+    };
+
+    // Overall Skipped by Safe Mode (if any)
+    if (skippedSafeModeObsIds && skippedSafeModeObsIds.length > 0) {
+        const uniqueSkippedIds = [...new Set(skippedSafeModeObsIds)];
+        contentHTML += `
+            <div style="margin: 15px 0; padding: 10px; background: #fff8e1; border: 1px solid #ffecb3; border-radius: 4px;">
+                <h4>Skipped by Safe Mode (<a href="${generateObservationURL(uniqueSkippedIds)}" target="_blank" style="color: #4caf50; text-decoration: underline;">${uniqueSkippedIds.length} ${pluralize(uniqueSkippedIds.length, "observation")}</a>)</h4>
+                <p>These observations were skipped entirely because at least one 'Observation Field' action would have overwritten an existing value, and Safe Mode is ON.</p>
+                ${uniqueSkippedIds.length <= 15 && uniqueSkippedIds.length > 0 ? `<ul>${uniqueSkippedIds.map(id => `<li><a href="https://www.inaturalist.org/observations/${id}" target="_blank">${id}</a></li>`).join('')}</ul>` : ''}
+            </div>`;
+    }
+    
+    // Overwritten Values (if Overwrite Mode was ON)
+    if (Object.keys(overwrittenValues).length > 0) {
+        const overwrittenCount = Object.keys(overwrittenValues).length;
+        contentHTML += `
+            <div style="margin: 15px 0; padding: 10px; background: #ffebee; border: 1px solid #ffcdd2; border-radius: 4px;">
+                <h4>Values Overwritten (<a href="${generateObservationURL(Object.keys(overwrittenValues))}" target="_blank" style="color: #d32f2f; text-decoration: underline;">${overwrittenCount} ${pluralize(overwrittenCount, "observation")}</a>)</h4>
+                <p>The following observation field values were overwritten (Overwrite Mode was ON):</p>
+                <div style="max-height: 150px; overflow-y: auto;"><ul>`;
+        for (const [obsId, fields] of Object.entries(overwrittenValues)) {
+            contentHTML += `<li><a href="https://www.inaturalist.org/observations/${obsId}" target="_blank">${obsId}</a>:<ul>`;
+            for (const [fieldName, change] of Object.entries(fields)) {
+                contentHTML += `<li>"${fieldName}": from "${change.oldValue}" to "${change.newValue}"</li>`;
+            }
+            contentHTML += `</ul></li>`;
+        }
+        contentHTML += `</ul></div></div>`;
+    }
+
+
+    for (const actionKey in summaryByActionType) {
+        const actionSummary = summaryByActionType[actionKey];
+        const { actionConfig, success, failed, skipped, warnings } = actionSummary;
+
+        let actionDisplayName = actionConfig.type; 
+        if (actionConfig.type === 'observationField') {
+            actionDisplayName = `Set Field: "${actionConfig.fieldName || actionConfig.fieldId}" to "${actionConfig.displayValue || actionConfig.fieldValue}"`;
+        } else if (actionConfig.type === 'addToProject') {
+            actionDisplayName = `${actionConfig.remove ? 'Remove from' : 'Add to'} Project: "${actionConfig.projectName || actionConfig.projectId}"`;
+        } else if (actionConfig.type === 'annotation') {
+            const fieldName = getAnnotationFieldName(actionConfig.annotationField);
+            const valueName = getAnnotationValueName(actionConfig.annotationField, actionConfig.annotationValue);
+            actionDisplayName = `Annotation: ${fieldName} = ${valueName}`;
+        } else if (actionConfig.type === 'addTaxonId') {
+            actionDisplayName = `Add ID: ${actionConfig.taxonName}`;
+        } else if (actionConfig.type === 'addComment') {
+            actionDisplayName = `Add Comment: "${actionConfig.commentBody.substring(0,30)}..."`;
+        } else if (actionConfig.type === 'qualityMetric') {
+            actionDisplayName = `Quality Metric: ${getQualityMetricName(actionConfig.metric)} = ${actionConfig.vote}`;
+        } else if (actionConfig.type === 'withdrawId') {
+            actionDisplayName = `Withdraw Identification`;
+        } else if (actionConfig.type === 'follow') {
+            actionDisplayName = actionConfig.follow === 'follow' ? `Follow Observation` : `Unfollow Observation`;
+        } else if (actionConfig.type === 'reviewed') {
+            actionDisplayName = actionConfig.reviewed === 'mark' ? `Mark as Reviewed` : `Mark as Unreviewed`;
+        } else if (actionConfig.type === 'copyObservationField') {
+            actionDisplayName = `Copy Field: "${actionConfig.sourceFieldName}" to "${action.targetFieldName}"`;
+        } else if (actionConfig.type === 'addToList') {
+             actionDisplayName = `${actionConfig.remove ? 'Remove from' : 'Add to'} List ID: "${actionConfig.listId}"`;
+        }
+
+
+        contentHTML += `<div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 4px;">`;
+        contentHTML += `<h4 style="margin-top:0; margin-bottom: 10px; color: #333;">Action: ${actionDisplayName}</h4>`;
+
+        if (success.length > 0) {
+            const uniqueSuccessIds = [...new Set(success.map(s => s.observationId))];
+            contentHTML += `<p style="color: green;">Succeeded for <a href="${generateObservationURL(uniqueSuccessIds)}" target="_blank" style="color: green; text-decoration: underline;">${uniqueSuccessIds.length} ${pluralize(uniqueSuccessIds.length, "observation")}</a>.</p>`;
+        }
+
+        if (failed.length > 0) {
+            const actualFailures = failed.filter(f => f.reason !== 'safe_mode_skip');
+            if (actualFailures.length > 0) {
+                const uniqueFailedIds = [...new Set(actualFailures.map(f => f.observationId))];
+                contentHTML += `<p style="color: red;">Failed for <a href="${generateObservationURL(uniqueFailedIds)}" target="_blank" style="color: red; text-decoration: underline;">${uniqueFailedIds.length} ${pluralize(uniqueFailedIds.length, "observation")}</a>:</p>`;
+                contentHTML += `<div style="max-height: 150px; overflow-y: auto;"><ul>`;
+                actualFailures.forEach(f => {
+                    contentHTML += `<li><a href="https://www.inaturalist.org/observations/${f.observationId}" target="_blank">${f.observationId}</a>: ${getCleanErrorMessage(f.message || f.error)} ${f.reason && f.reason !== 'safe_mode_skip' ? `(${f.reason})` : ''}</li>`;
+                });
+                contentHTML += `</ul></div>`;
+            }
+        }
+        
+        if (skipped.length > 0) { 
+            const uniqueSkippedIds = [...new Set(skipped.map(s => s.observationId))];
+             contentHTML += `<p style="color: orange;">Skipped for <a href="${generateObservationURL(uniqueSkippedIds)}" target="_blank" style="color: orange; text-decoration: underline;">${uniqueSkippedIds.length} ${pluralize(uniqueSkippedIds.length, "observation")}</a> (e.g., no action needed):</p>`;
+             if (uniqueSkippedIds.length <= 10 && uniqueSkippedIds.length > 0) { 
+                contentHTML += `<div style="max-height: 100px; overflow-y: auto;"><ul>`;
+                const displayedSkippedReasons = new Map();
+                skipped.forEach(s => {
+                    if (!displayedSkippedReasons.has(s.observationId)) {
+                        contentHTML += `<li><a href="https://www.inaturalist.org/observations/${s.observationId}" target="_blank">${s.observationId}</a>: ${s.message || 'No specific message'} ${s.reason ? `(${s.reason})` : ''}</li>`;
+                        displayedSkippedReasons.set(s.observationId, true);
+                    }
+                });
+                contentHTML += `</ul></div>`;
+             }
+        }
+
+        if (warnings.length > 0) { 
+            const uniqueWarningIds = [...new Set(warnings.map(w => w.observationId))];
+            contentHTML += `<p style="color: #c65102;">Warnings for <a href="${generateObservationURL(uniqueWarningIds)}" target="_blank" style="color: #c65102; text-decoration: underline;">${uniqueWarningIds.length} ${pluralize(uniqueWarningIds.length, "observation")}</a>:</p>`;
+             if (uniqueWarningIds.length <= 10 && uniqueWarningIds.length > 0) { 
+                contentHTML += `<div style="max-height: 100px; overflow-y: auto;"><ul>`;
+                const displayedWarningReasons = new Map();
+                warnings.forEach(w => { 
+                     if (!displayedWarningReasons.has(w.observationId)) {
+                        contentHTML += `<li><a href="https://www.inaturalist.org/observations/${w.observationId}" target="_blank">${w.observationId}</a>: ${w.message || 'No specific message'} ${w.reason ? `(${w.reason})` : ''}</li>`;
+                        displayedWarningReasons.set(w.observationId, true);
+                     }
+                });
+                contentHTML += `</ul></div>`;
+             }
+        }
+        
+        if (success.length === 0 && failed.filter(f => f.reason !== 'safe_mode_skip').length === 0 && skipped.length === 0 && warnings.length === 0) {
+            contentHTML += `<p><em>No observations were processed or had issues for this specific action (they may have been skipped by Safe Mode overall).</em></p>`;
+        }
+
+        contentHTML += `</div>`; 
+    }
+    
+    if (generalErrorMessages && generalErrorMessages.length > 0) {
+        contentHTML += `
+            <div style="margin: 15px 0; padding: 10px; background: #fff1f0; border: 1px solid #ffcccb; border-radius: 4px;">
+                <h4>Overall Errors Encountered:</h4>
+                <ul>${generalErrorMessages.map(err => `<li>${err}</li>`).join('')}</ul>
+            </div>`;
+    }
+
+    // Remove the onclick from the HTML string for the close button
+    contentHTML += `<button id="detailed-results-close-button" class="modal-button" style="margin-top:15px;">Close</button>`;
+    
+    content.innerHTML = contentHTML;
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    // Add the event listener programmatically
+    const closeButton = content.querySelector('#detailed-results-close-button');
+    if (closeButton) {
+        closeButton.addEventListener('click', function() {
+            // `this` inside this event listener will be the button itself.
+            // `modal` is available here due to closure.
+            if (modal.parentNode) {
+                modal.parentNode.removeChild(modal);
+            }
+        });
+    }
+
+    return modal;
+}
+
+function getAnnotationValueName(fieldId, valueId) {
+    for (let [key, value] of Object.entries(controlledTerms)) {
+        if (value.id === parseInt(fieldId)) {
+            for (let [valueName, valueIdInner] of Object.entries(value.values)) {
+                if (valueIdInner === parseInt(valueId)) {
+                    return valueName;
+                }
+            }
+        }
+    }
+    return 'Unknown';
+}
+
+function getAnnotationFieldName(fieldId) {
+    for (let [key, value] of Object.entries(controlledTerms)) {
+        if (value.id === parseInt(fieldId)) {
+            return key;
+        }
+    }
+    return 'Unknown';
 }

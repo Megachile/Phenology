@@ -2610,12 +2610,12 @@ function setupModalCloseHandler(cancelButton, modal) {
     cancelButton.onclick = () => document.body.removeChild(modal);
 }
 
-async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
+async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) { // Renamed selectedAction to selectedActionConfig
     const observationIds = Array.from(selectedObservations);
     const totalObservations = observationIds.length;
     let processedObservations = 0;
-    const results = [];
-    const skippedObservations = [];
+    const allActionResults = [];
+    const skippedObservationsDueToSafeMode = [];
     const overwrittenValues = {};
     const errorMessages = [];
 
@@ -2631,17 +2631,11 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
     modal.appendChild(statusElement);
 
     try {
-        // Get the pre-action states
         const preActionStates = await generatePreActionStates(observationIds);
-        console.log('Pre-action states:', preActionStates);
-
-        // Generate preliminary undo record
-        const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedAction, observationIds, preActionStates);
-
-        // Store prevention states for each observation
+        const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedActionConfig, observationIds, preActionStates);
         const preventionStates = {};
         for (const observationId of observationIds) {
-            preventionStates[observationId] = await handleFollowAndReviewPrevention(observationId, selectedAction.actions, []);
+            preventionStates[observationId] = await handleFollowAndReviewPrevention(observationId, selectedActionConfig.actions, []);
         }
 
         for (const observationId of observationIds) {
@@ -2650,47 +2644,60 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
                 break;
             }
 
-            let shouldSkip = false;
-            const existingFieldValues = {};
+            let observationSkippedThisIterationDueToSafeMode = false;
+            const existingFieldValuesForThisObs = {};
 
-            // Safe Mode skip-check for observation fields
             if (safeMode) {
-                for (const action of selectedAction.actions) {
+                for (const action of selectedActionConfig.actions) {
                     if (action.type === 'observationField') {
-                        const existingValue = await getFieldValueDetails(observationId, action.fieldId);
-                        if (existingValue) {
-                            shouldSkip = true;
-                            skippedObservations.push(observationId);
-                            break;
+                        const existingValueDetails = await getFieldValueDetails(observationId, action.fieldId);
+                        if (existingValueDetails) {
+                            observationSkippedThisIterationDueToSafeMode = true;
+                            skippedObservationsDueToSafeMode.push(observationId);
+                            // Also add a "skipped by safe mode" result for this specific action on this obs
+                            allActionResults.push({
+                                observationId,
+                                action: action.type,
+                                fieldId: action.fieldId, // For mapping back
+                                success: false, // Or a new status like 'skipped_safe_mode'
+                                message: 'Skipped by Safe Mode due to existing value.',
+                                reason: 'safe_mode_skip'
+                            });
+                            break; // Skip other actions for this obs if one field causes safe mode skip
                         }
                     }
                 }
             }
-
-            if (!shouldSkip) {
-                const observationResults = [];
-                for (const action of selectedAction.actions) {
+            
+            if (!observationSkippedThisIterationDueToSafeMode) {
+                const currentObservationResults = [];
+                for (const action of selectedActionConfig.actions) {
                     try {
                         let actionResult;
+                        if (action.type === 'observationField' && !safeMode) {
+                             const existingValueDetails = await getFieldValueDetails(observationId, action.fieldId);
+                             if (existingValueDetails) {
+                                 existingFieldValuesForThisObs[action.fieldName || action.fieldId] = {
+                                     oldValue: existingValueDetails.displayValue || existingValueDetails.value,
+                                     newValue: action.displayValue || action.fieldValue
+                                 };
+                             }
+                        }
+
                         if (action.type === 'addToProject') {
-                            // Perform the project action directly
                             actionResult = await performProjectAction(
                                 observationId, 
                                 action.projectId, 
                                 action.remove
                             );
-
-                            // Update the undo record based on actual result
+                            actionResult.projectId = action.projectId; // Ensure projectId is on the result
                             if (preliminaryUndoRecord.observations[observationId]) {
                                 const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
                                     ua => ua.type === 'removeFromProject' && ua.projectId === action.projectId
                                 );
                                 if (undoAction) {
-                                    // Mark if the action was truly applied
                                     undoAction.actionApplied = actionResult.success && !actionResult.noActionNeeded;
-                                    if (actionResult.reason) {
-                                        undoAction.reason = actionResult.reason;
-                                    }
+                                    if (actionResult.reason) undoAction.reason = actionResult.reason;
                                 }
                             }
                         } else {
@@ -2700,72 +2707,58 @@ async function executeBulkAction(selectedAction, modal, isCancelledFunc) {
                                 preActionStates[observationId]
                             );
                         }
+                        // Ensure action type and potentially differentiating IDs are on the result for summarization
+                        let resultForSummary = { ...actionResult, observationId, action: action.type };
+                        if (action.type === 'observationField') resultForSummary.fieldId = action.fieldId;
+                        // Add other differentiators if needed
 
-                        if (actionResult.success && Object.keys(existingFieldValues).length > 0) {
-                            overwrittenValues[observationId] = existingFieldValues;
-                        }
-
-                        observationResults.push({ ...actionResult, observationId, action: action.type });
+                         currentObservationResults.push(resultForSummary);
                     } catch (error) {
-                        console.error(`Error executing action for observation ${observationId}:`, error);
-                        errorMessages.push(`Error processing observation ${observationId}: ${error.message}`);
-                        observationResults.push({ success: false, error: error.toString(), observationId });
+                        console.error(`Error executing action ${action.type} for observation ${observationId}:`, error);
+                        errorMessages.push(`Error processing observation ${observationId} (action: ${action.type}): ${error.message}`);
+                        currentObservationResults.push({ success: false, error: error.toString(), observationId, action: action.type, fieldId: action.fieldId });
                     }
                 }
 
-                // Handle state restoration after all actions for this observation
-                if (observationResults.every(r => r.success)) {
+                if (currentObservationResults.some(r => r.success) && Object.keys(existingFieldValuesForThisObs).length > 0) {
+                     overwrittenValues[observationId] = existingFieldValuesForThisObs;
+                }
+
+                if (currentObservationResults.every(r => r.success || (r.noActionNeeded && r.action === 'addToProject'))) {
                     await handleStateRestoration(
                         observationId, 
-                        selectedAction.actions, 
-                        observationResults, 
+                        selectedActionConfig.actions, 
+                        currentObservationResults, 
                         preventionStates[observationId]
                     );
                 }
-
-                results.push(...observationResults);
+                allActionResults.push(...currentObservationResults);
             }
-
             processedObservations++;
             await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
         }
 
-        // Generate final undo record
-        const finalUndoRecord = generateUndoRecord(preliminaryUndoRecord, results, overwrittenValues);
+        const finalUndoRecord = generateUndoRecord(preliminaryUndoRecord, allActionResults, overwrittenValues);
         await storeUndoRecord(finalUndoRecord);
 
-        document.body.removeChild(modal);
+        if (modal.parentNode) document.body.removeChild(modal);
 
-        // If this bulk action includes "addToProject", show project results in a special modal
-        if (selectedAction.actions.some(a => a.type === 'addToProject')) {
-            const projectAction = selectedAction.actions.find(a => a.type === 'addToProject');
-            const summary = handleProjectActionResults(results);
-            console.log('Creating modal with summary:', summary);
-            const resultsModal = createProjectActionResultsModal(
-                summary,
-                projectAction.projectName,
-                projectAction.remove
-            );
-            document.body.appendChild(resultsModal);
-        }else {
-            // Otherwise use your existing standard results modal
-            const overwrittenCount = Object.keys(overwrittenValues).length;
-            const skippedURL = generateObservationURL(skippedObservations);
-            createActionResultsModal(
-                results,
-                skippedObservations.length,
-                skippedURL,
-                overwrittenCount,
-                overwrittenValues,
-                errorMessages
-            );
-        }
+        // Use the new summarizer and the new modal type
+        const actionSpecificSummary = summarizeBulkActionOutcomes(allActionResults, selectedActionConfig.actions);
+        const resultsModal = createDetailedActionResultsModal(
+            actionSpecificSummary,
+            selectedActionConfig.name, // Pass the name of the button/action set
+            skippedObservationsDueToSafeMode,
+            overwrittenValues,
+            errorMessages
+        );
+        document.body.appendChild(resultsModal);
 
-        return { results, skippedObservations, overwrittenValues, errorMessages };
+        return { results: allActionResults, skippedObservations: skippedObservationsDueToSafeMode, overwrittenValues, errorMessages };
     } catch (error) {
         console.error('Error in bulk action execution:', error);
-        statusElement.textContent = `Error: ${error.message}`;
-        document.body.removeChild(modal);
+        if(statusElement) statusElement.textContent = `Error: ${error.message}`;
+        if (modal.parentNode) document.body.removeChild(modal);
         throw error;
     }
 }
