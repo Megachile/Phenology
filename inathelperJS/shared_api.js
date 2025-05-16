@@ -1559,12 +1559,13 @@ function createProjectActionResultsModal(summary, projectName, wasRemoval = fals
 
     // Success section
     if (summary.success.length > 0) {
+        const uniqueSuccessfulObservationIds = [...new Set(summary.success.map(s => s.observationId))]; // Get unique IDs
         contentHTML += `
             <div style="margin: 15px 0;">
                 <h3>Successful Actions (${summary.success.length})</h3>
                 <p>${wasRemoval ? 'Removed from' : 'Added to'} project "${projectName}"</p>
                 <div class="observation-list">
-                    ${generateObservationList(summary.success.map(s => s.observationId))}
+                    ${generateObservationList(uniqueSuccessfulObservationIds)}
                 </div>
             </div>
         `;
