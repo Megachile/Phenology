@@ -21,6 +21,7 @@ let currentAvailableActions = [];
 let onMouseDown;
 let onMouseMove;
 let onMouseUp;
+let lastClickedObservationElementForShiftSelect = null;
 
 const pendingOperations = new Map();
 
@@ -2533,10 +2534,14 @@ function toggleSelection(element) {
 }
 
 function updateVisualSelection() {
-    getObservationElements().forEach(obs => {
-        const observationId = obs.querySelector('a[href^="/observations/"]')?.href.split('/').pop();
-        if (observationId) {
-            obs.classList.toggle('selected', selectedObservations.has(observationId));
+    getObservationElements().forEach(obsElement => {
+        const id = obsElement.querySelector('a[href^="/observations/"]')?.href.split('/').pop();
+        if (id) {
+            if (selectedObservations.has(id)) {
+                obsElement.classList.add('selected');
+            } else {
+                obsElement.classList.remove('selected');
+            }
         }
     });
 }
@@ -2572,14 +2577,78 @@ function invertSelection() {
 
 document.body.addEventListener('click', (e) => {
     if (bulkActionModeEnabled) {
-        const obs = e.target.closest('.ObservationsGridItem');
-        if (obs) {
-            toggleSelection(obs);
+        const clickedObsElement = e.target.closest('.ObservationsGridItem');
+        if (clickedObsElement) {
+            // Prevent default navigation/action if clicking within the item,
+            // as we are capturing the click for selection purposes.
             e.preventDefault();
             e.stopPropagation();
+
+            const observationId = clickedObsElement.querySelector('a[href^="/observations/"]')?.href.split('/').pop();
+            if (!observationId) {
+                console.warn("Could not find observation ID for clicked item.", clickedObsElement);
+                return;
+            }
+
+            if (e.shiftKey && lastClickedObservationElementForShiftSelect && lastClickedObservationElementForShiftSelect !== clickedObsElement) {
+                // --- SHIFT-CLICK LOGIC ---
+                const allObsElements = Array.from(getObservationElements()); // Assumes getObservationElements() returns currently visible grid items
+                const lastClickedIndex = allObsElements.indexOf(lastClickedObservationElementForShiftSelect);
+                const currentIndex = allObsElements.indexOf(clickedObsElement);
+
+                if (lastClickedIndex !== -1 && currentIndex !== -1) {
+                    const start = Math.min(lastClickedIndex, currentIndex);
+                    const end = Math.max(lastClickedIndex, currentIndex);
+
+                    // Standard shift-click behavior: select everything in the range.
+                    // If you want to toggle based on the target's state, that's a different UX.
+                    // This implementation ensures all items in the range become selected.
+                    for (let i = start; i <= end; i++) {
+                        const obsInRange = allObsElements[i];
+                        const idInRange = obsInRange.querySelector('a[href^="/observations/"]')?.href.split('/').pop();
+                        if (idInRange) {
+                            if (!selectedObservations.has(idInRange)) { // Add to set if not already there
+                                selectedObservations.add(idInRange);
+                            }
+                            // Visual class is handled by updateVisualSelection later
+                        }
+                    }
+                } else {
+                    console.warn("Shift-click: One of the elements not found in current grid items.", 
+                                 {lastClicked: lastClickedObservationElementForShiftSelect, current: clickedObsElement });
+                    // Fallback to normal toggle for the clicked element if range calculation fails
+                    toggleSingleObservationSelection(clickedObsElement, observationId);
+                }
+            } else {
+                // --- NORMAL CLICK LOGIC (single item toggle) ---
+                toggleSingleObservationSelection(clickedObsElement, observationId);
+            }
+
+            // Update the last clicked element for the *next* potential shift-click
+            // Only update if it was a primary click (not part of a range modification that failed)
+            if (!e.shiftKey || (lastClickedObservationElementForShiftSelect && lastClickedObservationElementForShiftSelect !== clickedObsElement) ) {
+                 lastClickedObservationElementForShiftSelect = clickedObsElement;
+            }
+
+
+            updateVisualSelection(); // Update all visuals based on the selectedObservations set
+            updateBulkActionButtons(); // Update button states (e.g., enabled/disabled)
+            updateModalTitle();      // Update title of action selection modal if open
+            
+            console.log('Selected observations count:', selectedObservations.size);
         }
     }
-});
+}, true); // Use capture phase
+
+// Helper function to toggle selection for a single observation
+function toggleSingleObservationSelection(element, observationId) {
+    if (selectedObservations.has(observationId)) {
+        selectedObservations.delete(observationId);
+    } else {
+        selectedObservations.add(observationId);
+    }
+    // Visual update will be handled by updateVisualSelection() called by the main handler
+}
 
 function updateSelectedObservations() {
     const visibleObservations = new Set(
