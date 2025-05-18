@@ -1845,13 +1845,11 @@ function createDetailedActionResultsModal(summaryByActionType, actionSetName, sk
 
     let contentHTML = `<h2 style="margin-top:0;">Results for: "${actionSetName}"</h2>`;
 
-    // Helper for singular/plural
     const pluralize = (count, singular, plural = null) => {
         if (plural === null) plural = singular + 's';
         return count === 1 ? singular : plural;
     };
 
-    // Overall Skipped by Safe Mode (if any)
     if (skippedSafeModeObsIds && skippedSafeModeObsIds.length > 0) {
         const uniqueSkippedIds = [...new Set(skippedSafeModeObsIds)];
         contentHTML += `
@@ -1862,7 +1860,6 @@ function createDetailedActionResultsModal(summaryByActionType, actionSetName, sk
             </div>`;
     }
     
-    // Overwritten Values (if Overwrite Mode was ON)
     if (Object.keys(overwrittenValues).length > 0) {
         const overwrittenCount = Object.keys(overwrittenValues).length;
         contentHTML += `
@@ -1879,7 +1876,6 @@ function createDetailedActionResultsModal(summaryByActionType, actionSetName, sk
         }
         contentHTML += `</ul></div></div>`;
     }
-
 
     for (const actionKey in summaryByActionType) {
         const actionSummary = summaryByActionType[actionKey];
@@ -1907,11 +1903,10 @@ function createDetailedActionResultsModal(summaryByActionType, actionSetName, sk
         } else if (actionConfig.type === 'reviewed') {
             actionDisplayName = actionConfig.reviewed === 'mark' ? `Mark as Reviewed` : `Mark as Unreviewed`;
         } else if (actionConfig.type === 'copyObservationField') {
-            actionDisplayName = `Copy Field: "${actionConfig.sourceFieldName}" to "${action.targetFieldName}"`;
+            actionDisplayName = `Copy Field: "${actionConfig.sourceFieldName}" to "${actionConfig.targetFieldName}"`;
         } else if (actionConfig.type === 'addToList') {
              actionDisplayName = `${actionConfig.remove ? 'Remove from' : 'Add to'} List ID: "${actionConfig.listId}"`;
         }
-
 
         contentHTML += `<div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 4px;">`;
         contentHTML += `<h4 style="margin-top:0; margin-bottom: 10px; color: #333;">Action: ${actionDisplayName}</h4>`;
@@ -1981,19 +1976,27 @@ function createDetailedActionResultsModal(summaryByActionType, actionSetName, sk
             </div>`;
     }
 
-    // Remove the onclick from the HTML string for the close button
     contentHTML += `<button id="detailed-results-close-button" class="modal-button" style="margin-top:15px;">Close</button>`;
     
     content.innerHTML = contentHTML;
     modal.appendChild(content);
     document.body.appendChild(modal);
 
-    // Add the event listener programmatically
     const closeButton = content.querySelector('#detailed-results-close-button');
+
+    // --- NEW: Keydown event listener for Enter/Escape ---
+    const handleModalKeyPress = (event) => {
+        if (event.key === 'Enter' || event.key === 'Escape') {
+            event.preventDefault();
+            closeButton.click(); // Simulate a click on the close button
+        }
+    };
+    document.addEventListener('keydown', handleModalKeyPress);
+    // --- END NEW ---
+
     if (closeButton) {
         closeButton.addEventListener('click', function() {
-            // `this` inside this event listener will be the button itself.
-            // `modal` is available here due to closure.
+            document.removeEventListener('keydown', handleModalKeyPress); // --- NEW: Remove listener ---
             if (modal.parentNode) {
                 modal.parentNode.removeChild(modal);
             }

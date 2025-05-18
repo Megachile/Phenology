@@ -1424,9 +1424,41 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
                 console.error('Error withdrawing identification:', error);
                 return { success: false, error: error.toString() };
             }
-        case 'observationField':
-            return addObservationField(observationId, action.fieldId, action.fieldValue);
-        case 'copyObservationField':
+            case 'observationField':
+                // Check if value is identical before calling addObservationField ---
+                const existingValueDetails = await getFieldValueDetails(observationId, action.fieldId);
+                const existingValue = existingValueDetails ? (existingValueDetails.displayValue || existingValueDetails.value) : null;
+                const proposedValue = action.fieldValue; // This is the ID for taxon, or direct value for others
+                const proposedDisplayValue = action.displayValue || action.fieldValue; // This is for comparison with displayValue
+    
+                // Compare intelligently:
+                // If existingValueDetails has displayValue (it's a resolved taxon), compare with proposedDisplayValue.
+                // Otherwise, compare proposedValue (which could be a taxon ID) with existingValueDetails.value (raw value).
+                let isIdentical = false;
+                if (existingValueDetails && existingValueDetails.displayValue) {
+                    // This means existing is a resolved taxon, compare with the proposed display name
+                    isIdentical = existingValueDetails.displayValue === proposedDisplayValue;
+                } else if (existingValueDetails) {
+                    // Existing is not a resolved taxon, or proposed is not a taxon from autocomplete
+                    // Compare raw values. Note: action.fieldValue might be a taxon ID if it wasn't from autocomplete.
+                    isIdentical = existingValueDetails.value === proposedValue;
+                     // Special check if existing is a number (likely taxon ID) and proposed is a string that might be that ID
+                    if (!isIdentical && typeof existingValueDetails.value === 'number' && typeof proposedValue === 'string' && existingValueDetails.value.toString() === proposedValue) {
+                        isIdentical = true;
+                    }
+                }
+    
+    
+                if (existingValue !== null && isIdentical) {
+                    console.log(`Observation Field ${action.fieldName} for obs ${observationId} already has value "${proposedDisplayValue}". Skipping API call.`);
+                    return { 
+                        success: true, 
+                        message: 'Value already set to the desired value.', 
+                        noActionNeeded: true, // Add a flag to indicate no API call was made
+                        fieldId: action.fieldId // For summarization
+                    };
+                }
+                return addObservationField(observationId, action.fieldId, action.fieldValue);       case 'copyObservationField':
             const sourceValue = await getObservationFieldValue(observationId, action.sourceFieldId);
             if (sourceValue === null) {
                 console.error(`Failed to copy field: source value is null for observation ${observationId}, field ${action.sourceFieldId}`);
@@ -2610,13 +2642,13 @@ function setupModalCloseHandler(cancelButton, modal) {
     cancelButton.onclick = () => document.body.removeChild(modal);
 }
 
-async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) { // Renamed selectedAction to selectedActionConfig
+async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
     const observationIds = Array.from(selectedObservations);
     const totalObservations = observationIds.length;
     let processedObservations = 0;
     const allActionResults = [];
     const skippedObservationsDueToSafeMode = [];
-    const overwrittenValues = {};
+    const overwrittenValues = {}; // This will store actual overwrites { obsId: { fieldName: { oldValue, newValue } } }
     const errorMessages = [];
 
     const { safeMode = true } = await new Promise(resolve => 
@@ -2624,14 +2656,20 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
     );
 
     const progressFill = modal.querySelector('.progress-fill');
-    progressFill.style.width = '0%';
+    if (progressFill) progressFill.style.width = '0%'; // Ensure progress bar exists
 
-    const statusElement = document.createElement('p');
-    statusElement.id = 'bulk-action-status';
-    modal.appendChild(statusElement);
+    const statusElement = modal.querySelector('#bulk-action-status'); // Ensure status element exists
+    // if (!statusElement) { // This was in previous code, but modal passed in should have it
+    //     statusElement = document.createElement('p');
+    //     statusElement.id = 'bulk-action-status';
+    //     modal.appendChild(statusElement);
+    // }
+
 
     try {
         const preActionStates = await generatePreActionStates(observationIds);
+        console.log('Pre-action states:', preActionStates);
+
         const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedActionConfig, observationIds, preActionStates);
         const preventionStates = {};
         for (const observationId of observationIds) {
@@ -2640,12 +2678,12 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
 
         for (const observationId of observationIds) {
             if (isCancelledFunc()) {
-                statusElement.textContent = 'Action cancelled. Processing completed actions...';
+                if(statusElement) statusElement.textContent = 'Action cancelled. Processing completed actions...';
                 break;
             }
 
             let observationSkippedThisIterationDueToSafeMode = false;
-            const existingFieldValuesForThisObs = {};
+            const actualOverwritesForThisObs = {}; // Stores actual overwrites for *this* observation
 
             if (safeMode) {
                 for (const action of selectedActionConfig.actions) {
@@ -2653,102 +2691,143 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
                         const existingValueDetails = await getFieldValueDetails(observationId, action.fieldId);
                         if (existingValueDetails) {
                             observationSkippedThisIterationDueToSafeMode = true;
-                            skippedObservationsDueToSafeMode.push(observationId);
-                            // Also add a "skipped by safe mode" result for this specific action on this obs
+                            if (!skippedObservationsDueToSafeMode.includes(observationId)) {
+                                skippedObservationsDueToSafeMode.push(observationId);
+                            }
+                            // Add a "skipped by safe mode" result for this specific action on this obs
+                            // This helps the detailed modal explain why nothing happened for this OF action
                             allActionResults.push({
                                 observationId,
                                 action: action.type,
-                                fieldId: action.fieldId, // For mapping back
-                                success: false, // Or a new status like 'skipped_safe_mode'
+                                fieldId: action.fieldId,
+                                success: false, 
                                 message: 'Skipped by Safe Mode due to existing value.',
                                 reason: 'safe_mode_skip'
                             });
-                            break; // Skip other actions for this obs if one field causes safe mode skip
+                            // Important: In safe mode, if one OF would overwrite, we skip *all* actions for this obs.
+                            // However, the above push to allActionResults is for this *specific* OF action.
+                            // The overall skipping of other actions for this obs is handled by the next `if` block.
                         }
                     }
                 }
+                 if (observationSkippedThisIterationDueToSafeMode) {
+                    // If any OF caused a safe mode skip, we skip all actions for this observation
+                     console.log(`Obs ${observationId} skipped entirely due to Safe Mode and existing OF values.`);
+                     processedObservations++;
+                     if (progressFill) await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
+                     continue; // Move to the next observationId
+                 }
             }
             
-            if (!observationSkippedThisIterationDueToSafeMode) {
-                const currentObservationResults = [];
-                for (const action of selectedActionConfig.actions) {
-                    try {
-                        let actionResult;
-                        if (action.type === 'observationField' && !safeMode) {
-                             const existingValueDetails = await getFieldValueDetails(observationId, action.fieldId);
-                             if (existingValueDetails) {
-                                 existingFieldValuesForThisObs[action.fieldName || action.fieldId] = {
-                                     oldValue: existingValueDetails.displayValue || existingValueDetails.value,
-                                     newValue: action.displayValue || action.fieldValue
-                                 };
-                             }
-                        }
+            // If not skipped by safe mode, proceed with actions
+            const currentObservationResults = [];
+            for (const action of selectedActionConfig.actions) {
+                try {
+                    let actionResult;
+                    let oldValueForOverwriteReport = null;
 
-                        if (action.type === 'addToProject') {
-                            actionResult = await performProjectAction(
-                                observationId, 
-                                action.projectId, 
-                                action.remove
-                            );
-                            actionResult.projectId = action.projectId; // Ensure projectId is on the result
-                            if (preliminaryUndoRecord.observations[observationId]) {
-                                const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
-                                    ua => ua.type === 'removeFromProject' && ua.projectId === action.projectId
-                                );
-                                if (undoAction) {
-                                    undoAction.actionApplied = actionResult.success && !actionResult.noActionNeeded;
-                                    if (actionResult.reason) undoAction.reason = actionResult.reason;
-                                }
-                            }
-                        } else {
-                            actionResult = await performSingleAction(
-                                action, 
-                                observationId, 
-                                preActionStates[observationId]
-                            );
-                        }
-                        // Ensure action type and potentially differentiating IDs are on the result for summarization
-                        let resultForSummary = { ...actionResult, observationId, action: action.type };
-                        if (action.type === 'observationField') resultForSummary.fieldId = action.fieldId;
-                        // Add other differentiators if needed
-
-                         currentObservationResults.push(resultForSummary);
-                    } catch (error) {
-                        console.error(`Error executing action ${action.type} for observation ${observationId}:`, error);
-                        errorMessages.push(`Error processing observation ${observationId} (action: ${action.type}): ${error.message}`);
-                        currentObservationResults.push({ success: false, error: error.toString(), observationId, action: action.type, fieldId: action.fieldId });
+                    // Get old value details if it's an OF action and we might overwrite (only in Overwrite Mode)
+                    if (action.type === 'observationField' && !safeMode) {
+                         const existingValueDetailsForOverwriteCheck = await getFieldValueDetails(observationId, action.fieldId);
+                         if (existingValueDetailsForOverwriteCheck) {
+                             oldValueForOverwriteReport = existingValueDetailsForOverwriteCheck.displayValue || existingValueDetailsForOverwriteCheck.value;
+                         }
                     }
-                }
 
-                if (currentObservationResults.some(r => r.success) && Object.keys(existingFieldValuesForThisObs).length > 0) {
-                     overwrittenValues[observationId] = existingFieldValuesForThisObs;
-                }
+                    if (action.type === 'addToProject') {
+                        actionResult = await performProjectAction(
+                            observationId, 
+                            action.projectId, 
+                            action.remove
+                        );
+                        actionResult.projectId = action.projectId; // Ensure projectId is on the result for summarization
+                        // Update undo record for project action based on actual outcome
+                        if (preliminaryUndoRecord.observations[observationId]) {
+                            const undoAction = preliminaryUndoRecord.observations[observationId].undoActions.find(
+                                ua => ua.type === 'removeFromProject' && ua.projectId === action.projectId
+                            );
+                            if (undoAction) {
+                                undoAction.actionApplied = actionResult.success && !actionResult.noActionNeeded;
+                                if (actionResult.reason) undoAction.reason = actionResult.reason;
+                            }
+                        }
+                    } else {
+                        actionResult = await performSingleAction(
+                            action, 
+                            observationId, 
+                            preActionStates[observationId] // Pass pre-action state for this specific observation
+                        );
+                    }
+                    
+                    let resultForSummary = { ...actionResult, observationId, action: action.type };
+                    if (action.type === 'observationField') resultForSummary.fieldId = action.fieldId;
+                    // Add other potential differentiators if actions of same type can vary (e.g. annotation field ID)
+                    if (action.type === 'annotation') resultForSummary.annotationField = action.annotationField;
 
-                if (currentObservationResults.every(r => r.success || (r.noActionNeeded && r.action === 'addToProject'))) {
-                    await handleStateRestoration(
+
+                    currentObservationResults.push(resultForSummary);
+
+                    // If an OF action succeeded, wasn't skipped (noActionNeeded means values were identical),
+                    // and we had an old value (meaning it existed before), and we're in Overwrite Mode,
+                    // then record it for the "Values Overwritten" report.
+                    if (action.type === 'observationField' && 
+                        actionResult.success && 
+                        !actionResult.noActionNeeded && 
+                        oldValueForOverwriteReport !== null && // This ensures the field actually existed
+                        !safeMode) {
+                        actualOverwritesForThisObs[action.fieldName || action.fieldId] = {
+                            oldValue: oldValueForOverwriteReport,
+                            newValue: action.displayValue || action.fieldValue
+                        };
+                    }
+
+                } catch (error) {
+                    console.error(`Error executing action ${action.type} for observation ${observationId}:`, error);
+                    errorMessages.push(`Error processing observation ${observationId} (action: ${action.type}): ${error.message}`);
+                    currentObservationResults.push({ 
+                        success: false, 
+                        error: error.toString(), 
                         observationId, 
-                        selectedActionConfig.actions, 
-                        currentObservationResults, 
-                        preventionStates[observationId]
-                    );
+                        action: action.type, 
+                        fieldId: action.type === 'observationField' ? action.fieldId : undefined,
+                        annotationField: action.type === 'annotation' ? action.annotationField : undefined
+                    });
                 }
-                allActionResults.push(...currentObservationResults);
             }
+
+            if (Object.keys(actualOverwritesForThisObs).length > 0) {
+                 overwrittenValues[observationId] = actualOverwritesForThisObs;
+            }
+
+            // Check if all actions for *this specific observation* were successful or appropriately skipped
+            const allSucceededOrProjectSkippedForThisObs = currentObservationResults.every(r => 
+                r.success || (r.noActionNeeded && r.action === 'addToProject')
+            );
+
+            if (allSucceededOrProjectSkippedForThisObs) {
+                await handleStateRestoration(
+                    observationId, 
+                    selectedActionConfig.actions, 
+                    currentObservationResults, 
+                    preventionStates[observationId]
+                );
+            }
+            allActionResults.push(...currentObservationResults);
+            
             processedObservations++;
-            await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
-        }
+            if (progressFill) await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
+        } // End of for...of observationIds loop
 
         const finalUndoRecord = generateUndoRecord(preliminaryUndoRecord, allActionResults, overwrittenValues);
         await storeUndoRecord(finalUndoRecord);
 
-        if (modal.parentNode) document.body.removeChild(modal);
+        if (modal.parentNode) document.body.removeChild(modal); // remove progress modal
 
-        // Use the new summarizer and the new modal type
         const actionSpecificSummary = summarizeBulkActionOutcomes(allActionResults, selectedActionConfig.actions);
         const resultsModal = createDetailedActionResultsModal(
             actionSpecificSummary,
-            selectedActionConfig.name, // Pass the name of the button/action set
-            skippedObservationsDueToSafeMode,
+            selectedActionConfig.name,
+            skippedObservationsDueToSafeMode, // Pass the array of IDs skipped by safe mode
             overwrittenValues,
             errorMessages
         );
@@ -2758,7 +2837,7 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
     } catch (error) {
         console.error('Error in bulk action execution:', error);
         if(statusElement) statusElement.textContent = `Error: ${error.message}`;
-        if (modal.parentNode) document.body.removeChild(modal);
+        if (modal.parentNode) document.body.removeChild(modal); // ensure progress modal is removed on error too
         throw error;
     }
 }
@@ -4373,19 +4452,18 @@ function updateHighlightZIndex(element) {
     }
 }
 
-
+// In content.js, function validateBulkAction
 async function validateBulkAction(selectedAction, observationIds, getIsCancelled) {
     console.log('Starting validateBulkAction with:', {selectedAction, observationIds});
     const results = {
         total: observationIds.length,
         toProcess: [],
-        toSkip: [],
+        toSkip: [], // Primarily for Safe Mode
         fieldNames: new Map(),
-        existingValues: new Map(),
+        existingValues: new Map(), // In Overwrite Mode, this will store actual *differing* values
         proposedValues: new Map()
     };
 
-    // Check for cancellation before any processing
     if (getIsCancelled && getIsCancelled()) {
         console.log("validateBulkAction: Operation cancelled at the very beginning.");
         throw new Error('ValidationCancelled');
@@ -4398,71 +4476,104 @@ async function validateBulkAction(selectedAction, observationIds, getIsCancelled
     selectedAction.actions.forEach(action => {
         if (action.type === 'observationField') {
             results.fieldNames.set(action.fieldId, action.fieldName);
-            results.proposedValues.set(action.fieldId, action.fieldValue);
+            // Store both the raw value and display value for proposed
+            results.proposedValues.set(action.fieldId, {
+                value: action.fieldValue, 
+                displayValue: action.displayValue || action.fieldValue 
+            });
         }
     });
 
     for (const observationId of observationIds) {
-        // Check for cancellation before processing each observation
         if (getIsCancelled && getIsCancelled()) {
             console.log("validateBulkAction: Operation cancelled. Aborting validation loop for observationId:", observationId);
             throw new Error('ValidationCancelled');
         }
 
-        let hasExistingValues = false;
-        const existingFields = new Map();
+        let wouldOverwriteInSafeMode = false;
+        const differingExistingFieldsForOverwriteMode = new Map(); // Store { fieldId: {current: X, proposed: Y} }
 
         for (const action of selectedAction.actions) {
-            // Check for cancellation before processing each action within an observation
             if (getIsCancelled && getIsCancelled()) {
                 console.log("validateBulkAction: Operation cancelled during field check for observationId:", observationId);
                 throw new Error('ValidationCancelled');
             }
             if (action.type === 'observationField') {
                 try {
-                    // console.log('Checking field values for:', {observationId, action});
-                    const existingValue = await getFieldValueDetails(observationId, action.fieldId);
-                    // console.log('Got existing value:', existingValue);
-                    if (existingValue) {
-                        hasExistingValues = true;
-                        const valueToStore = existingValue.displayValue || existingValue.value;
-                        // console.log('Storing value:', valueToStore);
-                        existingFields.set(action.fieldId, valueToStore);
+                    const existingValueDetails = await getFieldValueDetails(observationId, action.fieldId);
+                    const proposed = results.proposedValues.get(action.fieldId); // {value, displayValue}
+
+                    if (existingValueDetails) { // Field exists on observation
+                        wouldOverwriteInSafeMode = true; // For Safe Mode, any existing value is a reason to skip
+
+                        if (!safeMode) { // In Overwrite Mode, check if values actually differ
+                            const currentValue = existingValueDetails.displayValue || existingValueDetails.value;
+                            const proposedDisplay = proposed.displayValue;
+                            
+                            let isIdentical = false;
+                            if (existingValueDetails.displayValue) { // Existing is resolved taxon
+                                isIdentical = existingValueDetails.displayValue === proposed.displayValue;
+                            } else { // Existing is raw value or non-taxon
+                                isIdentical = existingValueDetails.value === proposed.value;
+                                if (!isIdentical && typeof existingValueDetails.value === 'number' && typeof proposed.value === 'string' && existingValueDetails.value.toString() === proposed.value) {
+                                    isIdentical = true; // Taxon ID match
+                                }
+                            }
+
+                            if (!isIdentical) {
+                                differingExistingFieldsForOverwriteMode.set(action.fieldId, {
+                                    current: currentValue,
+                                    proposed: proposedDisplay 
+                                });
+                            }
+                        }
                     }
                 } catch (error) {
                     console.error(`Error checking field values for observation ${observationId}, field ${action.fieldId}:`, error);
-                    // If a single API call fails, we might want to log it but not necessarily cancel the whole batch
-                    // unless it's a rate-limiting error, etc. For now, just log.
                 }
             }
         }
 
-        if (hasExistingValues) {
-            const observationInfo = {
-                observationId,
-                existingFields: Object.fromEntries(existingFields)
-            };
-            
-            if (safeMode) {
-                results.toSkip.push(observationInfo);
+        if (safeMode) {
+            if (wouldOverwriteInSafeMode) {
+                // In Safe Mode, we need to gather all existing fields that would be part of the action
+                const existingFieldsForSkipMessage = new Map();
+                 for (const action of selectedAction.actions) {
+                    if (action.type === 'observationField') {
+                        const evd = await getFieldValueDetails(observationId, action.fieldId);
+                        if (evd) {
+                            existingFieldsForSkipMessage.set(action.fieldId, evd.displayValue || evd.value);
+                        }
+                    }
+                }
+                results.toSkip.push({ 
+                    observationId, 
+                    existingFields: Object.fromEntries(existingFieldsForSkipMessage)
+                });
             } else {
                 results.toProcess.push(observationId);
-                results.existingValues.set(observationId, observationInfo);
             }
-        } else {
-            results.toProcess.push(observationId);
+        } else { // Overwrite Mode
+            results.toProcess.push(observationId); // Always process in overwrite mode
+            if (differingExistingFieldsForOverwriteMode.size > 0) {
+                // Store the fields that will actually change
+                results.existingValues.set(observationId, {
+                    observationId,
+                    existingFields: Object.fromEntries(differingExistingFieldsForOverwriteMode)
+                });
+            }
         }
     }
     
-    // Final check before returning
     if (getIsCancelled && getIsCancelled()) {
         console.log("validateBulkAction: Operation cancelled just before returning results.");
         throw new Error('ValidationCancelled');
     }
 
-    console.log("validateBulkAction finished (not cancelled).");
+    console.log("validateBulkAction finished. Results:", JSON.parse(JSON.stringify(results))); // Deep copy for logging complex map
     return results;
 }
+
 
 async function createValidationSummary(validationResults) {
     const { safeMode = true } = await new Promise(resolve => 
@@ -4634,16 +4745,15 @@ function createActionModal() {
         const selectedAction = currentAvailableActions.find(button => button.id === actionSelect.value);
         if (!selectedAction) return;
 
-        // If action was cancelled before 'Apply' fully processed (e.g. rapid clicks)
         if (isActionCancelled) {
             console.log("Apply clicked, but action was already cancelled by the time it could start.");
-            removeThisModal(true); // Pass true to indicate it was a user cancel
+            removeThisModal(true);
             return;
         }
 
         applyButton.textContent = 'Validating...';
         applyButton.disabled = true;
-        // Keep cancelButton enabled, so the user can still cancel during validation.
+        // cancelButton remains enabled during validation
 
         let validationResults;
         try {
@@ -4653,20 +4763,41 @@ function createActionModal() {
 
             const observationIds = Array.from(selectedObservations);
             
-            // Pass a function to check `isActionCancelled`
             validationResults = await validateBulkAction(selectedAction, observationIds, () => isActionCancelled);
 
-            // If cancellation occurred *during* validateBulkAction (it would throw 'ValidationCancelled')
-            // This path won't be hit if validateBulkAction throws, it'll go to catch.
-            // But, good to check the flag again.
             if (isActionCancelled) {
-                console.log("Action cancelled after validation returned (but likely during). Not showing validation modal.");
+                console.log("Action cancelled after validation returned (or during). Not proceeding.");
                 removeThisModal(true);
                 return;
             }
 
-            // If we reach here, validation completed and was NOT cancelled.
-            removeThisModal(false); // Remove the current action selection modal (not due to user cancel)
+            // --- NEW: Logic to skip validation modal if no conflicts ---
+            let hasConflictsOrSkipsToShow = false;
+            if (safeMode) {
+                // In Safe Mode, if any observation is in toSkip, we show the validation modal
+                if (validationResults.toSkip.length > 0) {
+                    hasConflictsOrSkipsToShow = true;
+                }
+            } else { // Overwrite Mode
+                // In Overwrite Mode, if existingValues has entries, it means there are actual differing values to report
+                if (validationResults.existingValues.size > 0) {
+                    hasConflictsOrSkipsToShow = true;
+                }
+            }
+
+            if (!hasConflictsOrSkipsToShow) { // Note the variable name change for clarity
+                console.log("No differing existing values (Overwrite Mode) or skips (Safe Mode) detected. Proceeding directly to execution.");
+                removeThisModal(false); 
+                highlightObservationsWithExistingValues([], null, true);
+                const progressModal = createProgressModal();
+                document.body.appendChild(progressModal);
+                await executeBulkAction(selectedAction, progressModal, () => false); 
+                return; 
+            }
+
+
+            // If we reach here, there are conflicts/skips, so remove current modal and show validation modal.
+            removeThisModal(false); 
 
             const observationsToHighlight = safeMode ?
                 validationResults.toSkip.map(item => ({
@@ -4715,14 +4846,13 @@ function createActionModal() {
         } catch (error) {
             if (error.message === 'ValidationCancelled') {
                 console.log("Validation process was explicitly cancelled by the user.");
-                removeThisModal(true); // Ensure modal is removed if cancel happened during validation
+                removeThisModal(true);
             } else {
                 console.error('Error in bulk action apply process:', error);
                 alert(`Error: ${error.message}`);
                 applyButton.textContent = 'Apply Action';
                 if (actionSelect.value) applyButton.disabled = false;
-                // Do not re-enable cancel button here as this modal should be gone.
-                removeThisModal(false); // Remove modal on other errors
+                removeThisModal(false);
             }
         }
     };
@@ -4735,6 +4865,7 @@ function createActionModal() {
 
     return modal;
 }
+
 async function createValidationModal(validationResults, selectedAction, onConfirm, onCancel) {
     const { safeMode = true } = await new Promise(resolve => 
         browserAPI.storage.local.get('safeMode', resolve)
@@ -4803,22 +4934,8 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                         break;
                     case 'annotation':
                         // Find the field name by ID
-                        let annotationFieldName = 'Unknown';
-                        let annotationValueName = 'Unknown';
-                        
-                        for (const [key, value] of Object.entries(controlledTerms)) {
-                            if (value.id === parseInt(action.annotationField)) {
-                                annotationFieldName = key;
-                                // Look up the value name
-                                for (const [valueName, valueId] of Object.entries(value.values)) {
-                                    if (valueId === parseInt(action.annotationValue)) {
-                                        annotationValueName = valueName;
-                                        break;
-                                    }
-                                }
-                                break;
-                            }
-                        }
+                        let annotationFieldName = getAnnotationFieldName(action.annotationField); // Ensure getAnnotationFieldName is available
+                        let annotationValueName = getAnnotationValueName(action.annotationField, action.annotationValue); // Ensure getAnnotationValueName is available
                         actionDesc = `Add annotation: ${annotationFieldName} = ${annotationValueName}`;
                         break;
                     case 'addToProject':
@@ -4831,11 +4948,11 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                         actionDesc = `Add taxon ID: ${action.taxonName}`;
                         break;
                     case 'qualityMetric':
-                        const metricName = getQualityMetricName(action.metric);
+                        const metricName = getQualityMetricName(action.metric); // Ensure getQualityMetricName is available
                         actionDesc = `Set quality metric: ${metricName} to ${action.vote}`;
                         break;
                     case 'copyObservationField':
-                        actionDesc = `Copy field: ${action.sourceFieldName} to ${action.targetFieldName}`;
+                        actionDesc = `Copy field: "${action.sourceFieldName}" to "${action.targetFieldName}"`;
                         break;
                 }
                 return actionDesc ? `
@@ -4988,16 +5105,39 @@ async function createValidationModal(validationResults, selectedAction, onConfir
     const confirmButton = document.createElement('button');
     confirmButton.textContent = 'Proceed';
     confirmButton.className = 'bulk-action-button';
-    confirmButton.onclick = () => {
-        document.body.removeChild(modal);
-        onConfirm();
-    };
-
+    
     const cancelButton = document.createElement('button');
     cancelButton.textContent = 'Cancel';
     cancelButton.className = 'bulk-action-button';
+
+    // --- NEW: Keydown event listener for Enter key ---
+    const handleEnterKey = (event) => {
+        if (event.key === 'Enter') {
+            if (confirmButton.disabled) {
+                console.log("Enter pressed, but Proceed button is disabled.");
+                return;
+            }
+            event.preventDefault();
+            confirmButton.click();
+        } else if (event.key === 'Escape') { // Optional: Allow Escape to cancel
+             event.preventDefault();
+             cancelButton.click();
+        }
+    };
+    // Add listener to the document when modal is active.
+    // We attach to document because the modal itself might not always have focus.
+    document.addEventListener('keydown', handleEnterKey);
+    // --- END NEW ---
+
+    confirmButton.onclick = () => {
+        document.removeEventListener('keydown', handleEnterKey); // --- NEW: Remove listener ---
+        if (modal.parentNode) document.body.removeChild(modal);
+        onConfirm();
+    };
+
     cancelButton.onclick = () => {
-        document.body.removeChild(modal);
+        document.removeEventListener('keydown', handleEnterKey); // --- NEW: Remove listener ---
+        if (modal.parentNode) document.body.removeChild(modal);
         onCancel();
     };
 
