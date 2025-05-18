@@ -4708,8 +4708,8 @@ async function createValidationSummary(validationResults) {
     return summary;
 }
 
-function createActionModal() {
-    let isActionCancelled = false; // Flag to track if the modal was cancelled
+async function createActionModal() {
+    let isActionCancelled = false;
 
     const modal = document.createElement('div');
     modal.style.cssText = `
@@ -4723,6 +4723,7 @@ function createActionModal() {
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         z-index: 20001;
         max-width: 80%;
+        min-width: 400px; 
         max-height: 80%;
         overflow-y: auto;
     `;
@@ -4732,130 +4733,251 @@ function createActionModal() {
     title.textContent = `Select Action for ${selectedObservations.size} Observations`;
     modal.appendChild(title);
 
-    // Progress bar is for the execution phase, not needed in this selection modal
-    // const progressBar = createProgressBar(); 
-    // modal.appendChild(progressBar);
-    // progressBar.style.display = 'none'; // Hide it if you keep it
+    const controlsContainer = document.createElement('div');
+    controlsContainer.style.cssText = `
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 5px;
+        position: relative; /* For positioning the sort dropdown */
+    `;
+
+    const actionSelectLabel = document.createElement('label');
+    actionSelectLabel.textContent = "Action:";
+    actionSelectLabel.htmlFor = 'bulk-action-select';
+    controlsContainer.appendChild(actionSelectLabel);
+
+    // --- NEW: Sort Dropdown Implementation ---
+    const sortButtonContainer = document.createElement('div');
+    sortButtonContainer.style.position = 'relative'; // Container for button and dropdown
+
+    const sortButton = document.createElement('button');
+    sortButton.id = 'bulk-action-sort-button';
+    sortButton.title = 'Change action sort order';
+    sortButton.style.cssText = `
+        padding: 4px 8px; 
+        font-size: 12px; 
+        background-color: #f0f0f0; 
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        cursor: pointer;
+        display: flex; /* For icon alignment */
+        align-items: center;
+    `;
+    // Sort button text will be set after loading preference
+    const sortButtonTextSpan = document.createElement('span');
+    sortButton.appendChild(sortButtonTextSpan);
+    const sortDropdownArrow = document.createElement('span');
+    sortDropdownArrow.innerHTML = ' ▾'; // Down arrow
+    sortDropdownArrow.style.marginLeft = '5px';
+    sortButton.appendChild(sortDropdownArrow);
+    
+    sortButtonContainer.appendChild(sortButton);
+
+    const sortOptionsDropdown = document.createElement('div');
+    sortOptionsDropdown.id = 'bulk-action-sort-options-dropdown';
+    sortOptionsDropdown.style.cssText = `
+        display: none;
+        position: absolute;
+        top: 100%; /* Position below the button */
+        right: 0; /* Align to the right of the button container */
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 20002; /* Higher than modal content */
+        min-width: 120px;
+    `;
+    const sortOptions = [
+        { label: 'Sort: Default', method: 'default' },
+        { label: 'Sort: A-Z', method: 'az' },
+        { label: 'Sort: Z-A', method: 'za' }
+    ];
+    sortOptions.forEach(opt => {
+        const optionButton = document.createElement('button');
+        optionButton.textContent = opt.label;
+        optionButton.dataset.sortMethod = opt.method;
+        optionButton.style.cssText = `
+            display: block;
+            width: 100%;
+            padding: 6px 10px;
+            text-align: left;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+        `;
+        optionButton.onmouseover = () => optionButton.style.backgroundColor = '#f0f0f0';
+        optionButton.onmouseout = () => optionButton.style.backgroundColor = 'white';
+        optionButton.onclick = () => {
+            populateDropdownWithOptions(opt.method);
+            browserAPI.storage.local.set({ bulkActionDropdownSortPreference: opt.method });
+            sortOptionsDropdown.style.display = 'none'; // Close dropdown
+        };
+        sortOptionsDropdown.appendChild(optionButton);
+    });
+    sortButtonContainer.appendChild(sortOptionsDropdown);
+    controlsContainer.appendChild(sortButtonContainer);
+    // --- END NEW ---
+    
+    modal.appendChild(controlsContainer);
 
     const actionSelect = document.createElement('select');
     actionSelect.id = 'bulk-action-select';
     actionSelect.style.cssText = `
         width: 100%;
         padding: 8px;
-        margin: 10px 0;
+        margin-top: 0; 
+        margin-bottom: 10px;
         border-radius: 4px;
         border: 1px solid #ccc;
     `;
     
-    const defaultOption = document.createElement('option');
-    defaultOption.value = "";
-    defaultOption.textContent = "Select an action";
-    defaultOption.disabled = true;
-    defaultOption.selected = true;
-    actionSelect.appendChild(defaultOption);
-    
-    currentAvailableActions.forEach(button => {
-        const option = document.createElement('option');
-        option.value = button.id;
-        option.textContent = button.name;
-        actionSelect.appendChild(option);
-    });
+    let currentSortMethod = 'default'; 
+
+    const populateDropdownWithOptions = (sortPref) => {
+        const selectedValueBeforeSort = actionSelect.value; 
+        actionSelect.innerHTML = ''; 
+        const defaultOptionElement = document.createElement('option');
+        defaultOptionElement.value = "";
+        defaultOptionElement.textContent = "Select an action";
+        defaultOptionElement.disabled = true;
+        actionSelect.appendChild(defaultOptionElement);
+
+        const actionsToDisplay = sortAvailableActions(currentAvailableActions, sortPref);
+
+        actionsToDisplay.forEach(buttonConfig => { // Renamed from 'button' to 'buttonConfig'
+            const option = document.createElement('option');
+            option.value = buttonConfig.id;
+            option.textContent = buttonConfig.name;
+            actionSelect.appendChild(option);
+        });
+        
+        if (actionsToDisplay.some(a => a.id === selectedValueBeforeSort)) {
+            actionSelect.value = selectedValueBeforeSort;
+        } else {
+            actionSelect.value = ""; 
+        }
+        if (actionSelect.value) {
+             actionSelect.dispatchEvent(new Event('change'));
+        }
+
+        // Update sort button text (the span part)
+        const selectedSortOption = sortOptions.find(opt => opt.method === sortPref);
+        sortButtonTextSpan.textContent = selectedSortOption ? selectedSortOption.label : 'Sort';
+        currentSortMethod = sortPref; 
+    };
+
+    const storedSortPrefData = await browserAPI.storage.local.get('bulkActionDropdownSortPreference');
+    currentSortMethod = storedSortPrefData.bulkActionDropdownSortPreference || 'default';
+    populateDropdownWithOptions(currentSortMethod);
+
     modal.appendChild(actionSelect);
 
     const descriptionArea = document.createElement('p');
     descriptionArea.id = 'action-description';
     descriptionArea.style.marginBottom = '10px';
+    descriptionArea.innerHTML = 'No action selected.'; 
     modal.appendChild(descriptionArea);
 
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.cssText = `
+    const buttonContainerElement = document.createElement('div');
+    buttonContainerElement.style.cssText = `
         display: flex;
         justify-content: flex-end;
         gap: 10px;
         margin-top: 20px;
     `;
 
-    const applyButton = document.createElement('button');
-    applyButton.textContent = 'Apply Action';
-    applyButton.classList.add('modal-button');
-    applyButton.style.marginRight = '10px';
-    applyButton.disabled = true;
+    const applyButtonElement = document.createElement('button');
+    applyButtonElement.textContent = 'Apply Action';
+    applyButtonElement.classList.add('modal-button');
+    applyButtonElement.style.marginRight = '10px';
+    applyButtonElement.disabled = true;
 
-    const cancelButton = document.createElement('button');
-    cancelButton.textContent = 'Cancel';
-    cancelButton.classList.add('modal-button');
+    const cancelButtonElement = document.createElement('button');
+    cancelButtonElement.textContent = 'Cancel';
+    cancelButtonElement.classList.add('modal-button');
 
-    buttonContainer.appendChild(cancelButton);
-    buttonContainer.appendChild(applyButton);
-    modal.appendChild(buttonContainer);
+    buttonContainerElement.appendChild(cancelButtonElement);
+    buttonContainerElement.appendChild(applyButtonElement);
+    modal.appendChild(buttonContainerElement);
+    
+    document.body.appendChild(modal); 
 
     actionSelect.onchange = () => {
-        const selectedAction = currentAvailableActions.find(button => button.id === actionSelect.value);
+        const selectedAction = currentAvailableActions.find(buttonConfig => buttonConfig.id === actionSelect.value);
         if (selectedAction) {
             updateActionDescription(actionSelect);
-            applyButton.disabled = false;
+            applyButtonElement.disabled = false;
         } else {
-            descriptionArea.innerHTML = '';
-            applyButton.disabled = true;
+            descriptionArea.innerHTML = 'No action selected.';
+            applyButtonElement.disabled = true;
         }
     };
 
+    // --- MODIFIED: Sort Button Click Handler to toggle dropdown ---
+    sortButton.onclick = (e) => {
+        e.stopPropagation(); // Prevent click from closing dropdown immediately
+        sortOptionsDropdown.style.display = sortOptionsDropdown.style.display === 'none' ? 'block' : 'none';
+    };
+    // Close dropdown if clicking outside
+    document.addEventListener('click', (e) => {
+        if (!sortButtonContainer.contains(e.target)) {
+            sortOptionsDropdown.style.display = 'none';
+        }
+    }, true); // Use capture to ensure it runs before other body clicks might remove modal
+    // --- END MODIFIED ---
+
+
     const removeThisModal = (isCancelledByUser = false) => {
+        // --- MODIFIED: Remove document click listener for sort dropdown ---
+        document.removeEventListener('click', (e) => {
+            if (!sortButtonContainer.contains(e.target)) {
+                sortOptionsDropdown.style.display = 'none';
+            }
+        }, true);
+        // --- END MODIFIED ---
         if (isCancelledByUser) {
             console.log("Action selection modal process is being explicitly cancelled.");
         }
-        highlightObservationsWithExistingValues([], null, true); // Cleanup highlights
+        highlightObservationsWithExistingValues([], null, true); 
         if (modal.parentNode === document.body) {
             document.body.removeChild(modal);
         }
     };
 
-    applyButton.onclick = async () => {
-        const selectedAction = currentAvailableActions.find(button => button.id === actionSelect.value);
+    applyButtonElement.onclick = async () => {
+        const selectedAction = currentAvailableActions.find(buttonConfig => buttonConfig.id === actionSelect.value); // Renamed
         if (!selectedAction) return;
 
         if (isActionCancelled) {
-            console.log("Apply clicked, but action was already cancelled by the time it could start.");
             removeThisModal(true);
             return;
         }
 
-        applyButton.textContent = 'Validating...';
-        applyButton.disabled = true;
-        // cancelButton remains enabled during validation
-
+        applyButtonElement.textContent = 'Validating...';
+        applyButtonElement.disabled = true;
+        
         let validationResults;
         try {
-            const { safeMode = true } = await new Promise(resolve =>
-                browserAPI.storage.local.get('safeMode', resolve)
-            );
-
+            const { safeMode = true } = await browserAPI.storage.local.get('safeMode');
             const observationIds = Array.from(selectedObservations);
             
             validationResults = await validateBulkAction(selectedAction, observationIds, () => isActionCancelled);
 
             if (isActionCancelled) {
-                console.log("Action cancelled after validation returned (or during). Not proceeding.");
                 removeThisModal(true);
                 return;
             }
-
-            // --- NEW: Logic to skip validation modal if no conflicts ---
+            
             let hasConflictsOrSkipsToShow = false;
             if (safeMode) {
-                // In Safe Mode, if any observation is in toSkip, we show the validation modal
-                if (validationResults.toSkip.length > 0) {
-                    hasConflictsOrSkipsToShow = true;
-                }
-            } else { // Overwrite Mode
-                // In Overwrite Mode, if existingValues has entries, it means there are actual differing values to report
-                if (validationResults.existingValues.size > 0) {
-                    hasConflictsOrSkipsToShow = true;
-                }
+                if (validationResults.toSkip.length > 0) hasConflictsOrSkipsToShow = true;
+            } else { 
+                if (validationResults.existingValues.size > 0) hasConflictsOrSkipsToShow = true;
             }
 
-            if (!hasConflictsOrSkipsToShow) { // Note the variable name change for clarity
-                console.log("No differing existing values (Overwrite Mode) or skips (Safe Mode) detected. Proceeding directly to execution.");
+            if (!hasConflictsOrSkipsToShow) {
                 removeThisModal(false); 
                 highlightObservationsWithExistingValues([], null, true);
                 const progressModal = createProgressModal();
@@ -4863,9 +4985,7 @@ function createActionModal() {
                 await executeBulkAction(selectedAction, progressModal, () => false); 
                 return; 
             }
-
-
-            // If we reach here, there are conflicts/skips, so remove current modal and show validation modal.
+            
             removeThisModal(false); 
 
             const observationsToHighlight = safeMode ?
@@ -4899,13 +5019,13 @@ function createActionModal() {
             const validationModal = await createValidationModal(
                 validationResults,
                 selectedAction,
-                async () => { // onConfirm for validationModal
+                async () => { 
                     highlightObservationsWithExistingValues([], null, true);
                     const progressModal = createProgressModal();
                     document.body.appendChild(progressModal);
                     await executeBulkAction(selectedAction, progressModal, () => false);
                 },
-                () => { // onCancel for validationModal
+                () => { 
                     highlightObservationsWithExistingValues([], null, true);
                     console.log('Validation confirmation cancelled');
                 }
@@ -4914,22 +5034,20 @@ function createActionModal() {
 
         } catch (error) {
             if (error.message === 'ValidationCancelled') {
-                console.log("Validation process was explicitly cancelled by the user.");
                 removeThisModal(true);
             } else {
                 console.error('Error in bulk action apply process:', error);
                 alert(`Error: ${error.message}`);
-                applyButton.textContent = 'Apply Action';
-                if (actionSelect.value) applyButton.disabled = false;
+                applyButtonElement.textContent = 'Apply Action';
+                if (actionSelect.value) applyButtonElement.disabled = false;
                 removeThisModal(false);
             }
         }
     };
 
-    cancelButton.onclick = () => {
-        console.log("Action selection modal CANCEL button clicked.");
-        isActionCancelled = true; // Set the flag
-        removeThisModal(true); // Indicate it's a user cancel
+    cancelButtonElement.onclick = () => {
+        isActionCancelled = true; 
+        removeThisModal(true);
     };
 
     return modal;
@@ -5507,4 +5625,23 @@ async function handleStateRestoration(observationId, actions, results, originalS
             }
         }
     }
+}
+
+function sortAvailableActions(actions, sortMethod) {
+    const sortedActions = [...actions]; // Create a copy to avoid modifying the original
+    switch (sortMethod) {
+        case 'az':
+            sortedActions.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            break;
+        case 'za':
+            sortedActions.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+            break;
+        case 'default': // This would be the order they come from storage / configuration
+            // No sorting needed, already in default order from currentAvailableActions
+            break;
+        default:
+            // Default to 'default' or 'az' if unknown sortMethod
+            break; 
+    }
+    return sortedActions;
 }
