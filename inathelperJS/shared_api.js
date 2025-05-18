@@ -1364,121 +1364,175 @@ async function toggleFollowObservation(observationId) {
     }
 }
 
+// In shared_api.js
 async function performProjectAction(observationId, projectId, remove = false) {
+    const actionType = 'addToProject';
+    const jwt = await getJWT(); // Get JWT here for direct fetch call
+
+    if (!jwt && !remove) { // JWT is essential for POST
+        console.error('No JWT available for adding to project.');
+        return {
+            success: false,
+            message: 'Authentication token not found. Cannot add to project.',
+            reason: 'auth_error',
+            action: actionType, projectId
+        };
+    }
+
     try {
-        // Fetch observation details
-        const observation = await makeAPIRequest(`/observations/${observationId}`);
+        // Initial observation fetch can still use makeAPIRequest
+        const observationData = await makeAPIRequest(`/observations/${observationId}`);
         
-        if (!observation || !observation.results || !observation.results[0]) {
-            console.error('Failed to fetch observation details:', observation);
+        if (!observationData || !observationData.results || !observationData.results[0]) {
             return {
                 success: false,
                 message: 'Failed to fetch observation details',
-                explicitlyRemoved: false,
-                reason: 'fetch_error'
+                reason: 'fetch_error',
+                action: actionType, projectId
             };
         }
+        const observation = observationData.results[0];
 
-        const isExplicitlyInProject = observation.results[0].project_observations.some(
+        const isExplicitlyInProject = observation.project_observations.some(
             po => po.project.id === parseInt(projectId)
         );
 
-        // For adding observations
-        if (!remove) {
-            // If already in project, consider it a success but flag it as no action needed
+        if (!remove) { // Adding to project
             if (isExplicitlyInProject) {
                 return {
                     success: true,
                     message: 'Already in project',
                     reason: 'already_member',
-                    noActionNeeded: true
+                    noActionNeeded: true,
+                    action: actionType, projectId
                 };
             }
-
             try {
-                const response = await makeAPIRequest('/project_observations', {
+                // --- DIRECT FETCH FOR POST ---
+                const projectAddUrl = `${API_URL}/project_observations`;
+                const projectAddData = {
+                    project_observation: {
+                        observation_id: observationId,
+                        project_id: projectId
+                    }
+                };
+                console.log(`Making DIRECT POST to: ${projectAddUrl} with body:`, JSON.stringify(projectAddData).substring(0,100) + "...");
+
+                const response = await fetch(projectAddUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${jwt}`
                     },
-                    body: JSON.stringify({
-                        project_observation: {
-                            observation_id: observationId,
-                            project_id: projectId
-                        }
-                    })
+                    body: JSON.stringify(projectAddData)
                 });
 
-                if (response.uuid) {
+                const responseText = await response.text();
+                console.log(`Direct POST response status: ${response.status} for ${projectAddUrl}`);
+
+                if (!response.ok) {
+                    const error = new Error(`HTTP error (direct POST)! status: ${response.status}, body: ${responseText}`);
+                    error.status = response.status;
+                    error.responseBody = responseText;
+                    console.error("Direct POST Error Details:", { url: projectAddUrl, data: projectAddData, error });
+                    throw error;
+                }
+
+                let responseDataJson = null;
+                if (responseText) {
+                    try {
+                        responseDataJson = JSON.parse(responseText);
+                    } catch (e) {
+                        console.warn("Direct POST response was not JSON:", responseText);
+                        // If not JSON but response was ok (e.g. 201 Created with no body), it might still be a success.
+                        // However, iNat usually returns JSON for this.
+                    }
+                }
+                // --- END DIRECT FETCH ---
+
+                if (responseDataJson && responseDataJson.uuid) { // Check for uuid or other success indicators
                     return {
                         success: true,
                         message: 'Added to project successfully',
-                        additionUUID: response.uuid
+                        additionUUID: responseDataJson.uuid,
+                        action: actionType, projectId
                     };
-                } else {
-                    throw new Error(`Failed to add to project: ${response.error || 'Unknown error'}`);
+                } else if (response.ok && !responseDataJson && response.status >= 200 && response.status < 300) {
+                    // Handle cases where API might return 201/200 OK with no body or non-JSON body for success
+                    console.warn("Project add POST was successful but no JSON UUID returned. Assuming success based on status.", response.status);
+                    return {
+                        success: true,
+                        message: 'Added to project (assumed success from status)',
+                        action: actionType, projectId
+                    };
                 }
-            } catch (error) {
-                console.error('Error adding to project:', error);
-                return {
-                    success: false,
-                    message: error.toString(),
-                    reason: 'addition_failed'
-                };
+                 else {
+                     // This case means response was .ok but didn't have expected success markers in JSON
+                    const errorMessage = (responseDataJson && responseDataJson.error) ? responseDataJson.error : 
+                                         (responseText ? `Unexpected response: ${responseText.substring(0,100)}` : 'Unknown error after POST');
+                    return {
+                        success: false,
+                        message: `Failed to add to project: ${errorMessage}`,
+                        reason: 'addition_failed_api_logic', // More specific reason
+                        action: actionType, projectId
+                    };
+                }
+            } catch (error) { // Catches network errors or errors thrown from !response.ok
+                return { success: false, message: error.message || error.toString(), reason: 'addition_failed_network_or_http', action: actionType, projectId };
             }
-        }
-        
-        // For removing observations
-        else {
-            // If not explicitly in project, check for dynamic inclusion
+        } else { // Removing from project (can continue to use makeAPIRequest for DELETE)
             if (!isExplicitlyInProject) {
                 const dynamicInclusionCheck = await makeAPIRequest(`/observations?project_id=${projectId}&id=${observationId}`);
-                const isDynamicallyIncluded = dynamicInclusionCheck.total_results > 0;
-
+                const isDynamicallyIncluded = dynamicInclusionCheck && dynamicInclusionCheck.total_results > 0;
                 if (isDynamicallyIncluded) {
                     return {
                         success: false,
-                        message: 'Cannot remove - observation is automatically included',
+                        message: 'Cannot remove - observation is automatically included by project rules.',
                         reason: 'dynamic_inclusion',
-                        requiresWarning: true
+                        requiresWarning: true,
+                        action: actionType, projectId
                     };
                 } else {
                     return {
                         success: true,
-                        message: 'Not in project, no action needed',
+                        message: 'Not in project, no removal action needed.',
                         reason: 'not_in_project',
-                        noActionNeeded: true
+                        noActionNeeded: true,
+                        action: actionType, projectId
                     };
                 }
             }
-            
             try {
+                // makeAPIRequest for DELETE should be fine
                 await makeAPIRequest(`/projects/${projectId}/remove?observation_id=${observationId}`, {
                     method: 'DELETE'
                 });
                 return { 
                     success: true, 
                     message: 'Observation removed successfully', 
-                    explicitlyRemoved: true 
+                    explicitlyRemoved: true,
+                    action: actionType, projectId
                 };
             } catch (error) {
                 if (error.message && error.message.includes("you don't have permission to remove")) {
                     return {
                         success: false,
-                        message: 'Permission denied',
+                        message: 'Permission denied to remove from project.',
                         reason: 'permission_denied',
-                        requiresWarning: true
+                        requiresWarning: true,
+                        action: actionType, projectId
                     };
                 }
-                throw error;
+                return { success: false, message: error.toString(), reason: 'removal_failed', action: actionType, projectId };
             }
         }
     } catch (error) {
-        console.error('Unexpected error:', error);
+        console.error('Unexpected error in performProjectAction (outer try):', error);
         return { 
             success: false, 
-            message: error.toString(), 
-            reason: 'unexpected_error' 
+            message: error.message || error.toString(), 
+            reason: 'unexpected_error_outer',
+            action: actionType, projectId
         };
     }
 }

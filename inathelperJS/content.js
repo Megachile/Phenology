@@ -2129,23 +2129,74 @@ function createButton(config) {
     }
     
     button.onclick = function(e) {
+      const currentButtonConfig = config; 
+
         animateButton(this);
-        performActions(config.actions)
-            .then((results) => {
-                const resultsArray = Array.isArray(results) ? results : [results];
-                const allSuccessful = resultsArray.every(r => r.success);
-                animateButtonResult(this, allSuccessful);
-                if (!allSuccessful) {
-                    console.error('Some actions failed:', resultsArray.filter(r => !r.success));
+        performActions(currentButtonConfig.actions) 
+            .then((resultsArray) => { 
+                let allSuccessfulInBatch = true;
+                let warningsToShow = [];
+
+                resultsArray.forEach(result => {
+                    if (!result.success) {
+                        allSuccessfulInBatch = false;
+                        console.error('Action failed:', result); 
+                        
+                        if (result.action === 'addToProject' || (result.projectId && result.reason)) {
+                            // Find the original project action config to get the projectName
+                            const projectActionConfig = currentButtonConfig.actions.find(
+                                action => action.type === 'addToProject' && action.projectId === result.projectId
+                            );
+                            const displayProjectName = projectActionConfig ? projectActionConfig.projectName : result.projectId;
+
+                            if (result.requiresWarning) { 
+                                warningsToShow.push(`Observation ${result.observationId || currentObservationId}: ${result.message} (Project: "${displayProjectName}")`);
+                            } else if (result.reason === 'addition_failed_api_logic' || result.reason === 'addition_failed_network_or_http') {
+                                let specificApiErrors = "Could not determine specific reason from API.";
+                                if (result.message && typeof result.message === 'string') {
+                                    try {
+                                        const jsonErrorMatch = result.message.match(/body: (\{.*\})/s);
+                                        if (jsonErrorMatch && jsonErrorMatch[1]) {
+                                            const errorBody = JSON.parse(jsonErrorMatch[1]);
+                                            if (errorBody.error && errorBody.error.original && Array.isArray(errorBody.error.original.errors)) {
+                                                specificApiErrors = errorBody.error.original.errors.join('; ');
+                                            } else if (errorBody.error && typeof errorBody.error === 'string') {
+                                                specificApiErrors = errorBody.error;
+                                            }
+                                        } else {
+                                            specificApiErrors = result.message.length > 100 ? result.message.substring(0, 97) + "..." : result.message;
+                                        }
+                                    } catch (parseError) {
+                                        console.warn("Could not parse detailed API error from message for project addition failure:", parseError, result.message);
+                                        specificApiErrors = result.message.length > 100 ? result.message.substring(0, 97) + "..." : result.message; 
+                                    }
+                                }
+                                warningsToShow.push(`Obs. ${result.observationId || currentObservationId}: Failed to add to project "${displayProjectName}". Reasons: ${specificApiErrors}`);
+                            } else if (result.reason === 'not_in_project' && currentButtonConfig.actions.some(a => a.type === 'addToProject' && a.remove && a.projectId === result.projectId)) {
+                                warningsToShow.push(`Observation ${result.observationId || currentObservationId}: Not in project "${displayProjectName}", so removal had no effect.`);
+                            } else if (result.reason === 'already_member' && currentButtonConfig.actions.some(a => a.type === 'addToProject' && !a.remove && a.projectId === result.projectId)) {
+                                warningsToShow.push(`Observation ${result.observationId || currentObservationId}: Already a member of project "${displayProjectName}".`);
+                            }
+                        } else if (result.error) { 
+                             warningsToShow.push(`Action failed: ${getCleanErrorMessage(result.error.toString())}`);
+                        }
+                    }
+                });
+
+                animateButtonResult(this, allSuccessfulInBatch);
+
+                if (warningsToShow.length > 0) {
+                    displayWarning(warningsToShow.join('\n')); 
                 }
-                // Add refresh here if successful
-                if (allSuccessful && refreshEnabled) {
-                    refreshObservation();
+
+                if (allSuccessfulInBatch && refreshEnabled) {
+                    refreshObservation().catch(err => console.error("Refresh after single action failed:", err));
                 }
             })
             .catch(error => {
-                console.error('Error performing actions:', error);
+                console.error('Error performing actions for single button:', error);
                 animateButtonResult(this, false);
+                displayWarning(`Error: ${error.message}`); 
             });
     };
     
