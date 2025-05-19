@@ -190,12 +190,12 @@ function toggleBulkActionVisibility() {
     }
 }
 
+// In content.js
 function handleAllShortcuts(event) {
-    // Check if the active element is an input or textarea
     const activeElement = document.activeElement;
     const isTyping = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
 
-    // Always check for bulk action mode toggle (Alt+M), even when typing
+    // Alt+M for bulk action mode toggle is always available
     if (event.altKey && !event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'm') {
         event.preventDefault();
         if (bulkActionModeEnabled) {
@@ -205,64 +205,112 @@ function handleAllShortcuts(event) {
         }
         return;
     }
-
-    // If user is typing, don't process other shortcuts
-    if (isTyping) {
-        return;
-    }
-
-    // Process standard shortcuts
-    if (event.shiftKey && event.key.toLowerCase() === 'b') {
-        toggleButtonVisibility();
-        return;
-    }
-    if (event.altKey && event.key.toLowerCase() === 'n') {
-        cycleButtonPosition();
-        return;
-    }
-    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'r') {
-        event.preventDefault();
-        toggleRefresh();
-        return;
-    }
-    if (event.altKey && event.key.toLowerCase() === 'h') {
-        event.preventDefault();
-        toggleShortcutList();
-        return;
-    }
-    if (event.shiftKey && event.key.toLowerCase() === 'v') {
-        event.preventDefault();
-        toggleBulkActionVisibility();
-        return;
-    }
     
-    // If in bulk action mode, check for action shortcuts
-    if (bulkActionModeEnabled && selectedObservations.size > 0) {
-        for (const button of currentSet.buttons) {
-            if (button.shortcut && 
-                event.key.toLowerCase() === button.shortcut.key.toLowerCase() &&
-                event.ctrlKey === !!button.shortcut.ctrlKey &&
-                event.shiftKey === !!button.shortcut.shiftKey &&
-                event.altKey === !!button.shortcut.altKey) {
-                event.preventDefault();
-                handleBulkActionShortcut(button);
-                return;
-            }
-        }
-    }
-    
-    // Process custom shortcuts (when not in bulk mode)
-    if (!bulkActionModeEnabled) {
-        customShortcuts.forEach(shortcut => {
-            if (event.key.toLowerCase() === shortcut.key.toLowerCase() &&
-                event.ctrlKey === shortcut.ctrlKey &&
-                event.shiftKey === shortcut.shiftKey &&
-                event.altKey === shortcut.altKey) {
-                if (shortcut.button && shortcut.button.isConnected) {
-                    shortcut.button.click();
+    // --- NEW: Check if Action Selection Modal is Open for specific shortcuts ---
+    const actionSelectModal = document.querySelector('#bulk-action-select'); // Check if the dropdown itself exists
+    const isActionSelectModalOpen = actionSelectModal && actionSelectModal.closest('div[style*="z-index: 20001"]'); // A bit fragile, relies on z-index of modal
+
+    if (isActionSelectModalOpen) {
+        // If modal is open, prioritize shortcuts for it
+        if (!isTyping) { // Allow typing in modal if any input fields were ever added
+            // Check for custom action shortcuts to SELECT an item in the dropdown
+            for (const buttonConfig of currentAvailableActions) { // Iterate over actions available in the modal
+                if (buttonConfig.shortcut &&
+                    event.key.toLowerCase() === buttonConfig.shortcut.key.toLowerCase() &&
+                    event.ctrlKey === !!buttonConfig.shortcut.ctrlKey &&
+                    event.shiftKey === !!buttonConfig.shortcut.shiftKey &&
+                    event.altKey === !!buttonConfig.shortcut.altKey) {
+                    
+                    event.preventDefault();
+                    actionSelectModal.value = buttonConfig.id;
+                    // Manually trigger the change event to update description and enable Apply button
+                    actionSelectModal.dispatchEvent(new Event('change'));
+                    console.log(`Shortcut selected action: ${buttonConfig.name}`);
+                    return; // Shortcut handled
                 }
             }
-        });
+            // Enter key to "Apply Action" when an action is selected in the modal (will be added in createActionModal)
+            // Escape key to "Cancel" modal (will be added in createActionModal)
+        }
+    } else if (isTyping && !isActionSelectModalOpen) { // If typing outside the action select modal, do nothing further
+        return;
+    }
+    // --- END NEW ---
+    
+
+    // Process standard non-modal shortcuts if not typing or modal not handled above
+    if (!isTyping || !isActionSelectModalOpen) { // Ensure these don't fire if modal handled it or typing in general
+        if (event.shiftKey && !event.altKey && !event.ctrlKey && event.key.toLowerCase() === 'b') {
+            toggleButtonVisibility();
+            return;
+        }
+        if (event.altKey && !event.shiftKey && !event.ctrlKey && event.key.toLowerCase() === 'n') {
+            cycleButtonPosition();
+            return;
+        }
+        if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'r') {
+            event.preventDefault();
+            toggleRefresh();
+            return;
+        }
+        if (event.altKey && !event.shiftKey && !event.ctrlKey && event.key.toLowerCase() === 'h') {
+            event.preventDefault();
+            toggleShortcutList();
+            return;
+        }
+        if (event.shiftKey && !event.altKey && !event.ctrlKey && event.key.toLowerCase() === 'v') {
+            event.preventDefault();
+            toggleBulkActionVisibility();
+            return;
+        }
+        if (event.altKey && !event.shiftKey && !event.ctrlKey && event.key.toLowerCase() === 's') { // Cycle sets
+             event.preventDefault();
+             cycleConfigurationSet();
+             return;
+        }
+
+        // Process custom shortcuts for individual observation actions (when bulk mode is NOT enabled)
+        // OR Process custom shortcuts for BULK EXECUTION (when bulk mode IS enabled but action modal is NOT open)
+        if (!isActionSelectModalOpen && currentSet && currentSet.buttons) {
+            const actionsToConsider = bulkActionModeEnabled ? 
+                                      currentAvailableActions : // For triggering bulk execution directly
+                                      customShortcuts;          // For single observation buttons
+
+            for (const item of actionsToConsider) {
+                const shortcut = bulkActionModeEnabled ? item.shortcut : item; // Structure differs slightly
+                const buttonToClick = bulkActionModeEnabled ? null : item.button; // Button element for single mode
+
+                if (shortcut && shortcut.key &&
+                    event.key.toLowerCase() === shortcut.key.toLowerCase() &&
+                    event.ctrlKey === !!shortcut.ctrlKey &&
+                    event.shiftKey === !!shortcut.shiftKey &&
+                    event.altKey === !!shortcut.altKey) {
+                    
+                    event.preventDefault();
+                    if (bulkActionModeEnabled && selectedObservations.size > 0) {
+                        // Directly trigger this action for the selected bulk observations
+                        console.log(`Bulk action shortcut triggered for: ${item.name}`);
+                        // We need to simulate the modal flow: validate then execute.
+                        // This is complex. For now, let's just log.
+                        // A simpler approach might be for the shortcut to *open* the modal
+                        // and pre-select this action.
+                        // For now, let's focus on selecting in the OPEN modal.
+                        // Direct execution via shortcut in bulk mode without modal is a larger feature.
+                         if (item.id && document.getElementById('bulk-action-container')?.style.display === 'block') {
+                            // If bulk action container is visible, this shortcut could directly trigger
+                            // the full bulk process for THIS action (selectedAction = item).
+                            // This would bypass the dropdown selection.
+                            // applyBulkActionFromShortcut(item); // Hypothetical function
+                            console.log(`TODO: Implement direct bulk execution for shortcut: ${item.name}`);
+                        }
+
+                    } else if (!bulkActionModeEnabled && buttonToClick && buttonToClick.isConnected) {
+                        buttonToClick.click(); // Click the single observation button
+                    }
+                    return; // Shortcut handled
+                }
+            }
+        }
     }
 }
 
@@ -2722,16 +2770,6 @@ function updateSelectedObservations() {
     }
 }
 
-async function applyBulkAction() {
-    console.log('Starting bulk action application');
-    if (selectedObservations.size === 0) {
-        alert('Please select at least one observation first.');
-        return;
-    }
-
-    const modal = createActionModal();
-    document.body.appendChild(modal);
-}
 
 async function getAvailableActions() {
     return currentSet.buttons.filter(button => !button.configurationDisabled);
@@ -4131,8 +4169,7 @@ function updateBulkActionButtons() {
         const selectAllButton = createBulkActionButton('Select All', selectAllObservations);
         const invertSelectionButton = createBulkActionButton('Invert Selection', invertSelection);
         const clearSelectionButton = createBulkActionButton('Clear Selection', clearSelection);
-        const applyActionButton = createBulkActionButton('Select and Apply Action', applyBulkAction);
-        const disableBulkModeButton = createBulkActionButton('Disable Bulk Mode', disableBulkActionMode);
+        const selectAndApplyButton = createBulkActionButton('Select and Apply Action', applyBulkAction);   const disableBulkModeButton = createBulkActionButton('Disable Bulk Mode', disableBulkActionMode);
         const showUndoRecordsButton = createBulkActionButton('Show Undo Records', showUndoRecordsModal);
 
         // Add buttons to wrapper
@@ -4148,7 +4185,7 @@ function updateBulkActionButtons() {
             gap: 5px;
         `;
         
-        secondRowWrapper.appendChild(applyActionButton);
+        secondRowWrapper.appendChild(selectAndApplyButton);
         secondRowWrapper.appendChild(disableBulkModeButton);
         secondRowWrapper.appendChild(showUndoRecordsButton);
 
@@ -4814,8 +4851,11 @@ async function createValidationSummary(validationResults) {
 
 async function createActionModal() {
     let isActionCancelled = false;
+    window.isBulkActionSelectionModalOpen = true; 
 
     const modal = document.createElement('div');
+    modal.id = 'bulk-action-selection-modal'; 
+    // ... (modal styling, title, controlsContainer, sortButtonContainer, actionSelect ...)
     modal.style.cssText = `
         position: fixed;
         top: 50%;
@@ -4843,7 +4883,7 @@ async function createActionModal() {
         justify-content: space-between; 
         align-items: center; 
         margin-bottom: 5px;
-        position: relative; /* For positioning the sort dropdown */
+        position: relative;
     `;
 
     const actionSelectLabel = document.createElement('label');
@@ -4851,9 +4891,8 @@ async function createActionModal() {
     actionSelectLabel.htmlFor = 'bulk-action-select';
     controlsContainer.appendChild(actionSelectLabel);
 
-    // --- NEW: Sort Dropdown Implementation ---
     const sortButtonContainer = document.createElement('div');
-    sortButtonContainer.style.position = 'relative'; // Container for button and dropdown
+    sortButtonContainer.style.position = 'relative';
 
     const sortButton = document.createElement('button');
     sortButton.id = 'bulk-action-sort-button';
@@ -4865,17 +4904,15 @@ async function createActionModal() {
         border: 1px solid #ccc;
         border-radius: 3px;
         cursor: pointer;
-        display: flex; /* For icon alignment */
+        display: flex;
         align-items: center;
     `;
-    // Sort button text will be set after loading preference
     const sortButtonTextSpan = document.createElement('span');
     sortButton.appendChild(sortButtonTextSpan);
     const sortDropdownArrow = document.createElement('span');
-    sortDropdownArrow.innerHTML = ' ▾'; // Down arrow
+    sortDropdownArrow.innerHTML = ' ▾'; 
     sortDropdownArrow.style.marginLeft = '5px';
     sortButton.appendChild(sortDropdownArrow);
-    
     sortButtonContainer.appendChild(sortButton);
 
     const sortOptionsDropdown = document.createElement('div');
@@ -4883,13 +4920,13 @@ async function createActionModal() {
     sortOptionsDropdown.style.cssText = `
         display: none;
         position: absolute;
-        top: 100%; /* Position below the button */
-        right: 0; /* Align to the right of the button container */
+        top: 100%; 
+        right: 0; 
         background-color: white;
         border: 1px solid #ccc;
         border-radius: 3px;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        z-index: 20002; /* Higher than modal content */
+        z-index: 20002; 
         min-width: 120px;
     `;
     const sortOptions = [
@@ -4916,14 +4953,12 @@ async function createActionModal() {
         optionButton.onclick = () => {
             populateDropdownWithOptions(opt.method);
             browserAPI.storage.local.set({ bulkActionDropdownSortPreference: opt.method });
-            sortOptionsDropdown.style.display = 'none'; // Close dropdown
+            sortOptionsDropdown.style.display = 'none';
         };
         sortOptionsDropdown.appendChild(optionButton);
     });
     sortButtonContainer.appendChild(sortOptionsDropdown);
     controlsContainer.appendChild(sortButtonContainer);
-    // --- END NEW ---
-    
     modal.appendChild(controlsContainer);
 
     const actionSelect = document.createElement('select');
@@ -4936,9 +4971,36 @@ async function createActionModal() {
         border-radius: 4px;
         border: 1px solid #ccc;
     `;
+    modal.appendChild(actionSelect); 
+
+    const descriptionArea = document.createElement('p');
+    descriptionArea.id = 'action-description';
+    descriptionArea.style.marginBottom = '10px';
+    modal.appendChild(descriptionArea);
+
+    const buttonContainerElement = document.createElement('div');
+    buttonContainerElement.style.cssText = `
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+    `;
+
+    const applyButtonElement = document.createElement('button'); 
+    applyButtonElement.textContent = 'Apply Action';
+    applyButtonElement.classList.add('modal-button');
+    applyButtonElement.style.marginRight = '10px';
+    applyButtonElement.disabled = true; 
+
+    const cancelButtonElement = document.createElement('button');
+    cancelButtonElement.textContent = 'Cancel';
+    cancelButtonElement.classList.add('modal-button');
+
+    buttonContainerElement.appendChild(cancelButtonElement);
+    buttonContainerElement.appendChild(applyButtonElement);
+    modal.appendChild(buttonContainerElement);
     
     let currentSortMethod = 'default'; 
-
     const populateDropdownWithOptions = (sortPref) => {
         const selectedValueBeforeSort = actionSelect.value; 
         actionSelect.innerHTML = ''; 
@@ -4950,7 +5012,7 @@ async function createActionModal() {
 
         const actionsToDisplay = sortAvailableActions(currentAvailableActions, sortPref);
 
-        actionsToDisplay.forEach(buttonConfig => { // Renamed from 'button' to 'buttonConfig'
+        actionsToDisplay.forEach(buttonConfig => {
             const option = document.createElement('option');
             option.value = buttonConfig.id;
             option.textContent = buttonConfig.name;
@@ -4962,55 +5024,39 @@ async function createActionModal() {
         } else {
             actionSelect.value = ""; 
         }
-        if (actionSelect.value) {
-             actionSelect.dispatchEvent(new Event('change'));
+        
+        const currentSelectedActionInDropdown = currentAvailableActions.find(bc => bc.id === actionSelect.value);
+        if (currentSelectedActionInDropdown) {
+            updateActionDescription(actionSelect); 
+            applyButtonElement.disabled = false;
+        } else {
+            descriptionArea.innerHTML = 'No action selected.';
+            applyButtonElement.disabled = true;
         }
 
-        // Update sort button text (the span part)
         const selectedSortOption = sortOptions.find(opt => opt.method === sortPref);
         sortButtonTextSpan.textContent = selectedSortOption ? selectedSortOption.label : 'Sort';
         currentSortMethod = sortPref; 
     };
 
-    const storedSortPrefData = await browserAPI.storage.local.get('bulkActionDropdownSortPreference');
-    currentSortMethod = storedSortPrefData.bulkActionDropdownSortPreference || 'default';
-    populateDropdownWithOptions(currentSortMethod);
+    (async () => {
+        const storedSortPrefData = await browserAPI.storage.local.get('bulkActionDropdownSortPreference');
+        currentSortMethod = storedSortPrefData.bulkActionDropdownSortPreference || 'default';
+        populateDropdownWithOptions(currentSortMethod); 
+        
+        if(actionSelect.value) {
+            actionSelect.dispatchEvent(new Event('change'));
+        } else {
+            descriptionArea.innerHTML = 'No action selected.'; 
+            applyButtonElement.disabled = true;
+        }
+    })();
 
-    modal.appendChild(actionSelect);
-
-    const descriptionArea = document.createElement('p');
-    descriptionArea.id = 'action-description';
-    descriptionArea.style.marginBottom = '10px';
-    descriptionArea.innerHTML = 'No action selected.'; 
-    modal.appendChild(descriptionArea);
-
-    const buttonContainerElement = document.createElement('div');
-    buttonContainerElement.style.cssText = `
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin-top: 20px;
-    `;
-
-    const applyButtonElement = document.createElement('button');
-    applyButtonElement.textContent = 'Apply Action';
-    applyButtonElement.classList.add('modal-button');
-    applyButtonElement.style.marginRight = '10px';
-    applyButtonElement.disabled = true;
-
-    const cancelButtonElement = document.createElement('button');
-    cancelButtonElement.textContent = 'Cancel';
-    cancelButtonElement.classList.add('modal-button');
-
-    buttonContainerElement.appendChild(cancelButtonElement);
-    buttonContainerElement.appendChild(applyButtonElement);
-    modal.appendChild(buttonContainerElement);
-    
     document.body.appendChild(modal); 
 
     actionSelect.onchange = () => {
-        const selectedAction = currentAvailableActions.find(buttonConfig => buttonConfig.id === actionSelect.value);
-        if (selectedAction) {
+        const selectedActionFromDropdown = currentAvailableActions.find(buttonConfig => buttonConfig.id === actionSelect.value);
+        if (selectedActionFromDropdown) {
             updateActionDescription(actionSelect);
             applyButtonElement.disabled = false;
         } else {
@@ -5019,48 +5065,79 @@ async function createActionModal() {
         }
     };
 
-    // --- MODIFIED: Sort Button Click Handler to toggle dropdown ---
     sortButton.onclick = (e) => {
-        e.stopPropagation(); // Prevent click from closing dropdown immediately
+        e.stopPropagation(); 
         sortOptionsDropdown.style.display = sortOptionsDropdown.style.display === 'none' ? 'block' : 'none';
     };
-    // Close dropdown if clicking outside
-    document.addEventListener('click', (e) => {
-        if (!sortButtonContainer.contains(e.target)) {
+    
+    const closeSortDropdownOnClickOutside = (e) => {
+        if (sortButtonContainer && sortOptionsDropdown && !sortButtonContainer.contains(e.target) && sortOptionsDropdown.style.display === 'block') {
             sortOptionsDropdown.style.display = 'none';
         }
-    }, true); // Use capture to ensure it runs before other body clicks might remove modal
-    // --- END MODIFIED ---
-
-
+    };
+    // Define removeThisModal BEFORE it's used in handleModalKeys or button clicks
     const removeThisModal = (isCancelledByUser = false) => {
-        // --- MODIFIED: Remove document click listener for sort dropdown ---
-        document.removeEventListener('click', (e) => {
-            if (!sortButtonContainer.contains(e.target)) {
-                sortOptionsDropdown.style.display = 'none';
-            }
-        }, true);
-        // --- END MODIFIED ---
+        window.isBulkActionSelectionModalOpen = false; 
+        document.removeEventListener('click', closeSortDropdownOnClickOutside, true);
+        document.removeEventListener('keydown', handleModalKeys); // Ensure this specific listener is removed
         if (isCancelledByUser) {
-            console.log("Action selection modal process is being explicitly cancelled.");
+            console.log("Action selection modal process is being explicitly cancelled by user flag.");
         }
         highlightObservationsWithExistingValues([], null, true); 
         if (modal.parentNode === document.body) {
             document.body.removeChild(modal);
+        } else {
+            console.warn("removeThisModal called, but modal was not a child of document.body or already removed.");
         }
     };
 
-    applyButtonElement.onclick = async () => {
-        const selectedAction = currentAvailableActions.find(buttonConfig => buttonConfig.id === actionSelect.value); // Renamed
-        if (!selectedAction) return;
 
-        if (isActionCancelled) {
-            removeThisModal(true);
+    const handleModalKeys = (event) => {
+        if (!document.body.contains(modal) || modal.style.display === 'none') {
+            removeThisModal(); // Clean up if modal somehow got removed externally
             return;
         }
 
+        if (event.key === 'Enter') {
+            // --- MODIFIED: Check actionSelect.value directly and button state ---
+            if (actionSelect.value && actionSelect.value !== "" && !applyButtonElement.disabled) {
+                event.preventDefault();
+                applyButtonElement.click();
+            } else {
+                console.log("Enter pressed in action modal, but no action selected or apply button disabled.");
+                // Optionally, add a visual cue like shaking the modal or focusing the select
+            }
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            cancelButtonElement.click(); // This will call removeThisModal
+        }
+    };
+    document.addEventListener('keydown', handleModalKeys);
+
+
+    applyButtonElement.onclick = async () => {
+        const selectedAction = currentAvailableActions.find(buttonConfig => buttonConfig.id === actionSelect.value);
+        // --- ADDED: Guard against no selected action ---
+        if (!selectedAction) {
+            console.warn("Apply button clicked, but no action is selected in the dropdown.");
+            // Optionally, briefly highlight the dropdown or show a small message
+            descriptionArea.innerHTML = '<span style="color:red;">Please select an action first.</span>';
+            setTimeout(() => {
+                if (actionSelect.value === "") descriptionArea.innerHTML = 'No action selected.';
+            }, 2000);
+            return;
+        }
+        // --- END ADDED ---
+
+        if (isActionCancelled) { 
+            removeThisModal(true); 
+            return;
+        }
+        
+        // No need to remove handleModalKeys here, removeThisModal will do it.
         applyButtonElement.textContent = 'Validating...';
         applyButtonElement.disabled = true;
+        cancelButtonElement.disabled = true; 
         
         let validationResults;
         try {
@@ -5069,11 +5146,13 @@ async function createActionModal() {
             
             validationResults = await validateBulkAction(selectedAction, observationIds, () => isActionCancelled);
 
-            if (isActionCancelled) {
+            if (isActionCancelled) { 
                 removeThisModal(true);
                 return;
             }
             
+            removeThisModal(false); 
+
             let hasConflictsOrSkipsToShow = false;
             if (safeMode) {
                 if (validationResults.toSkip.length > 0) hasConflictsOrSkipsToShow = true;
@@ -5082,7 +5161,6 @@ async function createActionModal() {
             }
 
             if (!hasConflictsOrSkipsToShow) {
-                removeThisModal(false); 
                 highlightObservationsWithExistingValues([], null, true);
                 const progressModal = createProgressModal();
                 document.body.appendChild(progressModal);
@@ -5090,30 +5168,22 @@ async function createActionModal() {
                 return; 
             }
             
-            removeThisModal(false); 
-
             const observationsToHighlight = safeMode ?
-                validationResults.toSkip.map(item => ({
+                 validationResults.toSkip.map(item => ({
                     observationId: item.observationId,
                     fieldValues: Object.fromEntries(
-                        Object.entries(item.existingFields).map(([fieldId, value]) => [
+                        Object.entries(item.existingFields || {}).map(([fieldId, value]) => [ 
                             validationResults.fieldNames.get(fieldId),
-                            {
-                                current: value,
-                                proposed: validationResults.proposedValues.get(fieldId)
-                            }
+                            { current: value, proposed: validationResults.proposedValues.get(fieldId) }
                         ])
                     )
                 })) :
                 Array.from(validationResults.existingValues.entries()).map(([observationId, info]) => ({
                     observationId,
                     fieldValues: Object.fromEntries(
-                        Object.entries(info.existingFields).map(([fieldId, value]) => [
+                        Object.entries(info.existingFields || {}).map(([fieldId, valueDetails]) => [ 
                             validationResults.fieldNames.get(fieldId),
-                            {
-                                current: value,
-                                proposed: validationResults.proposedValues.get(fieldId)
-                            }
+                            { current: valueDetails.current, proposed: valueDetails.proposed }
                         ])
                     )
                 }));
@@ -5121,8 +5191,7 @@ async function createActionModal() {
             highlightObservationsWithExistingValues(observationsToHighlight, selectedAction);
 
             const validationModal = await createValidationModal(
-                validationResults,
-                selectedAction,
+                validationResults, selectedAction,
                 async () => { 
                     highlightObservationsWithExistingValues([], null, true);
                     const progressModal = createProgressModal();
@@ -5138,13 +5207,16 @@ async function createActionModal() {
 
         } catch (error) {
             if (error.message === 'ValidationCancelled') {
-                removeThisModal(true);
+                removeThisModal(true); 
             } else {
                 console.error('Error in bulk action apply process:', error);
                 alert(`Error: ${error.message}`);
-                applyButtonElement.textContent = 'Apply Action';
-                if (actionSelect.value) applyButtonElement.disabled = false;
-                removeThisModal(false);
+                if (document.body.contains(modal)) { // Check if modal still exists before trying to reset buttons
+                    applyButtonElement.textContent = 'Apply Action';
+                    if (actionSelect.value) applyButtonElement.disabled = false;
+                    cancelButtonElement.disabled = false;
+                }
+                removeThisModal(false); 
             }
         }
     };
@@ -5154,7 +5226,7 @@ async function createActionModal() {
         removeThisModal(true);
     };
 
-    return modal;
+    return modal; 
 }
 
 async function createValidationModal(validationResults, selectedAction, onConfirm, onCancel) {
@@ -5752,4 +5824,74 @@ function sortAvailableActions(actions, sortMethod) {
             break; 
     }
     return sortedActions;
+}
+
+async function openActionSelectionModalWorkflow() {
+    console.log('Bulk Action: Initiating action selection modal workflow...');
+    if (selectedObservations.size === 0) {
+        alert('Please select at least one observation first.');
+        return;
+    }
+
+    try {
+        // createActionModal is async and now appends itself to the body.
+        // We await it to ensure its setup (including its own event listeners) completes.
+        const modalNode = await createActionModal();
+        
+        // This check is mostly for sanity; createActionModal should throw if it fails badly.
+        if (!modalNode || !document.body.contains(modalNode)) {
+            console.error("openActionSelectionModalWorkflow: createActionModal did not successfully create or append the modal to the document.");
+            window.isBulkActionSelectionModalOpen = false; // Ensure flag is reset
+        } else {
+            console.log("Action selection modal opened successfully.");
+        }
+    } catch (error) {
+        console.error("Error opening or during creation of the action selection modal:", error);
+        window.isBulkActionSelectionModalOpen = false; // Ensure flag is reset on error
+        alert("Could not open the action selection dialog. Please check the console for errors.");
+    }
+}
+
+
+async function applyBulkAction() { // Make it async
+    console.log('Button "Select and Apply Action" clicked. Initiating modal workflow.');
+
+    // --- NEW: Check if a modal is already open ---
+    if (window.isBulkActionSelectionModalOpen === true) {
+        console.warn("applyBulkAction (initiator) called, but an action selection modal seems to be already open. Aborting to prevent duplication.");
+        // Optionally, try to focus the existing modal or its select element
+        const existingModalSelect = document.getElementById('bulk-action-select');
+        if (existingModalSelect) {
+            existingModalSelect.focus();
+        }
+        return;
+    }
+    // --- END NEW ---
+
+    if (selectedObservations.size === 0) {
+        alert('Please select at least one observation first.');
+        return;
+    }
+
+    // Set the flag immediately BEFORE creating the modal
+    // createActionModal will also set it, but this is an earlier guard.
+    window.isBulkActionSelectionModalOpen = true; 
+
+    try {
+        const modalNode = await createActionModal(); 
+        
+        if (modalNode && document.body.contains(modalNode)) {
+            console.log("Action selection modal has been successfully opened by createActionModal.");
+        } else {
+             console.error("applyBulkAction (initiator): createActionModal resolved, but modalNode is not valid or not in DOM. Flag was:", window.isBulkActionSelectionModalOpen);
+             // If modal creation failed internally and didn't set the flag to false, reset it here.
+             if (window.isBulkActionSelectionModalOpen) { // Check because createActionModal's cleanup should set it false
+                window.isBulkActionSelectionModalOpen = false;
+             }
+        }
+    } catch (error) {
+        console.error("Error occurred during the createActionModal call from applyBulkAction (initiator):", error);
+        window.isBulkActionSelectionModalOpen = false; 
+        alert("An error occurred while trying to open the action selection dialog. Please check the console.");
+    }
 }
