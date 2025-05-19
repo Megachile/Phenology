@@ -6,7 +6,7 @@ let lastUsedSort = 'date';
 let searchTerm = '';
 let observationFieldMap = {};
 let configurationSets = [];
-let currentSetName = '';
+let optionsPageActiveSetName = ''; // Name of the set selected in the Options Page UI
 
 const iNatSingleKeyPresses = [
     'x', 'r', 'c', 'a', 'i', 'f', 'z', 'space', 'left', 'right', 'up', 'down', '?',
@@ -42,6 +42,57 @@ const qualityMetrics = [
 document.getElementById('openBulkActionsButton').addEventListener('click', () => {
     browserAPI.runtime.sendMessage({ action: "openBulkActionsPage" });
   });
+
+  browserAPI.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local') {
+        let needsFullDisplayRefresh = false;
+
+        if (changes.configurationSets) {
+            console.log("options.js (storage.onChanged): configurationSets changed.");
+            configurationSets = changes.configurationSets.newValue || configurationSets;
+            needsFullDisplayRefresh = true;
+        }
+
+        if (changes.currentOptionsPageSetName) {
+            const newOptPageSet = changes.currentOptionsPageSetName.newValue;
+            if (newOptPageSet && newOptPageSet !== optionsPageActiveSetName) {
+                console.log("options.js (storage.onChanged): currentOptionsPageSetName changed by another options instance.");
+                optionsPageActiveSetName = newOptPageSet;
+                needsFullDisplayRefresh = true; // This will also update the selector via updateSetSelector
+            }
+        }
+        // Note: We are NOT listening to currentContentScriptSetName here.
+
+        if (changes.customLists) {
+            console.log("options.js (storage.onChanged): customLists changed.");
+            displayLists();
+            updateAllListSelects();
+        }
+        if (changes.observationFieldMap) {
+             console.log("options.js (storage.onChanged): observationFieldMap changed.");
+             observationFieldMap = changes.observationFieldMap.newValue || {};
+             populateFieldDatalist();
+        }
+
+        if (needsFullDisplayRefresh) {
+            console.log("options.js (storage.onChanged): Refreshing display due to storage changes.");
+            updateSetSelector(); // Uses optionsPageActiveSetName to set its value
+            displayConfigurations(); // Uses optionsPageActiveSetName to filter/display
+            updateSetManagementButtons();
+
+            const editId = document.getElementById('saveButton').dataset.editIndex;
+            if (editId) {
+                const currentSetObj = configurationSets.find(set => set.name === optionsPageActiveSetName);
+                const configExists = currentSetObj && currentSetObj.buttons.find(c => c.id === editId);
+                if (!configExists) {
+                    console.warn("options.js (storage.onChanged): The config being edited changed/removed externally. Clearing form.");
+                    clearForm();
+                    alert("The configuration you were editing has been modified or removed elsewhere. The form has been cleared.");
+                }
+            }
+        }
+    }
+});
 
 
 function isShortcutForbidden(shortcut) {
@@ -177,78 +228,56 @@ function extractActionsFromForm() {
     });
 }
 
-function validateNewConfiguration(config) {
+function validateNewConfiguration(config, buttonsInCurrentSet) {
     if (!config.name) {
         throw new Error("Please enter a button name.");
     }
-
-    const currentSet = configurationSets.find(set => set.name === currentSetName);
-    if (!currentSet) {
-        throw new Error("Current set not found");
-    }
-
-    // Check for name duplication within the current set
-    const duplicateName = currentSet.buttons.find(button => button.name === config.name);
+    const duplicateName = buttonsInCurrentSet.find(button => button.name === config.name);
     if (duplicateName) {
         throw new Error("This button name is already in use in the current set. Please choose a different name.");
     }
-
     if (config.shortcut && isShortcutForbidden(config.shortcut)) {
         throw new Error("This shortcut is not allowed as it conflicts with iNat shortcuts, browser functionality, or extension shortcuts.");
     }
-
     if (config.shortcut && (config.shortcut.key || config.shortcut.ctrlKey || config.shortcut.shiftKey || config.shortcut.altKey)) {
-        const conflictingShortcut = currentSet.buttons.find((button) => {
+        const conflictingShortcut = buttonsInCurrentSet.find((button) => {
             return button.shortcut &&
                    button.shortcut.key === config.shortcut.key &&
                    button.shortcut.ctrlKey === config.shortcut.ctrlKey &&
                    button.shortcut.shiftKey === config.shortcut.shiftKey &&
                    button.shortcut.altKey === config.shortcut.altKey;
         });
-
         if (conflictingShortcut) {
             throw new Error(`This shortcut is already used for the button: "${conflictingShortcut.name}" in the current set. Please choose a different shortcut.`);
         }
     }
-
     validateCommonConfiguration(config);
 }
 
-function validateEditConfiguration(config, originalConfig) {
+function validateEditConfiguration(config, originalConfig, buttonsInCurrentSet) {
     if (!config.name) {
         throw new Error("Please enter a button name.");
     }
-
-    const currentSet = configurationSets.find(set => set.name === currentSetName);
-    if (!currentSet) {
-        throw new Error("Current set not found");
-    }
-
-    // Check for name duplication within the current set, excluding the original config
-    const duplicateName = currentSet.buttons.find(button => button.name === config.name && button.id !== originalConfig.id);
+    const duplicateName = buttonsInCurrentSet.find(button => button.name === config.name && button.id !== originalConfig.id);
     if (duplicateName) {
         throw new Error("This button name is already in use in the current set. Please choose a different name.");
     }
-
     if (config.shortcut && isShortcutForbidden(config.shortcut)) {
         throw new Error("This shortcut is not allowed as it conflicts with browser functionality or extension shortcuts.");
     }
-
     if (config.shortcut && (config.shortcut.key || config.shortcut.ctrlKey || config.shortcut.shiftKey || config.shortcut.altKey)) {
-        const conflictingShortcut = currentSet.buttons.find((button) => {
-            return button.id !== originalConfig.id && // Ignore the original config
+        const conflictingShortcut = buttonsInCurrentSet.find((button) => {
+            return button.id !== originalConfig.id &&
                    button.shortcut &&
                    button.shortcut.key === config.shortcut.key &&
                    button.shortcut.ctrlKey === config.shortcut.ctrlKey &&
                    button.shortcut.shiftKey === config.shortcut.shiftKey &&
                    button.shortcut.altKey === config.shortcut.altKey;
         });
-
         if (conflictingShortcut) {
             throw new Error(`This shortcut is already used for the button: "${conflictingShortcut.name}" in the current set. Please choose a different shortcut.`);
         }
     }
-
     validateCommonConfiguration(config);
 }
 
@@ -316,92 +345,94 @@ function validateCommonConfiguration(config) {
     });
 }
 
-function saveConfiguration() {
+async function saveConfiguration() {
     try {
         const formData = extractFormData();
-        const editId = document.getElementById('saveButton').dataset.editIndex; 
-        
-        const currentSet = getCurrentSet();
-        if (!currentSet) {
-            throw new Error("Current set not found");
+        const editId = document.getElementById('saveButton').dataset.editIndex;
+        const currentlySelectedSetInUI = document.getElementById('setSelector').value;
+
+        const storageData = await new Promise(resolve => browserAPI.storage.local.get(['configurationSets'], resolve));
+        let latestConfigurationSets = storageData.configurationSets || [{ name: 'Default Set', buttons: [] }];
+
+        const targetSetIndex = latestConfigurationSets.findIndex(set => set.name === currentlySelectedSetInUI);
+        if (targetSetIndex === -1) {
+            throw new Error(`Set "${currentlySelectedSetInUI}" not found. Cannot save button.`);
         }
+        const targetSetObject = latestConfigurationSets[targetSetIndex];
 
         let originalConfig = null;
         if (editId) {
-            originalConfig = currentSet.buttons.find(c => c.id === editId);
+            originalConfig = targetSetObject.buttons.find(c => c.id === editId);
             if (!originalConfig) {
-                throw new Error(`Original configuration with ID ${editId} not found for editing.`);
+                throw new Error(`Button with ID ${editId} not found in set "${targetSetObject.name}" for editing.`);
             }
-            validateEditConfiguration(formData, originalConfig);
+            validateEditConfiguration(formData, originalConfig, targetSetObject.buttons);
         } else {
-            validateNewConfiguration(formData);
+            validateNewConfiguration(formData, targetSetObject.buttons);
         }
 
-        const newConfig = {
-            id: editId || Date.now().toString(), 
+        const newConfigData = {
+            id: editId || Date.now().toString(),
             ...formData,
-            // Preserve existing hidden/disabled states if editing, otherwise default for new
             buttonHidden: (editId && originalConfig) ? originalConfig.buttonHidden : false,
-            configurationDisabled: (editId && originalConfig) ? originalConfig.configurationDisabled : false
+            configurationDisabled: (editId && originalConfig) ? originalConfig.configurationDisabled : false,
         };
 
-        // Store the current expanded states BEFORE the DOM is potentially changed by displayConfigurations
+        const existingButtonIndex = targetSetObject.buttons.findIndex(c => c.id === newConfigData.id);
+        if (existingButtonIndex !== -1) {
+            targetSetObject.buttons[existingButtonIndex] = newConfigData;
+        } else {
+            targetSetObject.buttons.push(newConfigData);
+            if (targetSetObject.customOrder && Array.isArray(targetSetObject.customOrder)) {
+                targetSetObject.customOrder.push(newConfigData.id);
+            } else if (targetSetObject.buttonOrder && Array.isArray(targetSetObject.buttonOrder)) { // Legacy
+                 targetSetObject.buttonOrder.push(newConfigData.id);
+            }
+        }
+
         const expandedStates = {};
         document.querySelectorAll('.config-item').forEach(item => {
             const details = item.querySelector('.config-details');
-            if (details) { 
+            if (details) {
                 expandedStates[item.dataset.id] = details.style.display === 'block';
             }
         });
 
-        updateOrAddConfiguration(newConfig, currentSet);
+        await new Promise(resolve => browserAPI.storage.local.set({
+            configurationSets: latestConfigurationSets,
+            lastConfigUpdate: Date.now()
+        }, resolve));
 
-        // Save and trigger a full refresh of the displayed configurations.
-        // The callback will run after storage is set and displayConfigurations (called by saveConfigurationSets) completes.
-        saveConfigurationSets(() => {
-            console.log('Configuration saved and display refreshed.');
-            clearForm();
-            
-            // Attempt to restore expanded states AFTER displayConfigurations has run
-            // This relies on saveConfigurationSets(..., true) calling displayConfigurations
-            // and displayConfigurations being an async function that completes.
-            // This part can be a bit fragile with async rendering.
-            // A more robust solution would be for displayConfigurations to handle this.
-            setTimeout(() => { // Use a short timeout to allow DOM to settle after async displayConfigurations
-                Object.entries(expandedStates).forEach(([id, isExpanded]) => {
-                    // If we just edited newConfig, make sure its own state is restored correctly
-                    // or if it's a new item, it won't be in expandedStates unless we add it.
-                    const idToRestore = (editId === id || newConfig.id === id) ? newConfig.id : id;
+        configurationSets = latestConfigurationSets;
+        optionsPageActiveSetName = currentlySelectedSetInUI; // Update the global for options page UI
 
-                    const configDiv = document.querySelector(`.config-item[data-id="${idToRestore}"]`);
-                    if (configDiv) {
-                        const details = configDiv.querySelector('.config-details');
-                        const toggle = configDiv.querySelector('.toggle-details');
-                        if (details && toggle) {
-                            const shouldBeExpanded = (editId === id || newConfig.id === id) ? expandedStates[editId] || expandedStates[newConfig.id] || false : isExpanded;
-                            
-                            details.style.display = shouldBeExpanded ? 'block' : 'none';
-                            toggle.innerHTML = shouldBeExpanded ? '▲' : '▼';
-                        }
+        clearForm();
+        displayConfigurations();
+
+        setTimeout(() => {
+            Object.entries(expandedStates).forEach(([id, isExpanded]) => {
+                const configDiv = document.querySelector(`.config-item[data-id="${id}"]`);
+                if (configDiv) {
+                    const details = configDiv.querySelector('.config-details');
+                    const toggle = configDiv.querySelector('.toggle-details');
+                    if (details && toggle) {
+                        details.style.display = isExpanded ? 'block' : 'none';
+                        toggle.innerHTML = isExpanded ? '▲' : '▼';
                     }
-                });
-                // Also, ensure the newly saved/edited item itself reflects the correct expansion if it was the one open
-                if (expandedStates[newConfig.id]) {
-                     const configDiv = document.querySelector(`.config-item[data-id="${newConfig.id}"]`);
-                     if (configDiv) {
-                        const details = configDiv.querySelector('.config-details');
-                        const toggle = configDiv.querySelector('.toggle-details');
-                        if (details && toggle) {
-                            details.style.display = 'block';
-                            toggle.innerHTML = '▲';
-                        }
-                     }
                 }
-
-
-            }, 100); // Small delay for DOM updates from async display
-
-        }, true); // true for refreshDisplay, which calls displayConfigurations
+            });
+            if (expandedStates[newConfigData.id]) {
+                 const configDiv = document.querySelector(`.config-item[data-id="${newConfigData.id}"]`);
+                 if (configDiv) {
+                    const details = configDiv.querySelector('.config-details');
+                    const toggle = configDiv.querySelector('.toggle-details');
+                    if (details && toggle) {
+                        details.style.display = 'block';
+                        toggle.innerHTML = '▲';
+                    }
+                 }
+            }
+        }, 100);
 
     } catch (error) {
         alert(error.message);
@@ -983,14 +1014,35 @@ function updateAllListSelects() {
     listSelects.forEach(refreshListSelect);
 }
 
-function loadConfigurations() {
-    browserAPI.storage.local.get(['configurationSets', 'currentSetName'], function(data) {
-        configurationSets = data.configurationSets || [{ name: 'Default Set', buttons: [], observationFieldMap: {} }];
-        currentSetName = data.currentSetName || configurationSets[0].name;
-        displayConfigurations();
-        updateSetSelector();
-        updateSetManagementButtons();
-    });
+function loadOptionsPageData() { // Was loadConfigurations in options.js
+    browserAPI.storage.local.get(
+        ['configurationSets', 'currentOptionsPageSetName' /* NEW or use existing if it was already for options */, 'observationFieldMap'], // DO NOT load 'currentSetName' (for content.js)
+        function(data) {
+            configurationSets = data.configurationSets || [{ name: 'Default Set', buttons: [] }];
+            // This `currentSetName` is for the options page's own selected set
+            currentSetName = data.currentOptionsPageSetName || (configurationSets[0] ? configurationSets[0].name : '');
+            observationFieldMap = data.observationFieldMap || {};
+
+            if (!configurationSets.some(set => set.name === currentSetName)) { // Ensure valid
+                currentSetName = configurationSets[0] ? configurationSets[0].name : '';
+                 if (currentSetName) {
+                    browserAPI.storage.local.set({ currentOptionsPageSetName: currentSetName });
+                }
+            }
+
+            updateSetSelector(); // Should use `currentSetName` (options page's)
+            displayConfigurations(); // Should use `currentSetName` (options page's)
+            updateSetManagementButtons();
+            populateFieldDatalist();
+        }
+    );
+}
+
+function handleOptionsPageSetSelection() { // New or replace existing set selector 'change' handler
+    currentSetName = document.getElementById('setSelector').value; // This is options page's selection
+    // Save *only* the options page's view of its current set
+    browserAPI.storage.local.set({ currentOptionsPageSetName: currentSetName });
+    displayConfigurations(); // Update display for the new selection in options page
 }
 
 function migrateConfigurations(configs) {
@@ -1381,59 +1433,87 @@ function populateFieldDatalist() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    loadConfigurationSets();
-    populateFieldDatalist();
+    loadOptionsPageData();
+    populateFieldDatalist(); // Assuming this is still needed and uses observationFieldMap
+    displayLists(); // For custom lists section
+    loadUndoRecords(); // For undo records section
+    loadAutoFollowSettings(); // For auto-follow settings
+
     document.getElementById('saveButton').addEventListener('click', saveConfiguration);
     document.getElementById('cancelButton').addEventListener('click', clearForm);
-    document.getElementById('addActionButton').addEventListener('click', addActionToForm);
-     document.getElementById('searchInput').addEventListener('input', filterConfigurations);
-     document.getElementById('toggleDateSort').addEventListener('click', toggleDateSort);
-     document.getElementById('toggleAlphaSort').addEventListener('click', toggleAlphaSort);
-     updateSortButtons();
+    document.getElementById('addActionButton').addEventListener('click', () => addActionToForm());
+    document.getElementById('searchInput').addEventListener('input', filterConfigurations);
+    document.getElementById('toggleDateSort').addEventListener('click', toggleDateSort);
+    document.getElementById('toggleAlphaSort').addEventListener('click', toggleAlphaSort);
+    updateSortButtons();
+
     const shortcutsToggle = document.getElementById('hardcoded-shortcuts-toggle');
     const shortcutsList = document.getElementById('hardcoded-shortcuts-list');
+    if (shortcutsToggle && shortcutsList) {
+        shortcutsToggle.addEventListener('click', function() {
+            if (shortcutsList.style.display === 'none') {
+                shortcutsList.style.display = 'block';
+                shortcutsToggle.textContent = 'General Shortcuts [-]';
+            } else {
+                shortcutsList.style.display = 'none';
+                shortcutsToggle.textContent = 'General Shortcuts [+]';
+            }
+        });
+    }
 
-    shortcutsToggle.addEventListener('click', function() {
-        if (shortcutsList.style.display === 'none') {
-            shortcutsList.style.display = 'block';
-            shortcutsToggle.textContent = 'General Shortcuts [-]';
-        } else {
-            shortcutsList.style.display = 'none';
-            shortcutsToggle.textContent = 'General Shortcuts [+]';
-        }
-    });
     document.getElementById('exportButton').addEventListener('click', exportConfigurations);
     document.getElementById('importInput').addEventListener('change', importConfigurations);
-    
     document.getElementById('importButton').addEventListener('click', () => {
         document.getElementById('importInput').click();
     });
+
     document.getElementById('showUndoRecordsButton').addEventListener('click', showUndoRecordsModal);
     document.getElementById('createSetButton').addEventListener('click', createNewSet);
-    document.getElementById('setSelector').addEventListener('change', switchConfigurationSet);
+    document.getElementById('setSelector').addEventListener('change', handleOptionsPageSetSelectionChange);
     document.getElementById('duplicateSetButton').addEventListener('click', duplicateCurrentSet);
     document.getElementById('renameSetButton').addEventListener('click', renameCurrentSet);
     document.getElementById('removeSetButton').addEventListener('click', removeCurrentSet);
 
-    loadAutoFollowSettings();
-    
     document.getElementById('preventTaxonFollow').addEventListener('change', saveAutoFollowSettings);
     document.getElementById('preventFieldFollow').addEventListener('change', saveAutoFollowSettings);
     document.getElementById('preventTaxonReview').addEventListener('change', saveAutoFollowSettings);
 
     const preventionToggle = document.getElementById('auto-prevention-toggle');
     const preventionSettings = document.getElementById('auto-prevention-settings');
+    if (preventionToggle && preventionSettings) {
+        preventionToggle.addEventListener('click', function() {
+            if (preventionSettings.style.display === 'none') {
+                preventionSettings.style.display = 'block';
+                preventionToggle.textContent = 'Prevent Auto-reviewed/Followed [-]';
+            } else {
+                preventionSettings.style.display = 'none';
+                preventionToggle.textContent = 'Prevent Auto-reviewed/Followed [+]';
+            }
+        });
+    }
 
-    preventionToggle.addEventListener('click', function() {
-        if (preventionSettings.style.display === 'none') {
-            preventionSettings.style.display = 'block';
-            preventionToggle.textContent = 'Prevent Auto-reviewed/Followed [-]';
-        } else {
-            preventionSettings.style.display = 'none';
-            preventionToggle.textContent = 'Prevent Auto-reviewed/Followed [+]';
+    document.getElementById('createList').addEventListener('click', createList);
+    document.getElementById('existingLists').addEventListener('click', function(e) {
+        if (e.target.classList.contains('viewList')) {
+            viewList(e.target.dataset.id);
+        } else if (e.target.classList.contains('renameList')) {
+            renameList(e.target.dataset.id);
+        } else if (e.target.classList.contains('deleteList')) {
+            deleteList(e.target.dataset.id);
         }
     });
 
+    // Bulk config actions
+    document.getElementById('selectAllConfigs').addEventListener('click', handleSelectAll);
+    document.getElementById('clearSelectionBtn').addEventListener('click', clearSelection);
+    document.getElementById('deleteSelectedBtn').addEventListener('click', () => performConfigurationAction('delete'));
+    document.getElementById('hideSelectedBtn').addEventListener('click', () => performConfigurationAction('hide'));
+    document.getElementById('showSelectedBtn').addEventListener('click', () => performConfigurationAction('show'));
+    document.getElementById('disableSelectedBtn').addEventListener('click', () => performConfigurationAction('disable'));
+    document.getElementById('enableSelectedBtn').addEventListener('click', () => performConfigurationAction('enable'));
+    document.getElementById('toggleAllConfigs').addEventListener('click', toggleAllConfigurations);
+
+    browserAPI.storage.onChanged.addListener(handleStorageChangeForOptionsPage);
 });
 
 function showUndoRecordsModal() {
@@ -1814,14 +1894,27 @@ function deleteList(listId) {
     }
 }
 
-function loadConfigurationSets() {
-    browserAPI.storage.local.get(['configurationSets', 'currentSetName'], function(data) {
-        configurationSets = data.configurationSets || [{ name: 'Default Set', buttons: [], observationFieldMap: {} }];
-        currentSetName = data.currentSetName || configurationSets[0].name;
-        updateSetSelector();
-        displayConfigurations();
-        updateSetManagementButtons();
-    });
+function loadOptionsPageData() {
+    browserAPI.storage.local.get(
+        ['configurationSets', 'currentOptionsPageSetName', 'observationFieldMap'],
+        function(data) {
+            configurationSets = data.configurationSets || [{ name: 'Default Set', buttons: [] }];
+            optionsPageActiveSetName = data.currentOptionsPageSetName || (configurationSets[0] ? configurationSets[0].name : '');
+            observationFieldMap = data.observationFieldMap || {};
+
+            if (!configurationSets.some(set => set.name === optionsPageActiveSetName) && configurationSets.length > 0) {
+                optionsPageActiveSetName = configurationSets[0].name;
+                if (optionsPageActiveSetName) {
+                    browserAPI.storage.local.set({ currentOptionsPageSetName: optionsPageActiveSetName });
+                }
+            }
+
+            updateSetSelector();
+            displayConfigurations();
+            updateSetManagementButtons();
+            populateFieldDatalist();
+        }
+    );
 }
 
 function updateSetSelector() {
@@ -1833,12 +1926,18 @@ function updateSetSelector() {
         option.textContent = set.name;
         selector.appendChild(option);
     });
-    selector.value = currentSetName;
+    // `optionsPageActiveSetName` is the global variable holding the options page's selection
+    selector.value = optionsPageActiveSetName;
 }
 
-function switchConfigurationSet() {
-    currentSetName = document.getElementById('setSelector').value;
-    saveConfigurationSets();
+function handleOptionsPageSetSelectionChange() {
+    optionsPageActiveSetName = document.getElementById('setSelector').value;
+    browserAPI.storage.local.set({ currentOptionsPageSetName: optionsPageActiveSetName });
+    displayConfigurations(); // Update display for the newly selected set in options page
+    // Clear selections from the previous set when switching
+    selectedConfigurations.clear();
+    updateSelectedCount();
+    updateActionButtonStates();
 }
 
 function updateSetManagementButtons() {
@@ -1909,13 +2008,16 @@ function removeCurrentSet() {
 }
 
 function saveConfigurationSets(callback, refreshDisplay = true) {
-    browserAPI.storage.local.set({ 
-        configurationSets: configurationSets,
-        currentSetName: currentSetName,
+    const setToPersistForOptionsPage = document.getElementById('setSelector').value || optionsPageActiveSetName;
+
+    browserAPI.storage.local.set({
+        configurationSets: configurationSets, // Assumes global `configurationSets` is up-to-date
+        currentOptionsPageSetName: setToPersistForOptionsPage,
         lastConfigUpdate: Date.now()
     }, function() {
-        console.log('Configuration sets updated');
+        console.log('Configuration sets and options page current set name updated');
         if (refreshDisplay) {
+            optionsPageActiveSetName = setToPersistForOptionsPage; // Update global for UI consistency
             updateSetSelector();
             displayConfigurations();
             updateSetManagementButtons();
@@ -2011,7 +2113,10 @@ function finalizeMerge(existingLists, listsToAdd) {
 }
 
 function getCurrentSet() {
-    return configurationSets.find(set => set.name === currentSetName);
+    // This function is used by various UI actions on the options page (delete, duplicate, edit etc.)
+    // It should refer to the set currently selected in the options page UI.
+    const selectedSetNameInUI = document.getElementById('setSelector').value || optionsPageActiveSetName;
+    return configurationSets.find(set => set.name === selectedSetNameInUI);
 }
 
 
@@ -2521,4 +2626,38 @@ function saveAutoFollowSettings() {
         preventTaxonReview: document.getElementById('preventTaxonReview').checked
     };
     browserAPI.storage.local.set(settings);
+}
+
+function handleStorageChangesForOptionsPage(changes, areaName) { // Was handleStorageChangesForOptionsPage
+    if (areaName === 'local') {
+        let needsDisplayRefresh = false;
+
+        if (changes.configurationSets) {
+            console.log("options.js (storage.onChanged): configurationSets changed.");
+            configurationSets = changes.configurationSets.newValue || configurationSets;
+            needsDisplayRefresh = true;
+        }
+        // If options.js uses its own 'currentOptionsPageSetName' and multiple options tabs could be open
+        if (changes.currentOptionsPageSetName) {
+            const newOptSet = changes.currentOptionsPageSetName.newValue;
+            if (newOptSet && newOptSet !== currentSetName) { // currentSetName here is options page's
+                console.log("options.js (storage.onChanged): currentOptionsPageSetName changed by another options instance.");
+                currentSetName = newOptSet; // Update options page's current set
+                needsDisplayRefresh = true;
+            }
+        }
+
+        // NO REACTION TO 'currentSetName' (the content.js one)
+
+        if (changes.customLists) { /* ... as before ... */ }
+        if (changes.observationFieldMap) { /* ... as before ... */ }
+
+        if (needsDisplayRefresh) {
+            // `currentSetName` for options.js is already set (either from its own UI or another options tab)
+            updateSetSelector(); // Ensures selector matches options.js's `currentSetName`
+            displayConfigurations(); // Uses options.js's `currentSetName`
+            updateSetManagementButtons();
+            // ... edit form staleness check ...
+        }
+    }
 }
