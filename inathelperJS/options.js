@@ -319,70 +319,96 @@ function validateCommonConfiguration(config) {
 function saveConfiguration() {
     try {
         const formData = extractFormData();
-        const editIndex = document.getElementById('saveButton').dataset.editIndex;
+        const editId = document.getElementById('saveButton').dataset.editIndex; 
         
         const currentSet = getCurrentSet();
         if (!currentSet) {
             throw new Error("Current set not found");
         }
 
-        if (editIndex) {
-            const originalConfig = currentSet.buttons.find(c => c.id === editIndex);
+        let originalConfig = null;
+        if (editId) {
+            originalConfig = currentSet.buttons.find(c => c.id === editId);
+            if (!originalConfig) {
+                throw new Error(`Original configuration with ID ${editId} not found for editing.`);
+            }
             validateEditConfiguration(formData, originalConfig);
         } else {
             validateNewConfiguration(formData);
         }
 
         const newConfig = {
-            id: editIndex || Date.now().toString(),
+            id: editId || Date.now().toString(), 
             ...formData,
-            buttonHidden: false,
-            configurationDisabled: false
+            // Preserve existing hidden/disabled states if editing, otherwise default for new
+            buttonHidden: (editId && originalConfig) ? originalConfig.buttonHidden : false,
+            configurationDisabled: (editId && originalConfig) ? originalConfig.configurationDisabled : false
         };
 
-        // Store the current expanded states
+        // Store the current expanded states BEFORE the DOM is potentially changed by displayConfigurations
         const expandedStates = {};
         document.querySelectorAll('.config-item').forEach(item => {
             const details = item.querySelector('.config-details');
-            expandedStates[item.dataset.id] = details.style.display === 'block';
+            if (details) { 
+                expandedStates[item.dataset.id] = details.style.display === 'block';
+            }
         });
 
         updateOrAddConfiguration(newConfig, currentSet);
 
-        // Save without refreshing display
+        // Save and trigger a full refresh of the displayed configurations.
+        // The callback will run after storage is set and displayConfigurations (called by saveConfigurationSets) completes.
         saveConfigurationSets(() => {
-            console.log('Configuration saved');
+            console.log('Configuration saved and display refreshed.');
             clearForm();
             
-            // Manually update the display for an edit, or refresh all for a new config
-            if (editIndex) {
-                const configDiv = document.querySelector(`.config-item[data-id="${editIndex}"]`);
-                if (configDiv) {
-                    updateSingleConfigurationDisplay(newConfig, configDiv);
-                }
-            } else {
-                displayConfigurations();
-            }
+            // Attempt to restore expanded states AFTER displayConfigurations has run
+            // This relies on saveConfigurationSets(..., true) calling displayConfigurations
+            // and displayConfigurations being an async function that completes.
+            // This part can be a bit fragile with async rendering.
+            // A more robust solution would be for displayConfigurations to handle this.
+            setTimeout(() => { // Use a short timeout to allow DOM to settle after async displayConfigurations
+                Object.entries(expandedStates).forEach(([id, isExpanded]) => {
+                    // If we just edited newConfig, make sure its own state is restored correctly
+                    // or if it's a new item, it won't be in expandedStates unless we add it.
+                    const idToRestore = (editId === id || newConfig.id === id) ? newConfig.id : id;
 
-            // Restore expanded states
-            Object.entries(expandedStates).forEach(([id, isExpanded]) => {
-                const configDiv = document.querySelector(`.config-item[data-id="${id}"]`);
-                if (configDiv) {
-                    const details = configDiv.querySelector('.config-details');
-                    const toggle = configDiv.querySelector('.toggle-details');
-                    if (details && toggle) {
-                        details.style.display = isExpanded ? 'block' : 'none';
-                        toggle.innerHTML = isExpanded ? '&#9650;' : '&#9660;';
+                    const configDiv = document.querySelector(`.config-item[data-id="${idToRestore}"]`);
+                    if (configDiv) {
+                        const details = configDiv.querySelector('.config-details');
+                        const toggle = configDiv.querySelector('.toggle-details');
+                        if (details && toggle) {
+                            const shouldBeExpanded = (editId === id || newConfig.id === id) ? expandedStates[editId] || expandedStates[newConfig.id] || false : isExpanded;
+                            
+                            details.style.display = shouldBeExpanded ? 'block' : 'none';
+                            toggle.innerHTML = shouldBeExpanded ? '▲' : '▼';
+                        }
                     }
+                });
+                // Also, ensure the newly saved/edited item itself reflects the correct expansion if it was the one open
+                if (expandedStates[newConfig.id]) {
+                     const configDiv = document.querySelector(`.config-item[data-id="${newConfig.id}"]`);
+                     if (configDiv) {
+                        const details = configDiv.querySelector('.config-details');
+                        const toggle = configDiv.querySelector('.toggle-details');
+                        if (details && toggle) {
+                            details.style.display = 'block';
+                            toggle.innerHTML = '▲';
+                        }
+                     }
                 }
-            });
-        }, false);
+
+
+            }, 100); // Small delay for DOM updates from async display
+
+        }, true); // true for refreshDisplay, which calls displayConfigurations
+
     } catch (error) {
         alert(error.message);
+        console.error("Error saving configuration:", error);
     }
 }
 
-// Add this new helper function
 function updateSingleConfigurationDisplay(config, configDiv) {
     const actionsPromises = config.actions.map(formatAction);
     Promise.all(actionsPromises).then(formattedActions => {

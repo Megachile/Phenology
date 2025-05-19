@@ -264,3 +264,6 @@ ggplot(state_map_data, aes(x = long, y = lat, group = group, fill = num_galls)) 
   labs(title = "Gall Distribution by State (Based on Host Ranges)",
        fill = "Number of Galls") +
   theme_minimal()
+
+write.csv(df_host_family_fixed, file = "df_host_family_fixed.csv", row.names = FALSE)
+
