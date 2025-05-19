@@ -1236,45 +1236,95 @@ async function lookupTaxonById(taxonId) {
     return data.results;
 }
 
+// In shared_api.js
 async function getFieldValueDetails(observationId, fieldId) {
     try {
-        console.log('getFieldValueDetails starting for:', {observationId, fieldId});
+        console.log(`getFieldValueDetails: Fetching obs ${observationId} for field ${fieldId}`);
         const response = await makeAPIRequest(`/observations/${observationId}`);
+        if (!response || !response.results || !response.results[0]) {
+            console.warn(`getFieldValueDetails: Observation ${observationId} not found or no results.`);
+            return null;
+        }
         const observation = response.results[0];
-        const fieldValue = observation.ofvs.find(ofv => ofv.field_id === parseInt(fieldId));
-        console.log('Found field value:', fieldValue);
+        const numericFieldId = parseInt(fieldId); // Ensure fieldId is a number for matching
+        const fieldValue = observation.ofvs.find(ofv => ofv.field_id === numericFieldId);
         
+        console.log(`getFieldValueDetails: For obs ${observationId}, field ${fieldId}: Found OFV:`, 
+            fieldValue ? JSON.parse(JSON.stringify(fieldValue)) : null); // Log a copy
+
         if (!fieldValue) {
+            console.log(`getFieldValueDetails: No OFV found for field ${fieldId} on obs ${observationId}.`);
             return null;
         }
 
-        console.log('Field datatype:', fieldValue.datatype);
-        if (fieldValue.datatype === 'taxon' && fieldValue.value) {
+        // --- ADD DETAILED LOGGING FOR fieldValue.value ---
+        console.log(`getFieldValueDetails: For field ${fieldId} (Obs: ${observationId}), raw fieldValue.value is:`, fieldValue.value);
+        console.log(`getFieldValueDetails: Type of fieldValue.value is:`, typeof fieldValue.value);
+        if (typeof fieldValue.value === 'object' && fieldValue.value !== null) {
+            console.log(`getFieldValueDetails: fieldValue.value is an object. Keys:`, Object.keys(fieldValue.value));
             try {
-                const taxonData = await lookupTaxonById(fieldValue.value);
+                console.log(`getFieldValueDetails: fieldValue.value stringified:`, JSON.stringify(fieldValue.value));
+            } catch (e) {
+                console.warn(`getFieldValueDetails: Could not stringify fieldValue.value object.`);
+            }
+        }
+        // --- END DETAILED LOGGING ---
+
+
+        if (fieldValue.datatype === 'taxon' && fieldValue.value) {
+            // This part assumes fieldValue.value is a taxon ID (number or string convertible to number)
+            let taxonApiId = fieldValue.value;
+            if (typeof taxonApiId === 'object' && taxonApiId !== null && taxonApiId.id) {
+                // If value is an object like {id: 123, name: "..."} (unlikely for raw OFV value but defensive)
+                taxonApiId = taxonApiId.id; 
+            } else if (typeof taxonApiId === 'object'){
+                 console.error(`getFieldValueDetails: Taxon field value is an unexpected object for field ${fieldId} on obs ${observationId}:`, fieldValue.value);
+                 // Fallback or decide how to handle - for now, let it try to use it as is, or return an error indicator
+            }
+
+            try {
+                const taxonData = await lookupTaxonById(taxonApiId); // Expects an ID
                 if (taxonData && taxonData[0]) {
                     return {
-                        value: fieldValue.value,
+                        value: String(taxonApiId), // Store the ID as string
                         displayValue: taxonData[0].preferred_common_name ? 
                             `${taxonData[0].preferred_common_name} (${taxonData[0].name})` : 
                             taxonData[0].name,
-                        timestamp: fieldValue.updated_at || fieldValue.created_at
+                        timestamp: fieldValue.updated_at || fieldValue.created_at,
+                        datatype: 'taxon' // Add datatype for clarity downstream
                     };
+                } else {
+                     console.warn(`getFieldValueDetails: Taxon lookup failed or no data for ID ${taxonApiId} (field ${fieldId}, obs ${observationId})`);
                 }
             } catch (error) {
-                console.error('Error looking up taxon:', error);
+                console.error(`getFieldValueDetails: Error looking up taxon ID ${taxonApiId} (field ${fieldId}, obs ${observationId}):`, error);
+                 // Fallback to just returning the ID if lookup fails, so it doesn't break entirely
+                 return {
+                    value: String(fieldValue.value), // Or String(taxonApiId)
+                    displayValue: `Taxon ID: ${fieldValue.value}`, // Fallback display
+                    timestamp: fieldValue.updated_at || fieldValue.created_at,
+                    datatype: 'taxon'
+                };
             }
         }
         
-        const result = {
-            value: fieldValue.value,
-            timestamp: fieldValue.updated_at || fieldValue.created_at
+        // For non-taxon fields, or taxon fields where lookup failed/value wasn't an ID
+        let valueToReturn = fieldValue.value;
+        if (typeof valueToReturn === 'object' && valueToReturn !== null) {
+            console.warn(`getFieldValueDetails: Field ${fieldId} (Obs ${observationId}) has a non-taxon object value: ${JSON.stringify(valueToReturn)}. Returning as stringified JSON.`);
+            valueToReturn = JSON.stringify(valueToReturn); // Default stringification for unexpected objects
+        }
+
+        return {
+            value: String(valueToReturn), // Ensure it's a string
+            // displayValue is not set here for non-taxon, so validateBulkAction will use .value
+            timestamp: fieldValue.updated_at || fieldValue.created_at,
+            datatype: fieldValue.datatype || 'unknown' // Add datatype
         };
-        console.log('Returning without display value:', result);
-        return result;
     } catch (error) {
-        console.error('Error getting field value details:', error);
-        throw error;
+        console.error(`getFieldValueDetails: Error getting field value details for obs ${observationId}, field ${fieldId}:`, error);
+        // throw error; // Or return null/error object
+        return null; // Return null to indicate failure to retrieve details
     }
 }
 

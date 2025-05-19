@@ -3483,76 +3483,113 @@ function createActionResultsModal(results, skippedCount, skippedURL, overwritten
         max-width: 80%;
         max-height: 80%;
         overflow-y: auto;
+        font-size: 14px; /* Added for consistency */
     `;
 
-    let contentHTML = `<h2>Bulk Action Results</h2>`;
+    let contentHTML = `<h2 style="margin-top:0;">Bulk Action Results</h2>`; // Added style for consistency
 
-    // Add success count
-    const successCount = results.filter(r => r.success).length;
-    contentHTML += `<p>${successCount} action(s) completed successfully.</p>`;
+    const pluralizeLocal = (count, singular, plural = null) => { // Local pluralize
+        if (plural === null) plural = singular + 's';
+        return count === 1 ? singular : plural;
+    };
 
-    // Add overwritten values section if any
+    const successCount = results.filter(r => r.success && !r.noActionNeeded).length; // Exclude noActionNeeded from pure success count here
+    const noActionNeededCount = results.filter(r => r.success && r.noActionNeeded).length;
+
+    if (successCount > 0) {
+        contentHTML += `<p style="color: green;">${successCount} action(s) completed successfully.</p>`;
+    }
+    if (noActionNeededCount > 0) {
+        contentHTML += `<p style="color: #666;">${noActionNeededCount} action(s) required no change (e.g., value already set).</p>`;
+    }
+
+
     if (overwrittenCount > 0) {
         contentHTML += `
-            <div style="margin: 15px 0; padding: 10px; background: #fff3e0; border-radius: 4px;">
-                <p><strong>${overwrittenCount} value(s) were overwritten:</strong></p>
-                <div style="max-height: 200px; overflow-y: auto;">
-                    <ul>
+            <div style="margin: 15px 0; padding: 10px; background: #ffebee; border: 1px solid #ffcdd2; border-radius: 4px;">
+                <h4>Values Overwritten (${overwrittenCount} ${pluralizeLocal(overwrittenCount, "observation")})</h4>
+                <p>The following observation field values were overwritten (Overwrite Mode was ON):</p>
+                <div style="max-height: 150px; overflow-y: auto;"><ul>
         `;
-        Object.entries(overwrittenDetails).forEach(([observationId, details]) => {
+        Object.entries(overwrittenDetails).forEach(([observationId, fields]) => { // Changed from 'details' to 'fields'
             contentHTML += `
                 <li>
                     <a href="https://www.inaturalist.org/observations/${observationId}" 
                        target="_blank" 
-                       style="color: #0077cc;">
+                       style="color: #0077cc; text-decoration: underline;">
                         Observation ${observationId}
                     </a>:
                     <ul>
             `;
-            Object.entries(details).forEach(([fieldName, values]) => {
-                contentHTML += `
-                    <li>${fieldName}: "${values.oldValue}" → "${values.newValue}"</li>
-                `;
+            Object.entries(fields).forEach(([fieldName, values]) => { // Changed from 'details' to 'values'
+                contentHTML += `<li>"${fieldName}": from "${values.oldValue}" to "${values.newValue}"</li>`;
             });
             contentHTML += `</ul></li>`;
         });
+        contentHTML += `</ul></div></div>`;
+    }
+
+    if (skippedCount > 0 && skippedURL) { // Ensure skippedURL is present
         contentHTML += `
-                    </ul>
-                </div>
+            <div style="margin: 15px 0; padding: 10px; background: #fff8e1; border: 1px solid #ffecb3; border-radius: 4px;">
+                <h4>Observations Skipped by Safe Mode (${skippedCount})</h4>
+                <p>
+                    <a class="modal-link" href="${skippedURL}" target="_blank" style="color: #4caf50; text-decoration: underline;">
+                        View ${skippedCount} skipped ${pluralizeLocal(skippedCount, "observation")}
+                    </a>
+                </p>
             </div>
         `;
     }
 
-    // Add skipped section if any
-    if (skippedCount > 0) {
-        contentHTML += `
-            <p>${skippedCount} action(s) were skipped due to existing values or user permissions.</p>
-            <p>View skipped observations: <a class="modal-link" href="${skippedURL}" target="_blank">${skippedURL}</a></p>
-        `;
+    const actualFailures = results.filter(r => !r.success);
+    if (actualFailures.length > 0) {
+         contentHTML += `
+            <div style="margin: 15px 0; padding: 10px; background: #ffeded; border: 1px solid #ffcccb; border-radius: 4px;">
+                <h4>Failed Actions (${actualFailures.length})</h4>
+                <div style="max-height: 150px; overflow-y: auto;"><ul>`;
+        actualFailures.forEach(f => {
+             contentHTML += `<li>Obs. <a href="https.www.inaturalist.org/observations/${f.observationId}" target="_blank">${f.observationId}</a> (Action: ${f.action || 'Unknown'}): ${getCleanErrorMessage(f.message || f.error)} ${f.reason ? `(${f.reason})` : ''}</li>`;
+        });
+        contentHTML += `</ul></div></div>`;
     }
-
-    // Add errors section if any
+    
     if (errorMessages && errorMessages.length > 0) {
         contentHTML += `
-            <div style="margin: 15px 0; padding: 10px; background: #ffebee; border-radius: 4px;">
-                <h3>Errors</h3>
-                <p>${errorMessages.length} errors occurred during execution:</p>
-                <ul>
-                    ${errorMessages.map(error => `<li>${error}</li>`).join('')}
-                </ul>
-            </div>
-        `;
+            <div style="margin: 15px 0; padding: 10px; background: #fff1f0; border: 1px solid #ffcccb; border-radius: 4px;">
+                <h4>Overall Errors Encountered:</h4>
+                <ul>${errorMessages.map(err => `<li>${err}</li>`).join('')}</ul>
+            </div>`;
+    }
+    
+    if (successCount === 0 && noActionNeededCount === 0 && skippedCount === 0 && actualFailures.length === 0 && (!errorMessages || errorMessages.length === 0)) {
+        contentHTML += "<p><em>No actions were performed or had notable outcomes.</em></p>";
     }
 
-    contentHTML += `<button id="closeModal" class="modal-button">Close</button>`;
+
+    contentHTML += `<button id="general-results-close-button" class="modal-button" style="margin-top:15px;">Close</button>`;
     modalContent.innerHTML = contentHTML;
     modal.appendChild(modalContent);
 
     document.body.appendChild(modal);
 
-    document.getElementById('closeModal').addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
+    const closeButton = modalContent.querySelector('#general-results-close-button');
+    const handleKeyPress = (event) => {
+        if (event.key === 'Enter' || event.key === 'Escape') {
+            event.preventDefault();
+            if(closeButton) closeButton.click();
+        }
+    };
+    document.addEventListener('keydown', handleKeyPress);
+
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            document.removeEventListener('keydown', handleKeyPress);
+            if (modal.parentNode) {
+                modal.parentNode.removeChild(modal);
+            }
+        });
+    }
 }
 
 window.addEventListener('popstate', updateSelectedObservations);
@@ -4572,7 +4609,6 @@ function updateHighlightZIndex(element) {
     }
 }
 
-// In content.js, function validateBulkAction
 async function validateBulkAction(selectedAction, observationIds, getIsCancelled) {
     console.log('Starting validateBulkAction with:', {selectedAction, observationIds});
     const results = {
@@ -4621,6 +4657,8 @@ async function validateBulkAction(selectedAction, observationIds, getIsCancelled
             if (action.type === 'observationField') {
                 try {
                     const existingValueDetails = await getFieldValueDetails(observationId, action.fieldId);
+                    console.log(`VALIDATE_ACTION: Obs ${observationId}, Field ${action.fieldId}, existingValueDetails from getFieldValueDetails:`, 
+                        existingValueDetails ? JSON.parse(JSON.stringify(existingValueDetails)) : null); 
                     const proposed = results.proposedValues.get(action.fieldId); // {value, displayValue}
 
                     if (existingValueDetails) { // Field exists on observation
@@ -4641,9 +4679,24 @@ async function validateBulkAction(selectedAction, observationIds, getIsCancelled
                             }
 
                             if (!isIdentical) {
+                                let currentDisplayForModal = existingValueDetails.displayValue || existingValueDetails.value;
+                                // --- NEW LOGS ---
+                                console.log(`VALIDATE_ACTION: Obs ${observationId}, Field ${action.fieldId}: Initial currentDisplayForModal:`, currentDisplayForModal, `(Type: ${typeof currentDisplayForModal})`);
+                                // --- END NEW LOGS ---
+    
+                                if (typeof currentDisplayForModal === 'object' && currentDisplayForModal !== null) {
+                                    currentDisplayForModal = JSON.stringify(currentDisplayForModal); 
+                                    console.warn(`VALIDATE_ACTION: Field ${action.fieldName} (ID: ${action.fieldId}) for obs ${observationId} had an object as current value. Stringified to: ${currentDisplayForModal}`);
+                                }
+    
+                                // --- NEW LOGS ---
+                                console.log(`VALIDATE_ACTION: Obs ${observationId}, Field ${action.fieldId}: Final current for modal storage:`, String(currentDisplayForModal));
+                                console.log(`VALIDATE_ACTION: Obs ${observationId}, Field ${action.fieldId}: Final proposed for modal storage:`, String(proposed.displayValue));
+                                // --- END NEW LOGS ---
+    
                                 differingExistingFieldsForOverwriteMode.set(action.fieldId, {
-                                    current: currentValue,
-                                    proposed: proposedDisplay 
+                                    current: String(currentDisplayForModal), 
+                                    proposed: String(proposed.displayValue) 
                                 });
                             }
                         }
@@ -5287,7 +5340,7 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                 border-radius: 4px;
             `;
 
-            for (const [observationId, info] of validationResults.existingValues) {
+            for (const [observationId, info] of validationResults.existingValues) { // info is { observationId, existingFields }
                 const item = document.createElement('div');
                 item.style.marginBottom = '10px';
                 item.innerHTML = `
@@ -5299,19 +5352,23 @@ async function createValidationModal(validationResults, selectedAction, onConfir
                     <ul style="margin: 5px 0; padding-left: 20px;">
                 `;
                 
-                Object.entries(info.existingFields).forEach(([fieldId, value]) => {
-                    const fieldName = validationResults.fieldNames.get(fieldId);
-                    const actionItemForField = selectedAction.actions.find(
-                        act => act.type === 'observationField' && act.fieldId === fieldId
-                    );
-                    const proposedDisplayValue = (actionItemForField && actionItemForField.displayValue) ? 
-                                                  actionItemForField.displayValue : 
-                                                  validationResults.proposedValues.get(fieldId);
+                Object.entries(info.existingFields).forEach(([fieldId, valueDetails]) => { // valueDetails is {current, proposed}
+                    const fieldName = validationResults.fieldNames.get(fieldId); // fieldId here is the key from info.existingFields
+
+                    // --- NEW LOG ---
+                    console.log(`CREATE_VALIDATION_MODAL: Obs ${observationId}, Field ID ${fieldId} (${fieldName || 'Unknown Name'}), valueDetails.current:`, 
+                        valueDetails.current, 
+                        `(Type: ${typeof valueDetails.current})`);
+                    console.log(`CREATE_VALIDATION_MODAL: Obs ${observationId}, Field ID ${fieldId} (${fieldName || 'Unknown Name'}), valueDetails.proposed:`,
+                        valueDetails.proposed,
+                        `(Type: ${typeof valueDetails.proposed})`);
+                    // --- END NEW LOG ---
+                    
                     item.innerHTML += `
-                        <li>${fieldName}: 
-                            <span style="color: #666;">"${value}"</span>
+                        <li>${fieldName || `Field ID ${fieldId}`}: 
+                            <span style="color: #666;">"${String(valueDetails.current)}"</span> 
                             <span style="color: #999;"> → </span>
-                            <span style="color: #666;">"${proposedDisplayValue}"</span>
+                            <span style="color: #666;">"${String(valueDetails.proposed)}"</span>
                         </li>
                     `;
                 });
