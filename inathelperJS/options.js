@@ -1016,22 +1016,22 @@ function updateAllListSelects() {
 
 function loadOptionsPageData() { // Was loadConfigurations in options.js
     browserAPI.storage.local.get(
-        ['configurationSets', 'currentOptionsPageSetName' /* NEW or use existing if it was already for options */, 'observationFieldMap'], // DO NOT load 'currentSetName' (for content.js)
+        ['configurationSets', 'currentOptionsPageSetName' /* NEW or use existing if it was already for options */, 'observationFieldMap'], // DO NOT load 'optionsPageActiveSetName' (for content.js)
         function(data) {
             configurationSets = data.configurationSets || [{ name: 'Default Set', buttons: [] }];
-            // This `currentSetName` is for the options page's own selected set
-            currentSetName = data.currentOptionsPageSetName || (configurationSets[0] ? configurationSets[0].name : '');
+            // This `optionsPageActiveSetName` is for the options page's own selected set
+            optionsPageActiveSetName = data.currentOptionsPageSetName || (configurationSets[0] ? configurationSets[0].name : '');
             observationFieldMap = data.observationFieldMap || {};
 
-            if (!configurationSets.some(set => set.name === currentSetName)) { // Ensure valid
-                currentSetName = configurationSets[0] ? configurationSets[0].name : '';
-                 if (currentSetName) {
-                    browserAPI.storage.local.set({ currentOptionsPageSetName: currentSetName });
+            if (!configurationSets.some(set => set.name === optionsPageActiveSetName)) { // Ensure valid
+                optionsPageActiveSetName = configurationSets[0] ? configurationSets[0].name : '';
+                 if (optionsPageActiveSetName) {
+                    browserAPI.storage.local.set({ currentOptionsPageSetName: optionsPageActiveSetName });
                 }
             }
 
-            updateSetSelector(); // Should use `currentSetName` (options page's)
-            displayConfigurations(); // Should use `currentSetName` (options page's)
+            updateSetSelector(); // Should use `optionsPageActiveSetName` (options page's)
+            displayConfigurations(); // Should use `optionsPageActiveSetName` (options page's)
             updateSetManagementButtons();
             populateFieldDatalist();
         }
@@ -1039,9 +1039,9 @@ function loadOptionsPageData() { // Was loadConfigurations in options.js
 }
 
 function handleOptionsPageSetSelection() { // New or replace existing set selector 'change' handler
-    currentSetName = document.getElementById('setSelector').value; // This is options page's selection
+    optionsPageActiveSetName = document.getElementById('setSelector').value; // This is options page's selection
     // Save *only* the options page's view of its current set
-    browserAPI.storage.local.set({ currentOptionsPageSetName: currentSetName });
+    browserAPI.storage.local.set({ currentOptionsPageSetName: optionsPageActiveSetName });
     displayConfigurations(); // Update display for the new selection in options page
 }
 
@@ -1535,10 +1535,10 @@ function showUndoRecordsModal() {
 }
 
 function exportConfigurations() {
-    browserAPI.storage.local.get(['configurationSets', 'currentSetName', 'customLists'], function(data) {
+    browserAPI.storage.local.get(['configurationSets', 'optionsPageActiveSetName', 'customLists'], function(data) {
         const exportData = {
             configurationSets: data.configurationSets || [],
-            currentSetName: data.currentSetName || '',
+            optionsPageActiveSetName: data.optionsPageActiveSetName || '',
             customLists: data.customLists || []
         };
         
@@ -1642,7 +1642,7 @@ function processImportedSets(importedSets) {
 
     if (setsToAdd.length > 0) {
         configurationSets.push(...setsToAdd);
-        currentSetName = setsToAdd[setsToAdd.length - 1].name;
+        optionsPageActiveSetName = setsToAdd[setsToAdd.length - 1].name;
         saveConfigurationSets();
         messages.push(`Successfully imported ${setsToAdd.length} new configuration set(s).`);
     } else {
@@ -1956,13 +1956,13 @@ function createNewSet() {
         }
         const newSet = { name: setName, buttons: [], observationFieldMap: {} };
         configurationSets.push(newSet);
-        currentSetName = setName;
+        optionsPageActiveSetName = setName;
         saveConfigurationSets();
     }
 }
 
 function duplicateCurrentSet() {
-    const currentSet = configurationSets.find(set => set.name === currentSetName);
+    const currentSet = configurationSets.find(set => set.name === optionsPageActiveSetName);
     if (currentSet) {
         const newSetName = prompt("Enter a name for the duplicated set:", `${currentSet.name} (Copy)`);
         if (newSetName) {
@@ -1973,14 +1973,14 @@ function duplicateCurrentSet() {
             const newSet = JSON.parse(JSON.stringify(currentSet));
             newSet.name = newSetName;
             configurationSets.push(newSet);
-            currentSetName = newSetName;
+            optionsPageActiveSetName = newSetName;
             saveConfigurationSets();
         }
     }
 }
 
 function renameCurrentSet() {
-    const currentSet = configurationSets.find(set => set.name === currentSetName);
+    const currentSet = configurationSets.find(set => set.name === optionsPageActiveSetName);
     if (currentSet) {
         const newName = prompt("Enter a new name for the current set:", currentSet.name);
         if (newName && newName !== currentSet.name) {
@@ -1989,7 +1989,7 @@ function renameCurrentSet() {
                 return;
             }
             currentSet.name = newName;
-            currentSetName = newName;
+            optionsPageActiveSetName = newName;
             saveConfigurationSets();
         }
     }
@@ -1997,9 +1997,9 @@ function renameCurrentSet() {
 
 function removeCurrentSet() {
     if (configurationSets.length > 1) {
-        if (confirm(`Are you sure you want to remove the "${currentSetName}" set?`)) {
-            configurationSets = configurationSets.filter(set => set.name !== currentSetName);
-            currentSetName = configurationSets[0].name;
+        if (confirm(`Are you sure you want to remove the "${optionsPageActiveSetName}" set?`)) {
+            configurationSets = configurationSets.filter(set => set.name !== optionsPageActiveSetName);
+            optionsPageActiveSetName = configurationSets[0].name;
             saveConfigurationSets();
         }
     } else {
@@ -2467,7 +2467,7 @@ function processImportChoices(results) {
     // Add new sets
     if (setsToAdd.length > 0) {
         configurationSets.push(...setsToAdd);
-        currentSetName = setsToAdd[setsToAdd.length - 1].name;
+        optionsPageActiveSetName = setsToAdd[setsToAdd.length - 1].name;
     }
 
     // Save changes
@@ -2640,22 +2640,22 @@ function handleStorageChangesForOptionsPage(changes, areaName) { // Was handleSt
         // If options.js uses its own 'currentOptionsPageSetName' and multiple options tabs could be open
         if (changes.currentOptionsPageSetName) {
             const newOptSet = changes.currentOptionsPageSetName.newValue;
-            if (newOptSet && newOptSet !== currentSetName) { // currentSetName here is options page's
+            if (newOptSet && newOptSet !== optionsPageActiveSetName) { // optionsPageActiveSetName here is options page's
                 console.log("options.js (storage.onChanged): currentOptionsPageSetName changed by another options instance.");
-                currentSetName = newOptSet; // Update options page's current set
+                optionsPageActiveSetName = newOptSet; // Update options page's current set
                 needsDisplayRefresh = true;
             }
         }
 
-        // NO REACTION TO 'currentSetName' (the content.js one)
+        // NO REACTION TO 'optionsPageActiveSetName' (the content.js one)
 
         if (changes.customLists) { /* ... as before ... */ }
         if (changes.observationFieldMap) { /* ... as before ... */ }
 
         if (needsDisplayRefresh) {
-            // `currentSetName` for options.js is already set (either from its own UI or another options tab)
-            updateSetSelector(); // Ensures selector matches options.js's `currentSetName`
-            displayConfigurations(); // Uses options.js's `currentSetName`
+            // `optionsPageActiveSetName` for options.js is already set (either from its own UI or another options tab)
+            updateSetSelector(); // Ensures selector matches options.js's `optionsPageActiveSetName`
+            displayConfigurations(); // Uses options.js's `optionsPageActiveSetName`
             updateSetManagementButtons();
             // ... edit form staleness check ...
         }

@@ -1059,10 +1059,15 @@ style.textContent += `
         pointer-events: none;
     }
     .button-placeholder {
-        border: 2px dashed #ccc;
-        background-color: #f0f0f0;
-        opacity: 0.6;
-        transition: all 0.2s ease-in-out;
+        border: 2px dashed #cccccc;
+        background-color: #f0f0f0a0; /* Semi-transparent */
+        box-sizing: border-box; /* Important if you set width/height */
+        /* Match dimensions of .button-ph or make it flexible */
+        min-width: 100px; /* Example, match .button-ph */
+        height: 30px;     /* Example, match .button-ph */
+        margin: 3px;      /* Example, match .button-ph */
+        flex-grow: 1;     /* If .button-ph uses flex-grow */
+        border-radius: 5px;
     }
 @keyframes clickPulse {
     0% { transform: scale(0.95); opacity: 1; }
@@ -2121,21 +2126,23 @@ function toggleEditMode() {
     editModeEnabled = !editModeEnabled;
     const editLayoutButton = document.getElementById('edit-layout-button');
     const container = document.getElementById('custom-extension-container');
+    if (!editLayoutButton || !container) return;
+
 
     if (editModeEnabled) {
         editLayoutButton.textContent = 'Save Layout';
-        editLayoutButton.style.backgroundColor = '#4CAF50';
+        editLayoutButton.style.backgroundColor = '#4CAF50'; // Green for save mode
         editLayoutButton.style.color = 'white';
         container.classList.add('edit-mode');
-        initializeDragAndDrop();
+        initializeDragAndDrop(); // Sets up mousedown listener
     } else {
-        console.log('Edit mode disabled, saving layout');
+        // This is when "Save Layout" is clicked, transitioning out of edit mode
         editLayoutButton.textContent = 'Edit Layout';
-        editLayoutButton.style.backgroundColor = '#f0f0f0';
+        editLayoutButton.style.backgroundColor = '#f0f0f0'; // Default non-edit style
         editLayoutButton.style.color = 'black';
         container.classList.remove('edit-mode');
-        disableDragAndDrop();
-        saveButtonOrder(); // This should now be called without error
+        disableDragAndDrop(); // Removes mousedown listener and cleans up
+        saveButtonOrder(); // <<< SAVE THE ORDER HERE
     }
 }
 
@@ -2281,100 +2288,209 @@ window.addEventListener('error', function(event) {
     }
 });
 
+let draggingElement = null;
+let placeholderElement = null; // A simple div, not a clone
+let dragOffsetX, dragOffsetY;
+// Remove: let buttonPositions = []; // We'll calculate targets differently
+
 function initializeDragAndDrop() {
     if (!editModeEnabled) return;
-
     const container = document.getElementById('custom-extension-container');
-    let draggingElement = null;
-    let placeholder = null;
-    let dragStartX, dragStartY;
-    let buttonPositions = [];
+    if (!container) return;
+
+    // Create placeholder once and reuse, or create on demand
+    placeholderElement = document.createElement('div');
+    placeholderElement.classList.add('button-placeholder'); // Style this appropriately
+    // Placeholder style might need to match button-ph dimensions roughly
+
+    onMouseDown = function(e) {
+        if (!editModeEnabled) return;
+        const buttonWrapper = e.target.closest('.button-ph');
+        if (buttonWrapper && e.button === 0) { // Only main mouse button
+            e.preventDefault();
+            draggingElement = buttonWrapper;
+            const rect = draggingElement.getBoundingClientRect();
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
+
+            // Style the dragged element
+            draggingElement.style.position = 'fixed'; // Or 'absolute' relative to a positioned parent
+            draggingElement.style.zIndex = '10001'; // Above other buttons
+            draggingElement.style.width = `${rect.width}px`;
+            draggingElement.style.height = `${rect.height}px`;
+            draggingElement.classList.add('dragging');
+            // Initially hide it or move it out of flow, so placeholder can take its spot
+            // For fixed positioning, it's already out of flow.
+
+            // Insert placeholder where the element was (or just before it to start)
+            // The placeholder's size should be set by CSS to match button-ph
+            if (draggingElement.parentNode) {
+                 draggingElement.parentNode.insertBefore(placeholderElement, draggingElement);
+            }
+            
+            // Move draggingElement to mouse position
+            draggingElement.style.left = `${e.clientX - dragOffsetX}px`;
+            draggingElement.style.top = `${e.clientY - dragOffsetY}px`;
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+    };
 
     onMouseMove = function(e) {
-        if (draggingElement) {
-            draggingElement.style.left = `${e.clientX - dragStartX}px`;
-            draggingElement.style.top = `${e.clientY - dragStartY}px`;
-            
-            const closestButton = buttonPositions.reduce((closest, position) => {
-                const dx = e.clientX - (position.left + (position.right - position.left) / 2);
-                const dy = e.clientY - (position.top + (position.bottom - position.top) / 2);
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                return distance < closest.distance ? { distance, element: position.element } : closest;
-            }, { distance: Infinity, element: null }).element;
+        if (!draggingElement) return;
+        e.preventDefault();
 
-            if (closestButton && closestButton !== placeholder) {
-                const parent = closestButton.parentNode;
-                if (Array.from(parent.children).indexOf(placeholder) > Array.from(parent.children).indexOf(closestButton)) {
-                    parent.insertBefore(placeholder, closestButton);
-                } else {
-                    parent.insertBefore(placeholder, closestButton.nextSibling);
+        draggingElement.style.left = `${e.clientX - dragOffsetX}px`;
+        draggingElement.style.top = `${e.clientY - dragOffsetY}px`;
+
+        // Determine where placeholder should go
+        let targetElement = null;
+        let insertBefore = false;
+        const staticButtons = Array.from(container.querySelectorAll('.button-ph:not(.dragging)'));
+
+        for (const staticButton of staticButtons) {
+            const rect = staticButton.getBoundingClientRect();
+            // Check if mouse is over this static button or in its vicinity
+            if (e.clientX >= rect.left && e.clientX <= rect.right &&
+                e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                
+                targetElement = staticButton;
+                // If mouse is in the first half of the button's width, insert before, else after
+                insertBefore = (e.clientX < rect.left + rect.width / 2);
+                break;
+            }
+        }
+        
+        // If not directly over a button, find the closest one (simplified)
+        // or insert at start/end if near container edges.
+        // For now, let's stick to inserting relative to an existing button.
+        // If not over any button, placeholder might stay where it is or move to end.
+
+        if (targetElement) {
+            if (insertBefore) {
+                if (placeholderElement.nextSibling !== targetElement) {
+                    targetElement.parentNode.insertBefore(placeholderElement, targetElement);
                 }
-                placeholder.style.visibility = 'visible';
+            } else {
+                if (placeholderElement !== targetElement.nextSibling) {
+                    targetElement.parentNode.insertBefore(placeholderElement, targetElement.nextSibling);
+                }
+            }
+        } else {
+            // If not over any specific button, maybe append placeholder to the end if not already there
+            if (placeholderElement.parentNode !== container || container.lastChild !== placeholderElement) {
+                //container.appendChild(placeholderElement); // Could cause issues if placeholder is already child
             }
         }
     };
 
-    onMouseUp = function() {
-        if (draggingElement) {
-            placeholder.parentNode.insertBefore(draggingElement, placeholder);
-            placeholder.remove();
+    onMouseUp = function(e) {
+        if (!draggingElement) return;
+        e.preventDefault();
 
-            draggingElement.classList.remove('dragging');
-            draggingElement.style.removeProperty('position');
-            draggingElement.style.removeProperty('left');
-            draggingElement.style.removeProperty('top');
-            draggingElement.style.removeProperty('width');
-            draggingElement.style.removeProperty('height');
-            draggingElement.style.removeProperty('z-index');
+        if (placeholderElement.parentNode) {
+            placeholderElement.parentNode.insertBefore(draggingElement, placeholderElement);
+            if (placeholderElement.parentNode === container) { // Only remove if it's our placeholder
+                placeholderElement.remove(); 
+            }
+        } else {
+            container.appendChild(draggingElement);
+            console.warn("Drag-and-drop: Placeholder lost its parent during onMouseUp.");
         }
         
+        draggingElement.classList.remove('dragging');
+        draggingElement.style.removeProperty('position');
+        draggingElement.style.removeProperty('left');
+        draggingElement.style.removeProperty('top');
+        draggingElement.style.removeProperty('width');
+        draggingElement.style.removeProperty('height');
+        draggingElement.style.removeProperty('z-index');
+
         draggingElement = null;
-        placeholder = null;
-        buttonPositions = [];
+        // placeholderElement is a persistent div, so we don't nullify it, just ensure it's removed if it was in use
+        // If you recreate placeholderElement in onMouseDown, then nullify here:
+        // if (placeholderElement && placeholderElement.parentNode) placeholderElement.remove();
+        // placeholderElement = null;
+
+
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
-    };
-
-    onMouseDown = function(e) {
-        const buttonWrapper = e.target.closest('.button-ph');
-        if (buttonWrapper) {
-            draggingElement = buttonWrapper;
-            const rect = draggingElement.getBoundingClientRect();
-            dragStartX = e.clientX - rect.left;
-            dragStartY = e.clientY - rect.top;
-
-            placeholder = draggingElement.cloneNode(true);
-            placeholder.classList.add('button-placeholder');
-            placeholder.style.visibility = 'hidden';
-            draggingElement.parentNode.insertBefore(placeholder, draggingElement);
-
-            draggingElement.classList.add('dragging');
-            draggingElement.style.width = `${rect.width}px`;
-            draggingElement.style.height = `${rect.height}px`;
-            draggingElement.style.position = 'fixed';
-            draggingElement.style.zIndex = '1000';
-
-            buttonPositions = Array.from(container.querySelectorAll('.button-ph:not(.dragging)'))
-                .map(button => {
-                    const r = button.getBoundingClientRect();
-                    return {
-                        element: button,
-                        left: r.left,
-                        top: r.top,
-                        right: r.right,
-                        bottom: r.bottom
-                    };
-                });
-
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-            
-            e.preventDefault();
-        }
+        
+        // --- REMOVED: saveButtonOrder(); --- 
+        // Saving will now only happen when "Save Layout" (the toggled editLayoutButton) is clicked.
     };
 
     container.addEventListener('mousedown', onMouseDown);
+}
+
+function saveButtonOrder() {
+    const container = document.getElementById('custom-extension-container');
+    if (!container) return;
+
+    const buttons = container.querySelectorAll('.button-ph');
+    // Ensure unique IDs in the order
+    const uniqueOrderedIds = [];
+    const seenIds = new Set();
+    Array.from(buttons).forEach(button => {
+        const buttonId = button.dataset.buttonId;
+        if (buttonId && !seenIds.has(buttonId)) {
+            uniqueOrderedIds.push(buttonId);
+            seenIds.add(buttonId);
+        } else if (buttonId && seenIds.has(buttonId)) {
+            console.warn("Duplicate buttonId found in DOM during saveButtonOrder:", buttonId, "This should not happen. Removing duplicate.");
+            button.remove(); // Attempt to remove the duplicate from DOM to prevent future issues
+        }
+    });
+    
+    const order = uniqueOrderedIds; // Use the filtered unique list
+
+    console.log("Saving button order:", order); // Debug
+    
+    browserAPI.storage.local.get('configurationSets', function(data) {
+        const sets = data.configurationSets || [];
+        const setIndex = sets.findIndex(set => set.name === currentSetName);
+        
+        if (setIndex !== -1) {
+            sets[setIndex].customOrder = order; 
+            sets[setIndex].sortMethod = 'custom'; // Explicitly set sort method to custom
+            
+            browserAPI.storage.local.set({ configurationSets: sets }, function() {
+                if (browserAPI.runtime.lastError) {
+                    console.error("Error saving button order:", browserAPI.runtime.lastError);
+                } else {
+                    debugLog('Custom button order saved for set:', currentSetName, order);
+                    if (currentSet) { // Update in-memory currentSet
+                        currentSet.customOrder = order;
+                        currentSet.sortMethod = 'custom';
+                    }
+                    // Update sort button text on the page
+                    const sortButton = document.getElementById('sort-button');
+                    const sortButtonTextSpan = sortButton ? sortButton.querySelector('span') : null;
+                    if (sortButtonTextSpan) {
+                        sortButtonTextSpan.textContent = getSortButtonText('custom');
+                    }
+                     // Re-add the 'Return to Custom' option if it's not there and custom order exists
+                     const sortDropdown = document.getElementById('sort-dropdown');
+                     if (sortDropdown && !sortDropdown.querySelector('#sort-custom') && order.length > 0) {
+                         const customOption = document.createElement('button');
+                         customOption.id = 'sort-custom';
+                         customOption.className = 'sort-option';
+                         customOption.textContent = 'Return to Custom';
+                         customOption.onclick = () => sortButtons('custom');
+                         
+                         const divider = document.createElement('div');
+                         divider.className = 'sort-divider';
+
+                         sortDropdown.insertBefore(divider, sortDropdown.firstChild);
+                         sortDropdown.insertBefore(customOption, sortDropdown.firstChild);
+                     }
+                }
+            });
+        } else {
+            console.error("Could not find current set to save button order:", currentSetName);
+        }
+    });
 }
 
 function disableDragAndDrop() {
