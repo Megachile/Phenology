@@ -3883,57 +3883,172 @@ function updateCustomOrderForSet(set) {
 }
 
 browserAPI.storage.onChanged.addListener(function(changes, namespace) {
-    if (namespace === 'local' && changes.configurationSets) {
-        const updatedSets = changes.configurationSets.newValue;
-        if (updatedSets) {
-            // Update custom orders before loading
-            let needsUpdate = false;
-            updatedSets.forEach(set => {
-                if (updateCustomOrderForSet(set)) {
-                    needsUpdate = true;
-                }
-            });
+    if (namespace === 'local') {
+        let needsConfigReload = false;
+        let configSetsChanged = false;
 
-            if (needsUpdate) {
-                browserAPI.storage.local.set({ configurationSets: updatedSets }, function() {
-                    debugLog('Updated custom orders after storage change');
-                    loadConfigurationSets();
+        if (changes.configurationSets) {
+            debugLog("content.js: configurationSets changed in storage.");
+            needsConfigReload = true;
+            configSetsChanged = true; // Specifically note that the sets array itself changed
+        }
+
+        // Listen for the correct key that options.js uses to indicate the active set for content scripts
+        if (changes.contentScriptActiveSetName) {
+            debugLog("content.js: contentScriptActiveSetName changed to:", changes.contentScriptActiveSetName.newValue);
+            needsConfigReload = true;
+        }
+
+        // If configurationSets array changed, we might need to update custom orders
+        // This logic was in your second listener. We integrate it here.
+        if (configSetsChanged) {
+            const updatedSets = changes.configurationSets.newValue;
+            if (updatedSets) {
+                let needsOrderUpdateInStorage = false;
+                updatedSets.forEach(set => {
+                    // Assuming updateCustomOrderForSet modifies 'set' in place if an update happens
+                    // AND returns true if an update was made.
+                    if (updateCustomOrderForSet(set)) {
+                        needsOrderUpdateInStorage = true;
+                    }
                 });
-            } else {
-                loadConfigurationSets();
+
+                if (needsOrderUpdateInStorage) {
+                    // The updatedSets array (which is a copy from the change object)
+                    // now has potentially modified customOrder properties. Save it back.
+                    browserAPI.storage.local.set({ configurationSets: updatedSets }, function() {
+                        if (browserAPI.runtime.lastError) {
+                            console.error("content.js: Error saving updated custom orders from storage.onChanged:", browserAPI.runtime.lastError);
+                        } else {
+                            debugLog('content.js: Updated custom orders in storage after external change.');
+                        }
+                        // Whether order update save succeeded or failed, or if no update was needed,
+                        // we still need to reload based on the new data.
+                        if (needsConfigReload) { // Re-check, as needsConfigReload might have been true for other reasons
+                           loadConfigurationSets();
+                        }
+                    });
+                    return; // Return here because loadConfigurationSets will be called in the callback
+                }
             }
         }
+
+        // If we need a reload (and didn't return early for custom order saving)
+        if (needsConfigReload) {
+            loadConfigurationSets();
+        }
+
+        // Handle other specific, independent changes
+        if (changes.buttonPosition) {
+            buttonPosition = changes.buttonPosition.newValue;
+            // Ensure currentPositionIndex is updated if buttonPosition is a string like 'top-left'
+            currentPositionIndex = positions.indexOf(buttonPosition);
+            if (currentPositionIndex === -1) currentPositionIndex = 0; // Fallback
+            updatePositions();
+        }
+
+        if (changes.safeMode) {
+            // safeMode = changes.safeMode.newValue;
+            // handleSafeModeChange(safeMode); // Example
+        }
+        // Add other specific key listeners here
     }
 });
 
 function loadConfigurationSets() {
-    browserAPI.storage.local.get(['configurationSets', 'currentSetName'], function(data) {
-        configurationSets = data.configurationSets || [];
-        currentSetName = data.currentSetName || (configurationSets[0] && configurationSets[0].name);
-        
-        // Update custom orders for all sets before proceeding
-        let needsUpdate = false;
-        configurationSets.forEach(set => {
-            if (updateCustomOrderForSet(set)) {
-                needsUpdate = true;
-            }
-        });
+    debugLog("content.js: loadConfigurationSets called");
+    browserAPI.storage.local.get(['configurationSets', 'contentScriptActiveSetName'], function(data) {
+        if (browserAPI.runtime.lastError) {
+            console.error("content.js: Error getting data from storage in loadConfigurationSets:", browserAPI.runtime.lastError);
+            // Potentially try to render with existing globals if data is stale but present, or clear UI
+            configurationSets = configurationSets || []; // Keep stale if available
+            currentSet = currentSet || (configurationSets.find(s => s.name === currentSetName)); // Try to keep stale
+            // createDynamicButtons(); createSetSwitcher(); updateBulkActionButtons(); // Attempt to render stale
+            return;
+        }
 
-        // If any sets were updated, save the changes
-        if (needsUpdate) {
-            browserAPI.storage.local.set({ configurationSets }, function() {
-                debugLog('Updated custom orders for all sets');
+        const loadedSets = data.configurationSets || [];
+        let activeSetNameFromStorage = data.contentScriptActiveSetName;
+
+        // Check if the loaded sets are different from the current global ones
+        // A simple length check or stringify can be a heuristic, but for robust checking,
+        // you might need a deep compare if only content changed but not the object reference.
+        // For now, let's assume `changes.configurationSets` in onChanged is the main trigger for full re-evaluation.
+        configurationSets = loadedSets;
+
+        // Determine the active set name
+        if (activeSetNameFromStorage && configurationSets.some(set => set.name === activeSetNameFromStorage)) {
+            currentSetName = activeSetNameFromStorage;
+        } else if (configurationSets.length > 0) {
+            // Active set from storage is invalid or missing, default to the first set
+            currentSetName = configurationSets[0].name;
+            console.warn(`content.js: contentScriptActiveSetName "${activeSetNameFromStorage}" not found or invalid. Defaulting to "${currentSetName}".`);
+            // Save this default back to storage so options.js and other instances are consistent
+            browserAPI.storage.local.set({ contentScriptActiveSetName: currentSetName }, () => {
+                if (browserAPI.runtime.lastError) {
+                    console.error("content.js: Error saving default contentScriptActiveSetName:", browserAPI.runtime.lastError);
+                }
+            });
+        } else {
+            // No sets available at all
+            currentSetName = null;
+            console.warn("content.js: No configuration sets found. No active set.");
+        }
+
+        // Update custom orders for all sets (this might have been done by onChanged if sets array changed)
+        // However, doing it here ensures orders are checked even on initial load.
+        // This assumes updateCustomOrderForSet modifies the set objects within the `configurationSets` array directly.
+        let needsOrderUpdateInStorage = false;
+        if (configurationSets && configurationSets.length > 0) {
+            configurationSets.forEach(set => {
+                if (updateCustomOrderForSet(set)) {
+                    needsOrderUpdateInStorage = true;
+                }
             });
         }
 
-        // Set current set after potential updates
-        currentSet = configurationSets.find(set => set.name === currentSetName) || configurationSets[0];
-        currentAvailableActions = currentSet ? currentSet.buttons.filter(button => !button.configurationDisabled) : [];
-        
-        createDynamicButtons();
-        createSetSwitcher();
-        updateBulkActionButtons();
+        if (needsOrderUpdateInStorage) {
+            browserAPI.storage.local.set({ configurationSets: configurationSets }, function() {
+                if (browserAPI.runtime.lastError) {
+                    console.error("content.js: Error saving updated custom orders from loadConfigurationSets:", browserAPI.runtime.lastError);
+                } else {
+                    debugLog('content.js: Updated custom orders in storage during loadConfigurationSets.');
+                }
+                // Proceed to find currentSet and update UI even if this save fails
+                findCurrentSetAndRender();
+            });
+        } else {
+            findCurrentSetAndRender();
+        }
     });
+
+    function findCurrentSetAndRender() {
+        if (currentSetName) {
+            currentSet = configurationSets.find(set => set.name === currentSetName);
+        } else {
+            currentSet = null;
+        }
+
+        if (!currentSet && currentSetName && configurationSets.length > 0) {
+            // This case implies currentSetName was set, but the set disappeared (e.g. deleted in options)
+            // and the fallback in the main part of loadConfigurationSets didn't catch it before order update.
+            console.warn(`content.js: Active set "${currentSetName}" became invalid. Defaulting to first available.`);
+            currentSet = configurationSets[0];
+            currentSetName = currentSet.name;
+            browserAPI.storage.local.set({ contentScriptActiveSetName: currentSetName }); // Persist this correction
+        } else if (!currentSet && !currentSetName) {
+             console.log("content.js: No active set to render.");
+        }
+
+
+        // Update global currentAvailableActions if used by other functions
+        // currentAvailableActions = currentSet ? currentSet.buttons.filter(button => !button.configurationDisabled) : [];
+
+        debugLog("content.js: Effective currentSet for rendering:", currentSet ? currentSet.name : "None");
+        createDynamicButtons();    // Uses global currentSetName/currentSet
+        createSetSwitcher();       // Uses global currentSetName/configurationSets
+        updateBulkActionButtons(); // Uses global currentSet or currentAvailableActions
+    }
 }
 
 function createSetSwitcher() {
@@ -4065,39 +4180,64 @@ function createSetSwitcher() {
 }
 
 function switchConfigurationSet(setName) {
-    currentSetName = setName;
-    currentSet = configurationSets.find(set => set.name === setName);
+    if (currentSetName === setName && currentSet) return; // No change needed
 
-    if (updateCustomOrderForSet(currentSet)) {
-        // Save if the order was updated
-        browserAPI.storage.local.get('configurationSets', function(data) {
-            const sets = data.configurationSets || [];
-            const setIndex = sets.findIndex(set => set.name === setName);
-            if (setIndex !== -1) {
-                sets[setIndex].customOrder = currentSet.customOrder;
-                browserAPI.storage.local.set({ configurationSets: sets }, function() {
-                    debugLog('Updated custom order during set switch:', currentSet.customOrder);
-                });
-            }
+    const newSet = configurationSets.find(set => set.name === setName);
+
+    if (!newSet) {
+        console.error(`content.js: Attempted to switch to non-existent set: ${setName}. Reverting or using default.`);
+        // Optionally revert or pick first if available, then update storage for contentScriptActiveSetName
+        if (configurationSets.length > 0) {
+            currentSetName = configurationSets[0].name;
+            currentSet = configurationSets[0];
+        } else {
+            currentSetName = null;
+            currentSet = null;
+        }
+        browserAPI.storage.local.set({ contentScriptActiveSetName: currentSetName }, () => { // Update storage
+            createDynamicButtons();
+            createSetSwitcher();
+            updateBulkActionButtons();
         });
+        return;
     }
 
-    currentAvailableActions = currentSet.buttons.filter(button => !button.configurationDisabled);
-    
-    browserAPI.storage.local.set({ currentSetName: setName }, async function() {
+    currentSetName = setName;
+    currentSet = newSet;
+    // currentAvailableActions = currentSet ? currentSet.buttons.filter(button => !button.configurationDisabled) : [];
+
+    // Handle custom order update within the new currentSet if needed
+    let orderChangedAndNeedsSave = false;
+    if (updateCustomOrderForSet(currentSet)) { // Assumes this modifies currentSet.customOrder directly
+        const globalSetRef = configurationSets.find(s => s.name === currentSet.name);
+        if (globalSetRef) {
+            globalSetRef.customOrder = currentSet.customOrder; // Sync with the main array
+            orderChangedAndNeedsSave = true;
+        }
+    }
+
+    let dataToSaveToStorage = { contentScriptActiveSetName: currentSetName };
+    if (orderChangedAndNeedsSave) {
+        dataToSaveToStorage.configurationSets = configurationSets; // Save the whole array if an order changed
+    }
+
+    browserAPI.storage.local.set(dataToSaveToStorage, function() {
+        if (browserAPI.runtime.lastError) {
+            console.error("content.js: Error saving state in switchConfigurationSet:", browserAPI.runtime.lastError);
+        } else {
+            debugLog('content.js: Switched active set to:', currentSetName, 'Order updated:', orderChangedAndNeedsSave);
+        }
+        // Regardless of save error, update UI for current tab immediately
         createDynamicButtons();
         createSetSwitcher();
         updateBulkActionButtons();
-        
-        // Apply the set's saved sort method
-        if (currentSet.sortMethod) {
+        if (currentSet && currentSet.sortMethod) {
             sortButtons(currentSet.sortMethod);
         }
-        
-        // Update the dropdown if the bulk action modal is open
+        // Update dropdown in bulk action modal (if it exists and is open)
         const actionSelect = document.getElementById('bulk-action-select');
         if (actionSelect) {
-            updateBulkActionDropdown(actionSelect, currentAvailableActions);
+            updateBulkActionDropdown(actionSelect, currentSet ? currentSet.buttons.filter(b => !b.configurationDisabled) : []);
         }
     });
 }
@@ -4319,15 +4459,6 @@ function cycleConfigurationSet() {
     const nextIndex = (currentIndex + 1) % configurationSets.length;
     switchConfigurationSet(configurationSets[nextIndex].name);
 }
-
-// Listen for storage changes
-browserAPI.storage.onChanged.addListener(function(changes, namespace) {
-    if (namespace === 'local') {
-        if (changes.configurationSets || changes.currentSetName) {
-            loadConfigurationSets();
-        }
-    }
-});
 
 // Initial load
 loadConfigurationSets();

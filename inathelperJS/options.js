@@ -1072,30 +1072,58 @@ function updateAllListSelects() {
     listSelects.forEach(refreshListSelect);
 }
 
-function loadOptionsPageData() { // Was loadConfigurations in options.js
-    updateStorageUsageDisplay(); // Call this at the beginning of loading page data
-
+function loadOptionsPageData() {
+    updateStorageUsageDisplay();
     browserAPI.storage.local.get(
-        ['configurationSets', 'currentOptionsPageSetName' /* NEW or use existing if it was already for options */, 'observationFieldMap'], // DO NOT load 'optionsPageActiveSetName' (for content.js)
+        ['configurationSets', 'currentOptionsPageSetName', 'contentScriptActiveSetName', 'observationFieldMap'],
         function(data) {
-            configurationSets = data.configurationSets || [{ name: 'Default Set', buttons: [] }];
-            // This `optionsPageActiveSetName` is for the options page's own selected set
-            optionsPageActiveSetName = data.currentOptionsPageSetName || (configurationSets[0] ? configurationSets[0].name : '');
-            observationFieldMap = data.observationFieldMap || {};
-
-            if (!configurationSets.some(set => set.name === optionsPageActiveSetName)) { // Ensure valid
-                optionsPageActiveSetName = configurationSets[0] ? configurationSets[0].name : '';
-                 if (optionsPageActiveSetName) {
-                    // No need to set storage here if it's just correcting a local variable
-                    // browserAPI.storage.local.set({ currentOptionsPageSetName: optionsPageActiveSetName });
-                 }
+            configurationSets = data.configurationSets || [];
+            if (configurationSets.length === 0) { // Ensure default set if absolutely empty
+                const defaultSet = { name: 'Default Set', buttons: [] };
+                configurationSets.push(defaultSet);
+                // Save this immediately if it was created
+                browserAPI.storage.local.set({
+                    configurationSets: configurationSets,
+                    currentOptionsPageSetName: defaultSet.name, // Set for options
+                    contentScriptActiveSetName: defaultSet.name  // Set for content too
+                }, () => {
+                    optionsPageActiveSetName = defaultSet.name;
+                    observationFieldMap = data.observationFieldMap || {};
+                    updateSetSelector();
+                    displayConfigurations();
+                    updateSetManagementButtons();
+                    populateFieldDatalist();
+                });
+                return; // Return early, UI will update after save
             }
 
-            updateSetSelector(); // Should use `optionsPageActiveSetName` (options page's)
-            displayConfigurations(); // Should use `optionsPageActiveSetName` (options page's)
+            // Determine the set to display in THIS options page instance
+            optionsPageActiveSetName = data.currentOptionsPageSetName || // 1. Last viewed in options
+                                       data.contentScriptActiveSetName || // 2. What's active on content.js
+                                       (configurationSets[0] ? configurationSets[0].name : ''); // 3. First available
+
+            // Ensure optionsPageActiveSetName is valid
+            if (!configurationSets.some(set => set.name === optionsPageActiveSetName) && configurationSets.length > 0) {
+                optionsPageActiveSetName = configurationSets[0].name;
+            }
+            
+            // Save currentOptionsPageSetName if it was just determined or changed by fallback
+            if (data.currentOptionsPageSetName !== optionsPageActiveSetName) {
+                browserAPI.storage.local.set({ currentOptionsPageSetName: optionsPageActiveSetName });
+            }
+
+            // If contentScriptActiveSetName is missing entirely, set it to a sensible default (e.g., the first set)
+            // This is a one-time initialization for content.js if it was never set.
+            if (!data.contentScriptActiveSetName && configurationSets.length > 0) {
+                browserAPI.storage.local.set({ contentScriptActiveSetName: configurationSets[0].name });
+            }
+
+
+            observationFieldMap = data.observationFieldMap || {};
+            updateSetSelector();
+            displayConfigurations();
             updateSetManagementButtons();
             populateFieldDatalist();
-            // updateStorageUsageDisplay(); // Already called at the top of this function
         }
     );
 }
@@ -1829,9 +1857,10 @@ function updateSetSelector() {
 
 function handleOptionsPageSetSelectionChange() {
     optionsPageActiveSetName = document.getElementById('setSelector').value;
-    browserAPI.storage.local.set({ currentOptionsPageSetName: optionsPageActiveSetName });
-    displayConfigurations(); // Update display for the newly selected set in options page
-    // Clear selections from the previous set when switching
+    browserAPI.storage.local.set({
+        currentOptionsPageSetName: optionsPageActiveSetName // Only for this options page's UI
+    });
+    displayConfigurations(); // Update display for the new selection in this options page
     selectedConfigurations.clear();
     updateSelectedCount();
     updateActionButtonStates();
@@ -1876,21 +1905,49 @@ function duplicateCurrentSet() {
     }
 }
 
-function renameCurrentSet() {
-    const currentSet = configurationSets.find(set => set.name === optionsPageActiveSetName);
+// In options.js
+async function renameCurrentSet() { // Make async
+    const oldSetName = optionsPageActiveSetName;
+    const currentSet = configurationSets.find(set => set.name === oldSetName);
     if (currentSet) {
         const newName = prompt("Enter a new name for the current set:", currentSet.name);
-        if (newName && newName !== currentSet.name) {
-            if (configurationSets.some(set => set.name === newName)) {
+        if (newName && newName.trim() !== "" && newName.trim() !== oldSetName) {
+            if (configurationSets.some(set => set.name === newName.trim())) {
                 alert("A set with this name already exists. Please choose a different name.");
                 return;
             }
-            currentSet.name = newName;
-            optionsPageActiveSetName = newName;
-            saveConfigurationSets();
+            
+            // Update the name in the main configurationSets array
+            currentSet.name = newName.trim();
+            optionsPageActiveSetName = newName.trim(); // Update options page's view
+
+            // Check if the renamed set was the one active in content.js
+            const storageData = await new Promise(resolve => browserAPI.storage.local.get('contentScriptActiveSetName', resolve));
+            let dataToUpdateInStorage = {};
+            if (storageData.contentScriptActiveSetName === oldSetName) {
+                dataToUpdateInStorage.contentScriptActiveSetName = newName.trim();
+            }
+
+            // Call saveConfigurationSets, which will save all sets and currentOptionsPageSetName.
+            // It will also handle contentScriptActiveSetName correctly now if it wasn't the one renamed.
+            // If it WAS the one renamed, we need to pass that along.
+            // For simplicity, let saveConfigurationSets handle the full save,
+            // but we ensure contentScriptActiveSetName is part of the update if it changed.
+
+            try {
+                // saveConfigurationSets now handles saving its own currentOptionsPageSetName
+                // and makes sure contentScriptActiveSetName is valid
+                await saveConfigurationSets(); // refreshDisplay defaults to true
+                // If we needed to explicitly update contentScriptActiveSetName because IT was renamed:
+                if (dataToUpdateInStorage.contentScriptActiveSetName) {
+                    await browserAPI.storage.local.set(dataToUpdateInStorage);
+                }
+            } catch (e) { /* error already handled by saveConfigurationSets */ }
         }
     }
 }
+
+// removeCurrentSet() will rely on the updated saveConfigurationSets to fix contentScriptActiveSetName if needed.
 
 function removeCurrentSet() {
     if (configurationSets.length > 1) {
@@ -1905,33 +1962,45 @@ function removeCurrentSet() {
 }
 
 async function saveConfigurationSets(refreshDisplay = true) {
-    const currentSelectorValue = document.getElementById('setSelector').value;
-    const activeSetName = optionsPageActiveSetName || (configurationSets[0] ? configurationSets[0].name : '');
-    const setToPersistForOptionsPage = currentSelectorValue || activeSetName;
+    let activeContentSetName = await new Promise(resolve => // Get current content script active name
+        browserAPI.storage.local.get('contentScriptActiveSetName', data => resolve(data.contentScriptActiveSetName))
+    );
+
+    // Check if the set currently active in content.js still exists
+    const contentScriptActiveSetExists = configurationSets.some(set => set.name === activeContentSetName);
+
+    if (!contentScriptActiveSetExists && configurationSets.length > 0) {
+        // The set active on content.js was deleted or renamed, pick a new default for it
+        activeContentSetName = configurationSets[0].name;
+    } else if (!contentScriptActiveSetExists && configurationSets.length === 0) {
+        // All sets deleted, content script will have no active set
+        activeContentSetName = null; // Or an empty string
+    }
 
     const dataToSave = {
-        configurationSets: configurationSets, // Assumes global `configurationSets` is the source of truth
-        currentOptionsPageSetName: setToPersistForOptionsPage,
+        configurationSets: configurationSets,
+        currentOptionsPageSetName: optionsPageActiveSetName, // What this options page is viewing
         lastConfigUpdate: Date.now()
     };
 
+    // Only update contentScriptActiveSetName if it needed to be changed
+    if (dataToSave.contentScriptActiveSetName !== activeContentSetName) {
+         dataToSave.contentScriptActiveSetName = activeContentSetName;
+    }
+
+
     try {
         await setStorageWithQuotaCheck(dataToSave, 'configurationSets');
-        console.log('Configuration sets and options page current set name updated.');
+        console.log('Configuration sets and relevant active set names updated.');
 
         if (refreshDisplay) {
-            // Ensure global optionsPageActiveSetName is consistent with what was intended to be saved for the UI
-            if (optionsPageActiveSetName !== setToPersistForOptionsPage) {
-                 optionsPageActiveSetName = setToPersistForOptionsPage;
-            }
-            updateSetSelector();       // Uses global optionsPageActiveSetName
-            displayConfigurations();   // Uses global optionsPageActiveSetName
+            // optionsPageActiveSetName is already set for the current UI
+            updateSetSelector();
+            displayConfigurations();
             updateSetManagementButtons();
         }
     } catch (error) {
         console.error("Error in saveConfigurationSets:", error.message);
-        // The error (e.g., quota exceeded) would have been alerted by setStorageWithQuotaCheck.
-        // Re-throw it so the calling function (e.g., processImportChoices, deleteConfiguration) can catch it and react.
         throw error;
     }
 }
