@@ -157,9 +157,21 @@ function formatBytes(bytes, decimals = 2) {
 
 function updateStorageUsageDisplay() {
     const storageStatusElement = document.getElementById('storageStatus');
-    
-    // --- DEBUG LOG ---
-    // Check if browserAPI and the necessary path exist
+
+    // --- CRITICAL DEBUGGING ---
+    console.log('Directly accessing browserAPI.storage.local.QUOTA_BYTES:', browserAPI.storage.local.QUOTA_BYTES, 
+                'Type:', typeof browserAPI.storage.local.QUOTA_BYTES);
+    // --- END CRITICAL DEBUGGING ---
+
+    let totalQuota = browserAPI.storage.local.QUOTA_BYTES;
+
+    // Fallback if QUOTA_BYTES is not a valid number (e.g., undefined, NaN, or 0)
+    if (typeof totalQuota !== 'number' || isNaN(totalQuota) || totalQuota <= 0) {
+        console.warn('browserAPI.storage.local.QUOTA_BYTES was invalid (' + totalQuota + '). Falling back to a default value of 5MB for Firefox.');
+        totalQuota = 5 * 1024 * 1024; // 5,242,880 bytes - Standard Firefox local storage quota
+    }
+
+    // --- DEBUG LOG for browserAPI object structure ---
     if (browserAPI && browserAPI.storage && browserAPI.storage.local) {
         console.log("In updateStorageUsageDisplay - browserAPI.storage.local.getBytesInUse is:", browserAPI.storage.local.getBytesInUse, "(Type:", typeof browserAPI.storage.local.getBytesInUse, ")");
     } else {
@@ -175,53 +187,68 @@ function updateStorageUsageDisplay() {
     if (storageStatusElement && typeof browserAPI.storage.local.getBytesInUse === 'function') {
         try {
             browserAPI.storage.local.getBytesInUse(null, function(bytesInUse) {
-                // --- DEBUG LOG ---
                 console.log("getBytesInUse callback invoked. bytesInUse:", bytesInUse, "typeof bytesInUse:", typeof bytesInUse);
-                // --- END DEBUG LOG ---
-
                 if (browserAPI.runtime.lastError) {
                     console.error("Error calling getBytesInUse:", browserAPI.runtime.lastError.message);
-                    storageStatusElement.textContent = 'Storage Usage: Error retrieving usage';
-                    storageStatusElement.style.color = 'red';
+                    estimateStorageUsage(storageStatusElement, totalQuota); // Use the potentially corrected totalQuota
                     return;
                 }
 
-                // Check if bytesInUse is a valid number. In Firefox, it might be 0 if empty or if calculation is pending/failed silently.
                 if (typeof bytesInUse === 'number' && isFinite(bytesInUse)) {
-                    const totalQuota = browserAPI.storage.local.QUOTA_BYTES;
-                    const usedFormatted = formatBytes(bytesInUse);
-                    const totalFormatted = formatBytes(totalQuota);
-                    const percentage = totalQuota > 0 ? ((bytesInUse / totalQuota) * 100).toFixed(1) : "0.0"; // Ensure it's a string if totalQuota is 0
-                    
-                    storageStatusElement.textContent = `Storage Usage: ${usedFormatted} / ${totalFormatted} (${percentage}%)`;
-
-                    // Style based on percentage
-                    const numericPercentage = parseFloat(percentage);
-                    if (numericPercentage > 95) {
-                        storageStatusElement.style.color = 'red';
-                    } else if (numericPercentage > 80) {
-                        storageStatusElement.style.color = 'orange';
-                    } else {
-                        storageStatusElement.style.color = '#555'; 
-                    }
+                    displayFormattedUsage(bytesInUse, totalQuota, storageStatusElement); // Use the potentially corrected totalQuota
                 } else {
-                    // This case handles if bytesInUse is not a valid number (e.g., undefined, NaN, Infinity)
-                    console.warn("getBytesInUse did not return a valid number. Received:", bytesInUse);
-                    storageStatusElement.textContent = 'Storage Usage: Not available (data error)';
-                    storageStatusElement.style.color = '#555'; // Default or a specific color for this state
+                    console.warn("getBytesInUse did not return a valid number. Received:", bytesInUse, "Falling back to estimation.");
+                    estimateStorageUsage(storageStatusElement, totalQuota); // Use the potentially corrected totalQuota
                 }
             });
         } catch (e) {
-            // Catch synchronous errors if getBytesInUse itself throws (unlikely for standard API but good for robustness)
-            console.error("Synchronous error when trying to call getBytesInUse:", e);
-            storageStatusElement.textContent = 'Storage Usage: API Call Error';
-            storageStatusElement.style.color = 'red';
+            console.error("Synchronous error when trying to call getBytesInUse:", e, "Falling back to estimation.");
+            estimateStorageUsage(storageStatusElement, totalQuota); // Use the potentially corrected totalQuota
         }
     } else if (storageStatusElement) {
-        // This means browserAPI.storage.local.getBytesInUse was not a function
-        console.warn("browserAPI.storage.local.getBytesInUse is not available or not a function.");
-        storageStatusElement.textContent = 'Storage Usage: Not available (API missing)';
-        storageStatusElement.style.color = '#555';
+        console.warn("browserAPI.storage.local.getBytesInUse is not available. Estimating usage instead.");
+        estimateStorageUsage(storageStatusElement, totalQuota); // Use the potentially corrected totalQuota
+    }
+}
+
+function estimateStorageUsage(statusElement, totalQuota) {
+    browserAPI.storage.local.get(null, function(items) {
+        if (browserAPI.runtime.lastError) {
+            console.error("Error retrieving all items for size estimation:", browserAPI.runtime.lastError.message);
+            statusElement.textContent = 'Storage Usage: Error estimating usage';
+            statusElement.style.color = 'red';
+            return;
+        }
+
+        try {
+            // Estimate size based on the JSON stringified representation (UTF-8 bytes)
+            const allDataString = JSON.stringify(items);
+            const estimatedBytesInUse = new TextEncoder().encode(allDataString).length;
+            
+            console.log("Estimated storage usage (bytes):", estimatedBytesInUse);
+            displayFormattedUsage(estimatedBytesInUse, totalQuota, statusElement, "(estimated)");
+
+        } catch (e) {
+            console.error("Error during size estimation process:", e);
+            statusElement.textContent = 'Storage Usage: Estimation failed';
+            statusElement.style.color = 'red';
+        }
+    });
+}
+
+function displayFormattedUsage(bytesInUse, totalQuota, element, suffix = "") {
+    const usedFormatted = formatBytes(bytesInUse);
+    const totalFormatted = formatBytes(totalQuota);
+    const percentage = totalQuota > 0 ? ((bytesInUse / totalQuota) * 100).toFixed(1) : "0.0";
+    
+    element.textContent = `Storage Usage: ${usedFormatted} / ${totalFormatted} (${percentage}%) ${suffix}`;
+    element.style.color = '#555'; // Default
+
+    const numericPercentage = parseFloat(percentage);
+    if (numericPercentage > 95) {
+        element.style.color = 'red';
+    } else if (numericPercentage > 80) {
+        element.style.color = 'orange';
     }
 }
 
