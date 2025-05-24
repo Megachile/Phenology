@@ -1,5 +1,3 @@
-let customButtons = [];
-let currentConfig = { actions: [] };
 let dateSortNewestFirst = true;
 let alphaSortAtoZ = true;
 let lastUsedSort = 'date';
@@ -39,60 +37,288 @@ const qualityMetrics = [
     { value: 'subject', label: 'Evidence related to a single subject' }
 ];
 
-document.getElementById('openBulkActionsButton').addEventListener('click', () => {
-    browserAPI.runtime.sendMessage({ action: "openBulkActionsPage" });
-  });
+document.addEventListener('DOMContentLoaded', function() {
+    // Initial data loading and UI setup
+    loadOptionsPageData(); // This function now calls updateStorageUsageDisplay() internally
+    populateFieldDatalist();
+    displayLists();
+    loadUndoRecords(); // For the modal, if it's present or built dynamically
+    loadAutoFollowSettings();
+    updateSortButtons();
 
-  browserAPI.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'local') {
-        let needsFullDisplayRefresh = false;
+    // Event Listeners for main configuration form
+    document.getElementById('saveButton').addEventListener('click', saveConfiguration);
+    document.getElementById('cancelButton').addEventListener('click', clearForm);
+    document.getElementById('addActionButton').addEventListener('click', () => addActionToForm());
 
-        if (changes.configurationSets) {
-            console.log("options.js (storage.onChanged): configurationSets changed.");
-            configurationSets = changes.configurationSets.newValue || configurationSets;
-            needsFullDisplayRefresh = true;
-        }
+    // Event Listeners for sorting and filtering configurations
+    document.getElementById('searchInput').addEventListener('input', filterConfigurations);
+    document.getElementById('toggleDateSort').addEventListener('click', toggleDateSort);
+    document.getElementById('toggleAlphaSort').addEventListener('click', toggleAlphaSort);
 
-        if (changes.currentOptionsPageSetName) {
-            const newOptPageSet = changes.currentOptionsPageSetName.newValue;
-            if (newOptPageSet && newOptPageSet !== optionsPageActiveSetName) {
-                console.log("options.js (storage.onChanged): currentOptionsPageSetName changed by another options instance.");
-                optionsPageActiveSetName = newOptPageSet;
-                needsFullDisplayRefresh = true; // This will also update the selector via updateSetSelector
-            }
-        }
-        // Note: We are NOT listening to currentContentScriptSetName here.
-
-        if (changes.customLists) {
-            console.log("options.js (storage.onChanged): customLists changed.");
-            displayLists();
-            updateAllListSelects();
-        }
-        if (changes.observationFieldMap) {
-             console.log("options.js (storage.onChanged): observationFieldMap changed.");
-             observationFieldMap = changes.observationFieldMap.newValue || {};
-             populateFieldDatalist();
-        }
-
-        if (needsFullDisplayRefresh) {
-            console.log("options.js (storage.onChanged): Refreshing display due to storage changes.");
-            updateSetSelector(); // Uses optionsPageActiveSetName to set its value
-            displayConfigurations(); // Uses optionsPageActiveSetName to filter/display
-            updateSetManagementButtons();
-
-            const editId = document.getElementById('saveButton').dataset.editIndex;
-            if (editId) {
-                const currentSetObj = configurationSets.find(set => set.name === optionsPageActiveSetName);
-                const configExists = currentSetObj && currentSetObj.buttons.find(c => c.id === editId);
-                if (!configExists) {
-                    console.warn("options.js (storage.onChanged): The config being edited changed/removed externally. Clearing form.");
-                    clearForm();
-                    alert("The configuration you were editing has been modified or removed elsewhere. The form has been cleared.");
-                }
-            }
-        }
+    // Event Listener for bulk actions page button
+    const openBulkActionsButton = document.getElementById('openBulkActionsButton');
+    if (openBulkActionsButton) { // Good practice to check if element exists
+        openBulkActionsButton.addEventListener('click', () => {
+            browserAPI.runtime.sendMessage({ action: "openBulkActionsPage" });
+        });
     }
-});
+
+    // Event Listeners for import/export
+    document.getElementById('exportButton').addEventListener('click', exportConfigurations);
+    const importInput = document.getElementById('importInput');
+    const importButton = document.getElementById('importButton');
+    if (importInput && importButton) {
+        importInput.addEventListener('change', importConfigurations);
+        importButton.addEventListener('click', () => {
+            importInput.click();
+        });
+    }
+
+    // Event Listeners for configuration set management
+    document.getElementById('createSetButton').addEventListener('click', createNewSet);
+    document.getElementById('setSelector').addEventListener('change', handleOptionsPageSetSelectionChange); // Renamed for consistency if needed
+    document.getElementById('duplicateSetButton').addEventListener('click', duplicateCurrentSet);
+    document.getElementById('renameSetButton').addEventListener('click', renameCurrentSet);
+    document.getElementById('removeSetButton').addEventListener('click', removeCurrentSet);
+
+    // Event Listeners for auto-follow/review prevention settings
+    document.getElementById('preventTaxonFollow').addEventListener('change', saveAutoFollowSettings);
+    document.getElementById('preventFieldFollow').addEventListener('change', saveAutoFollowSettings);
+    document.getElementById('preventTaxonReview').addEventListener('change', saveAutoFollowSettings);
+
+    // Event Listeners for custom list management
+    const createListButton = document.getElementById('createList');
+    if (createListButton) {
+        createListButton.addEventListener('click', createList);
+    }
+    const existingListsContainer = document.getElementById('existingLists');
+    if (existingListsContainer) {
+        existingListsContainer.addEventListener('click', function(e) {
+            if (e.target.classList.contains('viewList')) {
+                viewList(e.target.dataset.id);
+            } else if (e.target.classList.contains('renameList')) {
+                renameList(e.target.dataset.id);
+            } else if (e.target.classList.contains('deleteList')) {
+                deleteList(e.target.dataset.id);
+            }
+        });
+    }
+
+    // Event Listeners for bulk configuration actions (within the list)
+    document.getElementById('selectAllConfigs').addEventListener('click', handleSelectAll);
+    document.getElementById('clearSelectionBtn').addEventListener('click', clearSelection);
+    document.getElementById('deleteSelectedBtn').addEventListener('click', () => performConfigurationAction('delete'));
+    document.getElementById('hideSelectedBtn').addEventListener('click', () => performConfigurationAction('hide'));
+    document.getElementById('showSelectedBtn').addEventListener('click', () => performConfigurationAction('show'));
+    document.getElementById('disableSelectedBtn').addEventListener('click', () => performConfigurationAction('disable'));
+    document.getElementById('enableSelectedBtn').addEventListener('click', () => performConfigurationAction('enable'));
+    document.getElementById('toggleAllConfigs').addEventListener('click', toggleAllConfigurations);
+
+    // UI Toggles for collapsible sections
+    const shortcutsToggle = document.getElementById('hardcoded-shortcuts-toggle');
+    const shortcutsList = document.getElementById('hardcoded-shortcuts-list');
+    if (shortcutsToggle && shortcutsList) {
+        shortcutsToggle.addEventListener('click', function() {
+            const isHidden = shortcutsList.style.display === 'none';
+            shortcutsList.style.display = isHidden ? 'block' : 'none';
+            shortcutsToggle.textContent = isHidden ? 'General Shortcuts [-]' : 'General Shortcuts [+]';
+        });
+    }
+
+    const preventionToggle = document.getElementById('auto-prevention-toggle');
+    const preventionSettings = document.getElementById('auto-prevention-settings');
+    if (preventionToggle && preventionSettings) {
+        preventionToggle.addEventListener('click', function() {
+            const isHidden = preventionSettings.style.display === 'none';
+            preventionSettings.style.display = isHidden ? 'block' : 'none';
+            preventionToggle.textContent = isHidden ? 'Prevent Auto-reviewed/Followed [-]' : 'Prevent Auto-reviewed/Followed [+]';
+        });
+    }
+    
+    // Modal related (if applicable)
+    const showUndoRecordsButton = document.getElementById('showUndoRecordsButton');
+    if (showUndoRecordsButton) {
+        showUndoRecordsButton.addEventListener('click', showUndoRecordsModal);
+    }
+
+    // Storage change listener (only one needed)
+    browserAPI.storage.onChanged.addListener(handleStorageChangeForOptionsPage); // Ensure this is the intended single handler
+});  
+
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+function updateStorageUsageDisplay() {
+    const storageStatusElement = document.getElementById('storageStatus');
+    
+    // --- DEBUG LOG ---
+    // Check if browserAPI and the necessary path exist
+    if (browserAPI && browserAPI.storage && browserAPI.storage.local) {
+        console.log("In updateStorageUsageDisplay - browserAPI.storage.local.getBytesInUse is:", browserAPI.storage.local.getBytesInUse, "(Type:", typeof browserAPI.storage.local.getBytesInUse, ")");
+    } else {
+        console.error("browserAPI or browserAPI.storage.local is not defined!");
+        if (storageStatusElement) {
+            storageStatusElement.textContent = 'Storage Usage: API Error';
+            storageStatusElement.style.color = 'red';
+        }
+        return;
+    }
+    // --- END DEBUG LOG ---
+
+    if (storageStatusElement && typeof browserAPI.storage.local.getBytesInUse === 'function') {
+        try {
+            browserAPI.storage.local.getBytesInUse(null, function(bytesInUse) {
+                // --- DEBUG LOG ---
+                console.log("getBytesInUse callback invoked. bytesInUse:", bytesInUse, "typeof bytesInUse:", typeof bytesInUse);
+                // --- END DEBUG LOG ---
+
+                if (browserAPI.runtime.lastError) {
+                    console.error("Error calling getBytesInUse:", browserAPI.runtime.lastError.message);
+                    storageStatusElement.textContent = 'Storage Usage: Error retrieving usage';
+                    storageStatusElement.style.color = 'red';
+                    return;
+                }
+
+                // Check if bytesInUse is a valid number. In Firefox, it might be 0 if empty or if calculation is pending/failed silently.
+                if (typeof bytesInUse === 'number' && isFinite(bytesInUse)) {
+                    const totalQuota = browserAPI.storage.local.QUOTA_BYTES;
+                    const usedFormatted = formatBytes(bytesInUse);
+                    const totalFormatted = formatBytes(totalQuota);
+                    const percentage = totalQuota > 0 ? ((bytesInUse / totalQuota) * 100).toFixed(1) : "0.0"; // Ensure it's a string if totalQuota is 0
+                    
+                    storageStatusElement.textContent = `Storage Usage: ${usedFormatted} / ${totalFormatted} (${percentage}%)`;
+
+                    // Style based on percentage
+                    const numericPercentage = parseFloat(percentage);
+                    if (numericPercentage > 95) {
+                        storageStatusElement.style.color = 'red';
+                    } else if (numericPercentage > 80) {
+                        storageStatusElement.style.color = 'orange';
+                    } else {
+                        storageStatusElement.style.color = '#555'; 
+                    }
+                } else {
+                    // This case handles if bytesInUse is not a valid number (e.g., undefined, NaN, Infinity)
+                    console.warn("getBytesInUse did not return a valid number. Received:", bytesInUse);
+                    storageStatusElement.textContent = 'Storage Usage: Not available (data error)';
+                    storageStatusElement.style.color = '#555'; // Default or a specific color for this state
+                }
+            });
+        } catch (e) {
+            // Catch synchronous errors if getBytesInUse itself throws (unlikely for standard API but good for robustness)
+            console.error("Synchronous error when trying to call getBytesInUse:", e);
+            storageStatusElement.textContent = 'Storage Usage: API Call Error';
+            storageStatusElement.style.color = 'red';
+        }
+    } else if (storageStatusElement) {
+        // This means browserAPI.storage.local.getBytesInUse was not a function
+        console.warn("browserAPI.storage.local.getBytesInUse is not available or not a function.");
+        storageStatusElement.textContent = 'Storage Usage: Not available (API missing)';
+        storageStatusElement.style.color = '#555';
+    }
+}
+
+async function setStorageWithQuotaCheck(dataToSet, keyBeingPrimarilyModified = null) {
+    // --- START TEST MODIFICATION ---
+    const IS_TESTING_QUOTA = false; 
+    const REAL_QUOTA = browserAPI.storage.local.QUOTA_BYTES;
+    let quotaToUse;
+
+    if (IS_TESTING_QUOTA) {
+        const TEST_QUOTA_MB = 0.01; // <<<  TRY A VERY SMALL VALUE, e.g., 0.01 MB = 10KB
+        quotaToUse = TEST_QUOTA_MB * 1024 * 1024;
+        if (document.getElementById('storageStatus')) { 
+             console.warn(`INTERNAL QUOTA CHECK USING **TEST LIMIT**: ${formatBytes(quotaToUse)} (Real Total Quota is ${formatBytes(REAL_QUOTA)})`);
+        }
+    } else {
+        quotaToUse = REAL_QUOTA;
+    }
+    // --- END TEST MODIFICATION ---
+    
+    const safetyMarginPercentage = 0.05; 
+    let safetyMargin = safetyMarginPercentage * quotaToUse;
+
+    if (IS_TESTING_QUOTA && quotaToUse < 50 * 1024) { 
+         safetyMargin = 0.01 * quotaToUse; // Even smaller margin for tiny test quotas, like 1%
+         console.log(`Using very small safety margin for test: ${formatBytes(safetyMargin)}`);
+    }
+    
+    const currentStorageState = await new Promise(resolve => browserAPI.storage.local.get(null, data => resolve(data || {})));
+    
+    const nextFullStorageState = {
+        ...currentStorageState,
+        ...dataToSet
+    };
+
+    // Calculate size. JSON.stringify().length gives UTF-16 character count.
+    // For a rough byte estimate, especially for ASCII/Latin1 heavy JSON, it's okay.
+    // For more precision, you might use TextEncoder, but for quota check, this is usually sufficient.
+    const estimatedTotalSizeAfterSave = new TextEncoder().encode(JSON.stringify(nextFullStorageState)).length;
+    // const estimatedTotalSizeAfterSave = JSON.stringify(nextFullStorageState).length; // Original estimate
+
+    console.log(`Check: Est. Size (bytes) ${formatBytes(estimatedTotalSizeAfterSave)}, Limit (incl. margin) ${formatBytes(quotaToUse - safetyMargin)}, Test Quota (raw) ${formatBytes(quotaToUse)}`);
+
+    if (estimatedTotalSizeAfterSave > quotaToUse - safetyMargin) {
+        // --- NEW DETAILED LOGS INSIDE THE IF BLOCK ---
+        console.log(">>> QUOTA EXCEEDED CONDITION MET (TEST) <<<");
+        console.log(`>>> Estimated: ${formatBytes(estimatedTotalSizeAfterSave)}, Limit: ${formatBytes(quotaToUse - safetyMargin)}`);
+        // --- END NEW LOGS ---
+    
+        const limitFormatted = formatBytes(quotaToUse); 
+        let alertMessage = `SAVE ABORTED (TEST): Saving would exceed test limit of ${limitFormatted}.\n\n`;
+        alertMessage += `Estimated total storage required for this save: ${formatBytes(estimatedTotalSizeAfterSave)}.\n`;
+        
+        const currentBytesInUse = await new Promise(resolve => {
+            if (browserAPI.storage.local.getBytesInUse) {
+                browserAPI.storage.local.getBytesInUse(null, bytes => resolve(bytes));
+            } else {
+                resolve(null); 
+            }
+        });
+    
+        if (currentBytesInUse !== null) {
+             alertMessage += `Current actual storage usage: ${formatBytes(currentBytesInUse)} (out of real ${formatBytes(REAL_QUOTA)}).\n\n`;
+        }
+        alertMessage += "Please remove some unused configurations to free up space.";
+        if (IS_TESTING_QUOTA) {
+            alertMessage += "\n(This limit was triggered by a test setting.)";
+        }
+        
+        // --- NEW LOG BEFORE ALERT ---
+        console.log(">>> Preparing to show alert (TEST):", alertMessage);
+        // --- END NEW LOG ---
+        
+        alert(alertMessage); // THIS IS THE ALERT THAT SHOULD APPEAR
+        
+        // --- NEW LOG AFTER ALERT ---
+        console.log(">>> Alert shown (TEST). Preparing to throw error.");
+        // --- END NEW LOG ---
+    
+        console.warn(`Pre-save quota check ${IS_TESTING_QUOTA ? "(TEST)" : ""}: Estimated total size after save ${formatBytes(estimatedTotalSizeAfterSave)} EXCEEDS test quota ${formatBytes(quotaToUse)}. Save aborted.`);
+        throw new Error(`Storage quota check failed ${IS_TESTING_QUOTA ? "(TEST)" : ""}: Estimated size exceeds quota. Save operation aborted.`);
+    }
+
+    // Proceed with saving the data
+    return new Promise((resolve, reject) => {
+        // ... (rest of the saving logic) ...
+        browserAPI.storage.local.set(dataToSet, function() {
+            if (browserAPI.runtime.lastError) {
+                // ... error handling ...
+            } else {
+                console.log(`Data saved successfully via setStorageWithQuotaCheck (IS_TESTING_QUOTA: ${IS_TESTING_QUOTA})`);
+                updateStorageUsageDisplay(); 
+                resolve();
+            }
+        });
+    });
+}
 
 
 function isShortcutForbidden(shortcut) {
@@ -351,20 +577,25 @@ async function saveConfiguration() {
         const editId = document.getElementById('saveButton').dataset.editIndex;
         const currentlySelectedSetInUI = document.getElementById('setSelector').value;
 
+        // It's important that latestConfigurationSets is fetched fresh or is a deep copy
+        // if it's based on the global `configurationSets`, to avoid modifying global state prematurely.
         const storageData = await new Promise(resolve => browserAPI.storage.local.get(['configurationSets'], resolve));
-        let latestConfigurationSets = storageData.configurationSets || [{ name: 'Default Set', buttons: [] }];
+        let latestConfigurationSets = JSON.parse(JSON.stringify(storageData.configurationSets || [{ name: 'Default Set', buttons: [] }]));
+
 
         const targetSetIndex = latestConfigurationSets.findIndex(set => set.name === currentlySelectedSetInUI);
         if (targetSetIndex === -1) {
+            // This case should ideally not happen if UI is synchronized
             throw new Error(`Set "${currentlySelectedSetInUI}" not found. Cannot save button.`);
         }
         const targetSetObject = latestConfigurationSets[targetSetIndex];
 
-        let originalConfig = null;
+        let originalConfig = null; // For edit mode
         if (editId) {
             originalConfig = targetSetObject.buttons.find(c => c.id === editId);
             if (!originalConfig) {
-                throw new Error(`Button with ID ${editId} not found in set "${targetSetObject.name}" for editing.`);
+                // This might happen if the config was deleted from another tab/window
+                throw new Error(`Button with ID ${editId} not found in set "${targetSetObject.name}" for editing. The configuration might have been changed or deleted elsewhere.`);
             }
             validateEditConfiguration(formData, originalConfig, targetSetObject.buttons);
         } else {
@@ -383,6 +614,7 @@ async function saveConfiguration() {
             targetSetObject.buttons[existingButtonIndex] = newConfigData;
         } else {
             targetSetObject.buttons.push(newConfigData);
+            // Handle custom order if it exists
             if (targetSetObject.customOrder && Array.isArray(targetSetObject.customOrder)) {
                 targetSetObject.customOrder.push(newConfigData.id);
             } else if (targetSetObject.buttonOrder && Array.isArray(targetSetObject.buttonOrder)) { // Legacy
@@ -390,6 +622,7 @@ async function saveConfiguration() {
             }
         }
 
+        // Preserve UI states like expanded details
         const expandedStates = {};
         document.querySelectorAll('.config-item').forEach(item => {
             const details = item.querySelector('.config-details');
@@ -398,17 +631,21 @@ async function saveConfiguration() {
             }
         });
 
-        await new Promise(resolve => browserAPI.storage.local.set({
+        const dataToSave = {
             configurationSets: latestConfigurationSets,
             lastConfigUpdate: Date.now()
-        }, resolve));
+        };
 
-        configurationSets = latestConfigurationSets;
-        optionsPageActiveSetName = currentlySelectedSetInUI; // Update the global for options page UI
+        await setStorageWithQuotaCheck(dataToSave, 'configurationSets'); // Use the helper
+
+        // If save is successful, update global state and UI
+        configurationSets = latestConfigurationSets; // Update the global variable
+        optionsPageActiveSetName = currentlySelectedSetInUI;
 
         clearForm();
-        displayConfigurations();
+        displayConfigurations(); // This will re-render based on the new global `configurationSets`
 
+        // Restore expanded states
         setTimeout(() => {
             Object.entries(expandedStates).forEach(([id, isExpanded]) => {
                 const configDiv = document.querySelector(`.config-item[data-id="${id}"]`);
@@ -421,50 +658,33 @@ async function saveConfiguration() {
                     }
                 }
             });
-            if (expandedStates[newConfigData.id]) {
-                 const configDiv = document.querySelector(`.config-item[data-id="${newConfigData.id}"]`);
-                 if (configDiv) {
-                    const details = configDiv.querySelector('.config-details');
-                    const toggle = configDiv.querySelector('.toggle-details');
-                    if (details && toggle) {
-                        details.style.display = 'block';
-                        toggle.innerHTML = '▲';
-                    }
-                 }
-            }
+            // Ensure the newly saved/updated config is expanded if it was before or is new
+             const newOrUpdatedConfigDiv = document.querySelector(`.config-item[data-id="${newConfigData.id}"]`);
+             if (newOrUpdatedConfigDiv) {
+                const details = newOrUpdatedConfigDiv.querySelector('.config-details');
+                const toggle = newOrUpdatedConfigDiv.querySelector('.toggle-details');
+                if (details && toggle && (expandedStates[newConfigData.id] || !editId)) { // Expand if new or was expanded
+                    details.style.display = 'block';
+                    toggle.innerHTML = '▲';
+                }
+             }
         }, 100);
 
     } catch (error) {
-        alert(error.message);
+        // Errors from validation or setStorageWithQuotaCheck will be caught here.
+        // setStorageWithQuotaCheck already shows an alert for quota issues.
+        // Validation errors are also alerted.
+        if (!error.message.startsWith("Storage quota check failed") && 
+            !error.message.startsWith("Please enter") && 
+            !error.message.includes("already in use") &&
+            !error.message.includes("not allowed") &&
+            !error.message.includes("must be selected") &&
+            !error.message.includes("Please add at least one action")) {
+            // Alert for other unexpected errors
+            alert(`An unexpected error occurred: ${error.message}`);
+        }
         console.error("Error saving configuration:", error);
-    }
-}
-
-function updateSingleConfigurationDisplay(config, configDiv) {
-    const actionsPromises = config.actions.map(formatAction);
-    Promise.all(actionsPromises).then(formattedActions => {
-        const actionsHtml = formattedActions.map(action => `<p>${action}</p>`).join('');
-        
-        configDiv.querySelector('.config-name').textContent = config.name;
-        configDiv.querySelector('.config-shortcut').textContent = formatShortcut(config.shortcut);
-        const detailsDiv = configDiv.querySelector('.config-details');
-        const actionsContainer = document.createElement('div');
-        actionsContainer.innerHTML = actionsHtml;
-        
-        // Preserve the button actions div
-        const buttonActions = detailsDiv.querySelector('.button-actions');
-        detailsDiv.innerHTML = '';
-        detailsDiv.appendChild(actionsContainer);
-        detailsDiv.appendChild(buttonActions);
-    });
-}
-
-function updateOrAddConfiguration(config, currentSet) {
-    const existingIndex = currentSet.buttons.findIndex(c => c.id === config.id);
-    if (existingIndex !== -1) {
-        currentSet.buttons[existingIndex] = config;
-    } else {
-        currentSet.buttons.push(config);
+        // No need to call updateStorageUsageDisplay here as setStorageWithQuotaCheck handles it.
     }
 }
 
@@ -530,8 +750,6 @@ function populateActionInputs(actionDiv, action) {
             });
             break;
         case 'withdrawId':
-            break;
-        case 'withdrawId' :
             break;
         case 'observationField':
             actionDiv.querySelector('.fieldName').value = action.fieldName || '';
@@ -604,89 +822,6 @@ function duplicateConfiguration(configId) {
     const saveButton = document.getElementById('saveButton');
     saveButton.textContent = 'Save New Configuration';
     delete saveButton.dataset.editIndex;
-}
-
-function mergeConfigurations(importedData) {
-    console.log('Starting merge process');
-    console.log('Existing buttons:', customButtons);
-    console.log('Imported buttons:', importedData.customButtons);
-
-    const newButtons = importedData.customButtons || [];
-    const conflicts = [];
-
-    newButtons.forEach(newButton => {
-        console.log('Processing button:', newButton.name);
-        
-        const existingButton = customButtons.find(b => b.name === newButton.name);
-        if (existingButton) {
-            console.log('Name conflict found:', existingButton.name);
-            conflicts.push({existing: existingButton, imported: newButton});
-        } else {
-            const shortcutConflict = newButton.shortcut && newButton.shortcut.key ? 
-                customButtons.find(b => 
-                    b.shortcut && 
-                    b.shortcut.key === newButton.shortcut.key &&
-                    b.shortcut.ctrlKey === newButton.shortcut.ctrlKey &&
-                    b.shortcut.shiftKey === newButton.shortcut.shiftKey &&
-                    b.shortcut.altKey === newButton.shortcut.altKey
-                ) : null;
-            
-            if (shortcutConflict) {
-                console.log('Shortcut conflict found:', newButton.shortcut);
-                conflicts.push({existing: shortcutConflict, imported: newButton, type: 'shortcut'});
-            } else {
-                console.log('No conflicts, adding button');
-                customButtons.push(newButton);
-            }
-        }
-    });
-
-    console.log('Conflicts found:', conflicts);
-
-    // Get current button order
-    browserAPI.storage.local.get('buttonOrder', function(data) {
-        let buttonOrder = data.buttonOrder || [];
-        console.log('Current button order before update:', buttonOrder);
-
-        const newButtonIds = newButtons.map(button => button.id);
-        const updatedButtonOrder = [...new Set([...buttonOrder, ...newButtonIds])];
-        console.log('Updated button order:', updatedButtonOrder);
-
-        const saveAndNotify = () => {
-            browserAPI.storage.local.set({
-                customButtons: customButtons,
-                observationFieldMap: {...observationFieldMap, ...(importedData.observationFieldMap || {})},
-                lastConfigUpdate: Date.now(),
-                buttonOrder: updatedButtonOrder
-            }, function() {
-                console.log('Configurations merged and lastConfigUpdate set');
-                console.log('Final customButtons:', customButtons);
-                
-                // Check storage usage
-                browserAPI.storage.local.getBytesInUse(null, function(bytesInUse) {
-                    console.log('Storage bytes in use:', bytesInUse);
-                    console.log('Storage quota:', browserAPI.storage.local.QUOTA_BYTES);
-                    const percentageUsed = (bytesInUse / browserAPI.storage.local.QUOTA_BYTES) * 100;
-                    console.log('Storage usage: ' + percentageUsed.toFixed(2) + '%');
-                });
-                
-                // Notify background script to reload content scripts
-                browserAPI.runtime.sendMessage({action: "configUpdated"});
-
-                // Delay the reload and alert slightly to ensure storage is updated
-                setTimeout(() => {
-                    loadConfigurations();
-                    alert('Import completed successfully.');
-                }, 100);
-            });
-        };
-
-        if (conflicts.length > 0) {
-            resolveConflicts(conflicts, saveAndNotify);
-        } else {
-            saveAndNotify();
-        }
-    });
 }
 
 function addActionToForm(action = null) {
@@ -796,7 +931,6 @@ function addActionToForm(action = null) {
     const copyObservationFieldInputs = actionDiv.querySelector('.copyObservationFieldInputs');
     const addToListInputs = actionDiv.querySelector('.addToListInputs');
     const listSelect = actionDiv.querySelector('.listSelect');
-    console.log('Setting up action form for type:', action ? action.type : 'new action');
     if (taxonIdInputs) {
         taxonIdInputs.innerHTML += `
         <textarea class="taxonComment" placeholder="Enter comment (optional)"></textarea>
@@ -852,20 +986,6 @@ function addActionToForm(action = null) {
         listSelect.appendChild(option);
     });
     });
-
-    if (action && action.type === 'addToList') {
-        console.log('Populating Add to List action:', action);
-        actionType.value = 'addToList';
-        actionType.dispatchEvent(new Event('change'));
-        setTimeout(() => {
-            console.log('Setting list select value to:', action.listId);
-            listSelect.value = action.listId || '';
-            const removeCheckbox = actionDiv.querySelector('.removeFromList');
-            if (removeCheckbox) {
-                removeCheckbox.checked = action.remove || false;
-            }
-        }, 100);
-    }
 
     const fieldNameInput = actionDiv.querySelector('.fieldName');
     const fieldIdInput = actionDiv.querySelector('.fieldId');
@@ -925,69 +1045,7 @@ function addActionToForm(action = null) {
     if (action) {
         actionType.value = action.type;
         actionType.dispatchEvent(new Event('change'));
-        
-        switch (action.type) {
-            case 'follow' :
-                break;
-            case 'reviewed' :
-                break;
-            case 'withdrawId' :
-                break;
-            case 'observationField':
-                fieldNameInput.value = action.fieldName || '';
-                fieldIdInput.value = action.fieldId;
-                lookupObservationField(action.fieldName).then(results => {
-                    const field = results.find(f => f.id.toString() === action.fieldId);
-                    if (field) {
-                        let displayValue = action.fieldValue;
-                        if (field.datatype === 'taxon' && action.displayValue) {
-                            displayValue = action.displayValue; // Use the display value for taxon fields
-                        }
-                        const updatedFieldValueInput = updateFieldValueInput(field, fieldValueContainer, displayValue);
-                        if (field.datatype === 'taxon') {
-                            setupTaxonAutocompleteForInput(updatedFieldValueInput);
-                            updatedFieldValueInput.dataset.taxonId = action.fieldValue; // Store the taxon ID
-                        }
-                    }
-                });
-                break;
-            case 'addTaxonId':
-                if (taxonNameInput && taxonIdInput) {
-                    taxonNameInput.value = action.taxonName;
-                    taxonIdInput.value = action.taxonId;
-                    taxonNameInput.dataset.taxonId = action.taxonId;
-                    actionDiv.querySelector('.taxonComment').value = action.comment || '';
-                }
-                break;
-            case 'annotation':
-                annotationField.value = action.annotationField;
-                updateAnnotationValues(annotationField, annotationValue);
-                annotationValue.value = action.annotationValue;
-                break;
-            case 'addToProject':
-                projectIdInput.value = action.projectId;
-                projectNameInput.value = action.projectName;
-                break;
-            case 'addComment':
-                actionDiv.querySelector('.commentBody').value = action.commentBody;
-                break;
-            case 'qualityMetric':
-                actionDiv.querySelector('.qualityMetricType').value = action.metric;
-                actionDiv.querySelector('.qualityMetricVote').value = action.vote;
-                break;    
-            case 'copyObservationField':
-                actionDiv.querySelector('.sourceFieldId').value = action.sourceFieldId;
-                actionDiv.querySelector('.sourceFieldName').value = action.sourceFieldName;
-                actionDiv.querySelector('.targetFieldId').value = action.targetFieldId;
-                actionDiv.querySelector('.targetFieldName').value = action.targetFieldName;
-                break;     
-            case 'addToList':
-                const listSelect = actionDiv.querySelector('.listSelect');
-                if (listSelect) {
-                    listSelect.value = action.listId;
-                }
-                break;        
-        }
+    
     }
     return actionDiv;  // Make sure to return the actionDiv
 }
@@ -1015,6 +1073,8 @@ function updateAllListSelects() {
 }
 
 function loadOptionsPageData() { // Was loadConfigurations in options.js
+    updateStorageUsageDisplay(); // Call this at the beginning of loading page data
+
     browserAPI.storage.local.get(
         ['configurationSets', 'currentOptionsPageSetName' /* NEW or use existing if it was already for options */, 'observationFieldMap'], // DO NOT load 'optionsPageActiveSetName' (for content.js)
         function(data) {
@@ -1026,46 +1086,18 @@ function loadOptionsPageData() { // Was loadConfigurations in options.js
             if (!configurationSets.some(set => set.name === optionsPageActiveSetName)) { // Ensure valid
                 optionsPageActiveSetName = configurationSets[0] ? configurationSets[0].name : '';
                  if (optionsPageActiveSetName) {
-                    browserAPI.storage.local.set({ currentOptionsPageSetName: optionsPageActiveSetName });
-                }
+                    // No need to set storage here if it's just correcting a local variable
+                    // browserAPI.storage.local.set({ currentOptionsPageSetName: optionsPageActiveSetName });
+                 }
             }
 
             updateSetSelector(); // Should use `optionsPageActiveSetName` (options page's)
             displayConfigurations(); // Should use `optionsPageActiveSetName` (options page's)
             updateSetManagementButtons();
             populateFieldDatalist();
+            // updateStorageUsageDisplay(); // Already called at the top of this function
         }
     );
-}
-
-function handleOptionsPageSetSelection() { // New or replace existing set selector 'change' handler
-    optionsPageActiveSetName = document.getElementById('setSelector').value; // This is options page's selection
-    // Save *only* the options page's view of its current set
-    browserAPI.storage.local.set({ currentOptionsPageSetName: optionsPageActiveSetName });
-    displayConfigurations(); // Update display for the new selection in options page
-}
-
-function migrateConfigurations(configs) {
-    return configs.map(config => {
-        if (!config.actions) {
-            config.actions = [{
-                type: config.actionType || 'observationField',
-                fieldId: config.fieldId,
-                fieldValue: config.fieldValue,
-                annotationField: config.annotationField,
-                annotationValue: config.annotationValue
-            }];
-            delete config.actionType;
-            delete config.fieldId;
-            delete config.fieldValue;
-            delete config.annotationField;
-            delete config.annotationValue;
-        }
-        if (!config.id) {
-            config.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-        }
-        return config;
-    });
 }
 
 async function displayConfigurations() {
@@ -1224,35 +1256,59 @@ function getListName(listId) {
     });
 }
 
-function toggleHideButton(configId, checkbox) {
+async function toggleHideButton(configId, checkbox) { // Make async
     const currentSet = getCurrentSet();
     if (!currentSet) return;
 
     const config = currentSet.buttons.find(c => c.id === configId);
     if (config) {
+        const oldValue = config.buttonHidden; // Store old value
         config.buttonHidden = checkbox.checked;
         
-        // Instead of rebuilding everything, just update this config's display
-        const configDiv = document.querySelector(`.config-item[data-id="${configId}"]`);
-        if (configDiv) {
-            updateConfigurationDisplay(config);
-            saveConfigurationSets(() => {}, false); // Pass false to prevent display refresh
+        try {
+            // Pass a callback that expects an error
+            await saveConfigurationSets(null, false); // Await the save
+            // UI update only on success
+            const configDiv = document.querySelector(`.config-item[data-id="${configId}"]`);
+            if (configDiv) {
+                // updateConfigurationDisplay(config); // This function updates DOM based on config object
+                                                  // which is already modified.
+            }
+        } catch (error) {
+            console.error("Failed to toggle hide button:", error);
+            // Revert optimistic UI change if save failed
+            config.buttonHidden = oldValue;
+            checkbox.checked = oldValue;
+            // Error already alerted by helper.
         }
     }
 }
 
-function toggleDisableConfiguration(configId, checkbox) {
+async function toggleDisableConfiguration(configId, checkbox) { // Make async
     const currentSet = getCurrentSet();
     if (!currentSet) return;
 
     const config = currentSet.buttons.find(c => c.id === configId);
     if (config) {
+        const oldValue = config.configurationDisabled;
         config.configurationDisabled = checkbox.checked;
         
-        const configDiv = document.querySelector(`.config-item[data-id="${configId}"]`);
-        if (configDiv) {
-            updateConfigurationDisplay(config);
-            saveConfigurationSets(() => {}, false);
+        const configDiv = document.querySelector(`.config-item[data-id="${configId}"]`); // Get div before save
+
+        try {
+            await saveConfigurationSets(null, false); // Await
+            // If successful, update UI (already optimistically done or handled by display functions)
+             if (configDiv) { // Update class after successful save
+                configDiv.classList.toggle('disabled-config', config.configurationDisabled);
+             }
+        } catch (error) {
+            console.error("Failed to toggle disable configuration:", error);
+            // Revert optimistic change
+            config.configurationDisabled = oldValue;
+            checkbox.checked = oldValue;
+            if (configDiv) { // Revert class change
+                configDiv.classList.toggle('disabled-config', config.configurationDisabled);
+            }
         }
     }
 }
@@ -1274,29 +1330,6 @@ function updateConfigurationDisplay(config) {
         }
     }
 }
-
-function saveConfigurations() {
-    browserAPI.storage.local.set({
-        customButtons: customButtons,
-        lastConfigUpdate: Date.now()
-    }, function() {
-        console.log('Configuration updated');
-    });
-}
-
-function saveAndReloadConfigurations(updateTimestamp = false) {
-    const dataToSave = { customButtons: customButtons };
-    if (updateTimestamp) {
-        dataToSave.lastConfigUpdate = Date.now();
-    }
-    browserAPI.storage.local.set(dataToSave, function() {
-        console.log('Configuration updated');
-        loadConfigurations();
-    });
-    console.log('Saving configurations:', customButtons);
-    console.log('Setting lastConfigUpdate:', Date.now());
-}
-
 function formatShortcut(shortcut) {
     if (!shortcut || (!shortcut.ctrlKey && !shortcut.shiftKey && !shortcut.altKey && !shortcut.key)) {
         return 'None';
@@ -1308,10 +1341,6 @@ function formatShortcut(shortcut) {
     if (shortcut.key) parts.push(shortcut.key);
     return parts.join(' + ');
 }
-
-
-
-
 
 function clearForm() {
     document.getElementById('buttonName').value = '';
@@ -1325,75 +1354,42 @@ function clearForm() {
     delete saveButton.dataset.editIndex;
 }
 
-function updateConfigurations(configId) {
-    const config = customButtons.find(c => c.id === configId);
-    if (!config) return;
-
-    const updatedConfig = {
-        id: config.id,
-        name: document.getElementById('buttonName').value,
-        shortcut: {
-            ctrlKey: document.getElementById('ctrlKey').checked,
-            shiftKey: document.getElementById('shiftKey').checked,
-            altKey: document.getElementById('altKey').checked,
-            key: document.getElementById('shortcut').value.toUpperCase()
-        },
-        actionType: currentActionType
-    };
-
-    if (currentActionType === 'observationField') {
-        updatedConfig.fieldId = document.getElementById('fieldId').value;
-        updatedConfig.fieldValue = document.getElementById('fieldValue').value;
-    } else {
-        updatedConfig.annotationField = document.getElementById('annotationField').value;
-        updatedConfig.annotationValue = document.getElementById('annotationValue').value;
-    }
-
-    const index = customButtons.findIndex(c => c.id === configId);
-    if (index !== -1) {
-        customButtons[index] = updatedConfig;
-        browserAPI.storage.local.set({customButtons: customButtons}, function() {
-            console.log('Configuration updated');
-            loadConfigurations();
-            clearForm();
-            // Reset the save button
-            const saveButton = document.getElementById('saveButton');
-            saveButton.textContent = 'Save Configuration';
-            saveButton.onclick = saveConfiguration;
-        });
-    }
-}
-
-function toggleHideConfiguration(configId) {
-    const config = customButtons.find(c => c.id === configId);
-    if (config) {
-        config.buttonHidden = !config.buttonHidden;
-        browserAPI.storage.local.set({customButtons: customButtons}, function() {
-            console.log('Configuration visibility toggled');
-            loadConfigurations();
-        });
-    }
-}
-
-function deleteConfiguration(configId) {
+async function deleteConfiguration(configId) {
     if (confirm('Are you sure you want to delete this configuration?')) {
         const currentSet = getCurrentSet();
-        if (!currentSet) return;
+        if (!currentSet) {
+            console.error("Cannot delete configuration: current set not found.");
+            return;
+        }
 
+        const originalButtons = JSON.parse(JSON.stringify(currentSet.buttons)); // Deep copy for potential revert
         currentSet.buttons = currentSet.buttons.filter(c => c.id !== configId);
-        saveConfigurationSets(function() {
-            console.log('Configuration deleted');
-        });
-    }
-}
 
-function setActionType(type) {
-    currentActionType = type;
-    document.getElementById('ofInputs').classList.toggle('hidden', type !== 'observationField');
-    document.getElementById('annotationInputs').classList.toggle('hidden', type !== 'annotation');
-    document.getElementById('ofButton').classList.toggle('active', type === 'observationField');
-    document.getElementById('annotationButton').classList.toggle('active', type === 'annotation');
-    document.getElementById('ofUrlContainer').classList.toggle('hidden', type !== 'observationField');
+        try {
+            await saveConfigurationSets(false); // Call with refreshDisplay = false, as we'll update UI here or rely on displayConfigurations
+            console.log('Configuration deleted successfully.');
+            // UI update: remove the element or re-render
+            // If saveConfigurationSets is set to refreshDisplay=true by default, this might be redundant
+            // but explicit removal here can be faster if saveConfigurationSets doesn't refresh.
+            const configDiv = document.querySelector(`.config-item[data-id="${configId}"]`);
+            if (configDiv) {
+                configDiv.remove();
+            }
+            // If not relying on saveConfigurationSets to refresh the whole display:
+            // updateSelectedCount(); // If the deleted item was selected
+            // updateActionButtonStates();
+        } catch (error) {
+            console.error('Failed to save after deleting configuration:', error.message);
+            alert('Failed to delete configuration. Please try again. Error: ' + error.message);
+            // Revert the change to the global `configurationSets` if save failed
+            const setToRevert = configurationSets.find(set => set.name === currentSet.name);
+            if (setToRevert) {
+                setToRevert.buttons = originalButtons;
+            }
+            // Optionally, force a full refresh from storage if things are uncertain
+            // loadOptionsPageData();
+        }
+    }
 }
 
 function populateAnnotationFields(select) {
@@ -1432,89 +1428,58 @@ function populateFieldDatalist() {
     document.body.appendChild(datalist);
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    loadOptionsPageData();
-    populateFieldDatalist(); // Assuming this is still needed and uses observationFieldMap
-    displayLists(); // For custom lists section
-    loadUndoRecords(); // For undo records section
-    loadAutoFollowSettings(); // For auto-follow settings
+function handleStorageChangeForOptionsPage(changes, areaName) { // Was handleStorageChangesForOptionsPage
+    if (areaName === 'local') {
+        let needsFullDisplayRefresh = false; // Renamed from needsDisplayRefresh for clarity
 
-    document.getElementById('saveButton').addEventListener('click', saveConfiguration);
-    document.getElementById('cancelButton').addEventListener('click', clearForm);
-    document.getElementById('addActionButton').addEventListener('click', () => addActionToForm());
-    document.getElementById('searchInput').addEventListener('input', filterConfigurations);
-    document.getElementById('toggleDateSort').addEventListener('click', toggleDateSort);
-    document.getElementById('toggleAlphaSort').addEventListener('click', toggleAlphaSort);
-    updateSortButtons();
-
-    const shortcutsToggle = document.getElementById('hardcoded-shortcuts-toggle');
-    const shortcutsList = document.getElementById('hardcoded-shortcuts-list');
-    if (shortcutsToggle && shortcutsList) {
-        shortcutsToggle.addEventListener('click', function() {
-            if (shortcutsList.style.display === 'none') {
-                shortcutsList.style.display = 'block';
-                shortcutsToggle.textContent = 'General Shortcuts [-]';
-            } else {
-                shortcutsList.style.display = 'none';
-                shortcutsToggle.textContent = 'General Shortcuts [+]';
-            }
-        });
-    }
-
-    document.getElementById('exportButton').addEventListener('click', exportConfigurations);
-    document.getElementById('importInput').addEventListener('change', importConfigurations);
-    document.getElementById('importButton').addEventListener('click', () => {
-        document.getElementById('importInput').click();
-    });
-
-    document.getElementById('showUndoRecordsButton').addEventListener('click', showUndoRecordsModal);
-    document.getElementById('createSetButton').addEventListener('click', createNewSet);
-    document.getElementById('setSelector').addEventListener('change', handleOptionsPageSetSelectionChange);
-    document.getElementById('duplicateSetButton').addEventListener('click', duplicateCurrentSet);
-    document.getElementById('renameSetButton').addEventListener('click', renameCurrentSet);
-    document.getElementById('removeSetButton').addEventListener('click', removeCurrentSet);
-
-    document.getElementById('preventTaxonFollow').addEventListener('change', saveAutoFollowSettings);
-    document.getElementById('preventFieldFollow').addEventListener('change', saveAutoFollowSettings);
-    document.getElementById('preventTaxonReview').addEventListener('change', saveAutoFollowSettings);
-
-    const preventionToggle = document.getElementById('auto-prevention-toggle');
-    const preventionSettings = document.getElementById('auto-prevention-settings');
-    if (preventionToggle && preventionSettings) {
-        preventionToggle.addEventListener('click', function() {
-            if (preventionSettings.style.display === 'none') {
-                preventionSettings.style.display = 'block';
-                preventionToggle.textContent = 'Prevent Auto-reviewed/Followed [-]';
-            } else {
-                preventionSettings.style.display = 'none';
-                preventionToggle.textContent = 'Prevent Auto-reviewed/Followed [+]';
-            }
-        });
-    }
-
-    document.getElementById('createList').addEventListener('click', createList);
-    document.getElementById('existingLists').addEventListener('click', function(e) {
-        if (e.target.classList.contains('viewList')) {
-            viewList(e.target.dataset.id);
-        } else if (e.target.classList.contains('renameList')) {
-            renameList(e.target.dataset.id);
-        } else if (e.target.classList.contains('deleteList')) {
-            deleteList(e.target.dataset.id);
+        if (changes.configurationSets) {
+            console.log("options.js (storage.onChanged): configurationSets changed.");
+            configurationSets = changes.configurationSets.newValue || configurationSets;
+            needsFullDisplayRefresh = true;
         }
-    });
 
-    // Bulk config actions
-    document.getElementById('selectAllConfigs').addEventListener('click', handleSelectAll);
-    document.getElementById('clearSelectionBtn').addEventListener('click', clearSelection);
-    document.getElementById('deleteSelectedBtn').addEventListener('click', () => performConfigurationAction('delete'));
-    document.getElementById('hideSelectedBtn').addEventListener('click', () => performConfigurationAction('hide'));
-    document.getElementById('showSelectedBtn').addEventListener('click', () => performConfigurationAction('show'));
-    document.getElementById('disableSelectedBtn').addEventListener('click', () => performConfigurationAction('disable'));
-    document.getElementById('enableSelectedBtn').addEventListener('click', () => performConfigurationAction('enable'));
-    document.getElementById('toggleAllConfigs').addEventListener('click', toggleAllConfigurations);
+        if (changes.currentOptionsPageSetName) {
+            const newOptPageSet = changes.currentOptionsPageSetName.newValue; // Renamed from newOptSet
+            if (newOptPageSet && newOptPageSet !== optionsPageActiveSetName) {
+                console.log("options.js (storage.onChanged): currentOptionsPageSetName changed by another options instance.");
+                optionsPageActiveSetName = newOptPageSet;
+                needsFullDisplayRefresh = true;
+            }
+        }
 
-    browserAPI.storage.onChanged.addListener(handleStorageChangeForOptionsPage);
-});
+        if (changes.customLists) {
+            console.log("options.js (storage.onChanged): customLists changed.");
+            // Assuming displayLists and updateAllListSelects are defined and handle this
+            displayLists();
+            updateAllListSelects();
+        }
+        if (changes.observationFieldMap) {
+             console.log("options.js (storage.onChanged): observationFieldMap changed.");
+             observationFieldMap = changes.observationFieldMap.newValue || {};
+             populateFieldDatalist();
+        }
+
+        if (needsFullDisplayRefresh) {
+            console.log("options.js (storage.onChanged): Refreshing display due to storage changes.");
+            updateSetSelector();
+            displayConfigurations();
+            updateSetManagementButtons();
+
+            const editId = document.getElementById('saveButton').dataset.editIndex;
+            if (editId) {
+                const currentSetObj = configurationSets.find(set => set.name === optionsPageActiveSetName);
+                const configExists = currentSetObj && currentSetObj.buttons.find(c => c.id === editId);
+                if (!configExists) {
+                    console.warn("options.js (storage.onChanged): The config being edited changed/removed externally. Clearing form.");
+                    clearForm();
+                    alert("The configuration you were editing has been modified or removed elsewhere. The form has been cleared.");
+                }
+            }
+        }
+        // After any storage change, it's good to update the usage display
+        updateStorageUsageDisplay();
+    }
+}
 
 function showUndoRecordsModal() {
     getUndoRecords(function(undoRecords) {
@@ -1552,203 +1517,129 @@ function exportConfigurations() {
     });
 }
 
-function importConfigurations(event) {
-    console.log('Starting import process');
+async function importConfigurations(event) {
     const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const importedData = JSON.parse(e.target.result);
-                console.log('Imported data:', importedData);
-                
-                if (importedData.configurationSets) {
-                    try {
-                        const importResults = await createImportModal(importedData.configurationSets);
-                        processImportChoices(importResults);
-                        if (importedData.customLists) {
-                            mergeLists(importedData.customLists);
-                        }
-                    } catch (error) {
-                        if (error.message !== 'Import cancelled') {
-                            console.error('Import error:', error);
-                            alert('Error during import process');
-                        }
-                    }
-                } else if (importedData.customButtons) {
-                    // Handle old format
-                    const setName = prompt("Enter a name for the imported set:", `Imported Set ${new Date().toLocaleString()}`);
-                    if (setName) {
-                        const newSet = {
-                            name: setName,
-                            buttons: importedData.customButtons,
-                            observationFieldMap: importedData.observationFieldMap || {}
-                        };
-                        processImportedSets([newSet]);
-                    }
-                } else {
-                    throw new Error('Invalid import format');
-                }
-            } catch (error) {
-                alert('Error parsing the imported file. Please make sure it\'s a valid JSON file.');
-                console.error('Import error:', error);
-            }
-        };
-        reader.readAsText(file);
+    if (!file) {
+        if (event.target) event.target.value = '';
+        return;
     }
-    // Reset the file input to allow re-importing the same file
-    event.target.value = '';
-}
 
-function processImportedSets(importedSets) {
-    let setsToAdd = [];
-    let duplicateContentSets = [];
-    let duplicateNameSets = [];
-
-    importedSets.forEach(importedSet => {
-        const existingSetByContent = configurationSets.find(set => isSetEqual(set, importedSet));
-        const existingSetByName = configurationSets.find(set => set.name === importedSet.name);
-        
-        if (existingSetByContent) {
-            duplicateContentSets.push(importedSet.name);
-        } else if (existingSetByName) {
-            // If there's a name conflict but content is different,
-            // generate a unique name by appending a number
-            let newName = importedSet.name;
-            let counter = 1;
-            while (configurationSets.some(set => set.name === newName)) {
-                newName = `${importedSet.name} (${counter})`;
-                counter++;
-            }
-            duplicateNameSets.push({
-                oldName: importedSet.name,
-                newName: newName
-            });
-            const modifiedSet = { ...importedSet, name: newName };
-            setsToAdd.push(modifiedSet);
-        } else {
-            setsToAdd.push(importedSet);
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        let importedData;
+        try {
+            importedData = JSON.parse(this.result);
+        } catch (parseError) {
+            alert('Error parsing the imported file. Please make sure it\'s a valid JSON file from this extension.\nError: ' + parseError.message);
+            console.error('Import parse error:', parseError);
+            if (event.target) event.target.value = '';
+            return;
         }
-    });
 
-    let messages = [];
-    if (duplicateContentSets.length > 0) {
-        messages.push(`The following sets are exact duplicates and will be skipped: ${duplicateContentSets.join(', ')}`);
-    }
-    if (duplicateNameSets.length > 0) {
-        messages.push(`The following sets had name conflicts and were renamed:\n${duplicateNameSets.map(set => 
-            `"${set.oldName}" -> "${set.newName}"`).join('\n')}`);
-    }
+        let setsImportAttempted = false;
+        let setsImportShouldProceed = true; // Flag to control progression
 
-    if (setsToAdd.length > 0) {
-        configurationSets.push(...setsToAdd);
-        optionsPageActiveSetName = setsToAdd[setsToAdd.length - 1].name;
-        saveConfigurationSets();
-        messages.push(`Successfully imported ${setsToAdd.length} new configuration set(s).`);
-    } else {
-        messages.push('No new configuration sets were imported.');
-    }
+        if (importedData.configurationSets) {
+            setsImportAttempted = true;
+            try {
+                const importResults = await createImportModal(importedData.configurationSets);
+                await processImportChoices(importResults); // This will throw on quota error if saveConfigurationSets fails
+                // If processImportChoices completes without error, it means saving was successful (or no save was needed)
+            } catch (error) {
+                setsImportShouldProceed = false; // Mark that we should not proceed past set import attempts
+                if (error.message !== 'Import cancelled' && !error.message.toLowerCase().includes("quota check failed")) {
+                    console.error('Error during configuration set import process:', error);
+                    alert('Error during configuration set import process: ' + error.message);
+                } else if (error.message.toLowerCase().includes("quota check failed")) {
+                    console.warn('Configuration set import aborted due to storage quota issue (already alerted).');
+                } else {
+                    console.log('Configuration set import cancelled by user.');
+                }
+            }
+        } else if (importedData.customButtons) {
+            setsImportAttempted = true;
+            const setName = prompt("Enter a name for the imported set (old format):", `Imported Set ${new Date().toLocaleString()}`);
+            if (setName) {
+                const newSet = { name: setName, buttons: importedData.customButtons };
+                try {
+                    const storageData = await new Promise(resolve => browserAPI.storage.local.get(['configurationSets'], resolve));
+                    let currentSets = storageData.configurationSets || [{ name: 'Default Set', buttons: [] }];
+                    currentSets.push(newSet);
+                    await setStorageWithQuotaCheck({ configurationSets: currentSets }, 'configurationSets');
+                    configurationSets = currentSets;
+                    optionsPageActiveSetName = newSet.name;
+                } catch (error) {
+                    setsImportShouldProceed = false; // Mark that we should not proceed
+                    console.error("Error saving imported old-format set:", error.message);
+                    // Quota error is already alerted by setStorageWithQuotaCheck
+                }
+            } else {
+                console.log("Import of old-format set cancelled by user (no name provided).");
+                setsImportShouldProceed = false; // If user cancels naming, don't proceed with lists from this import
+            }
+        }
 
-    alert(messages.join('\n\n'));
-}    
+        let listsImportAttempted = false;
+
+        // --- CRITICAL CHECK: Only proceed to list import if setsImportShouldProceed is true ---
+        if (setsImportShouldProceed && importedData.customLists) {
+            listsImportAttempted = true;
+            try {
+                const existingListsData = await new Promise(resolve => browserAPI.storage.local.get('customLists', resolve));
+                const existingLists = existingListsData.customLists || [];
+                const listImportResults = await createListImportModal(importedData.customLists, existingLists);
+                await processListImportChoices(listImportResults, existingLists); // This will throw on quota error
+            } catch (error) {
+                // listsImportShouldProceed is not strictly needed here as it's the last step, but good for consistency
+                if (error.message !== 'Import cancelled' && !error.message.toLowerCase().includes("quota check failed")) {
+                    console.error('Error during list import process:', error);
+                    alert('Error during list import process: ' + error.message);
+                } else if (error.message.toLowerCase().includes("quota check failed")) {
+                    console.warn('List import aborted due to storage quota issue (already alerted).');
+                } else {
+                    console.log('List import cancelled by user.');
+                }
+            }
+        }
+
+        if (!setsImportAttempted && !listsImportAttempted && !importedData.customButtons) {
+            alert('Invalid import format: No configurationSets, customButtons, or customLists found in the file.');
+        }
+
+        loadOptionsPageData(); // Always refresh UI from storage at the end
+    };
+    reader.readAsText(file);
+    if (event.target) event.target.value = '';
+}
 
 function isSetEqual(set1, set2) {
     return JSON.stringify(set1) === JSON.stringify(set2);
 }
 
-function mergeConfigurationSets(importedSets) {
-    importedSets.forEach(importedSet => {
+function mergeConfigurationSets(importedSetsToProcess) {
+    importedSetsToProcess.forEach(importedSet => {
         const existingSetIndex = configurationSets.findIndex(set => set.name === importedSet.name);
         if (existingSetIndex !== -1) {
-            // Merge buttons
+            const targetExistingSet = configurationSets[existingSetIndex];
             importedSet.buttons.forEach(importedButton => {
-                const existingButtonIndex = configurationSets[existingSetIndex].buttons.findIndex(b => b.name === importedButton.name);
+                const existingButtonIndex = targetExistingSet.buttons.findIndex(b => b.name === importedButton.name);
                 if (existingButtonIndex !== -1) {
-                    // Ask user what to do
-                    if (confirm(`Button "${importedButton.name}" already exists in set "${importedSet.name}". Replace it?`)) {
-                        configurationSets[existingSetIndex].buttons[existingButtonIndex] = importedButton;
+                    if (confirm(`Button "${importedButton.name}" already exists in set "${targetExistingSet.name}". Replace it with the imported version?`)) {
+                        targetExistingSet.buttons[existingButtonIndex] = importedButton;
                     }
                 } else {
-                    configurationSets[existingSetIndex].buttons.push(importedButton);
+                    targetExistingSet.buttons.push(importedButton);
                 }
             });
-            // Merge observationFieldMap
-            configurationSets[existingSetIndex].observationFieldMap = {
-                ...configurationSets[existingSetIndex].observationFieldMap,
-                ...importedSet.observationFieldMap
+            targetExistingSet.observationFieldMap = {
+                ...targetExistingSet.observationFieldMap,
+                ...(importedSet.observationFieldMap || {})
             };
         } else {
-            configurationSets.push(importedSet);
+            console.warn(`Merge target set "${importedSet.name}" not found in existing configurationSets. Adding as new.`);
+            configurationSets.push(JSON.parse(JSON.stringify(importedSet)));
         }
     });
-
-    browserAPI.storage.local.set({ 
-        configurationSets: configurationSets,
-        lastConfigUpdate: Date.now()
-    }, function() {
-        console.log('Configuration sets updated');
-        updateSetSelector();
-        displayConfigurations();
-        alert('Import completed successfully.');
-    });
-}
-
-function resolveConflicts(conflicts, callback) {
-    if (conflicts.length === 0) {
-        callback();
-        return;
-    }
-
-    const conflict = conflicts.shift();
-    const message = conflict.type === 'shortcut' 
-        ? `Shortcut conflict for "${conflict.imported.name}". Choose an action:`
-        : `Configuration "${conflict.existing.name}" already exists. Choose an action:`;
-
-    const options = conflict.type === 'shortcut'
-        ? ['Keep existing', 'Use imported', 'Assign new']
-        : ['Keep existing', 'Replace with imported', 'Rename and add'];
-
-    const choice = prompt(`${message}\n${options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}\n\nEnter the number of your choice:`);
-
-    switch (choice) {
-        case '1':
-            // Keep existing (do nothing)
-            break;
-        case '2':
-            if (conflict.type === 'shortcut') {
-                conflict.existing.shortcut = null;
-                customButtons.push(conflict.imported);
-            } else {
-                const index = customButtons.findIndex(b => b.id === conflict.existing.id);
-                customButtons[index] = conflict.imported;
-            }
-            break;
-        case '3':
-            if (conflict.type === 'shortcut') {
-                const newShortcut = prompt('Enter new shortcut (e.g., "Ctrl+Shift+A"):');
-                if (newShortcut) {
-                    const parts = newShortcut.split('+');
-                    conflict.imported.shortcut = {
-                        ctrlKey: parts.includes('Ctrl'),
-                        shiftKey: parts.includes('Shift'),
-                        altKey: parts.includes('Alt'),
-                        key: parts[parts.length - 1]
-                    };
-                    customButtons.push(conflict.imported);
-                }
-            } else {
-                const newName = prompt('Enter new name for the imported configuration:');
-                if (newName) {
-                    conflict.imported.name = newName;
-                    customButtons.push(conflict.imported);
-                }
-            }
-            break;
-        default:
-            alert('Invalid choice. Keeping the existing configuration.');
-    }
-
-    resolveConflicts(conflicts, callback);
 }
 
 function loadUndoRecords() {
@@ -1796,26 +1687,46 @@ function loadUndoRecords() {
     });
 }
 
-// Call this function when the options page loads
-document.addEventListener('DOMContentLoaded', loadUndoRecords);
+async function createList() {
+    const listNameInput = document.getElementById('newListName');
+    const listName = listNameInput.value.trim();
+    console.log("Create List called. List name: '", listName, "'");
 
-function createList() {
-    const listName = document.getElementById('newListName').value.trim();
     if (listName) {
-        browserAPI.storage.local.get('customLists', function(data) {
+        try {
+            const data = await new Promise(resolve => browserAPI.storage.local.get('customLists', resolve));
             const customLists = data.customLists || [];
+
+            if (customLists.some(list => list.name === listName)) {
+                alert("A list with this name already exists. Please choose a different name.");
+                return;
+            }
+
             const newList = {
                 id: Date.now().toString(),
                 name: listName,
                 observations: []
             };
             customLists.push(newList);
-            browserAPI.storage.local.set({customLists: customLists}, function() {
-                displayLists();
-                updateAllListSelects();
-                document.getElementById('newListName').value = '';
-            });
-        });
+
+            await setStorageWithQuotaCheck({ customLists: customLists }, 'customLists');
+
+            displayLists();
+            updateAllListSelects();
+            listNameInput.value = ''; // Clear the input field after successful creation
+            console.log("List created successfully:", newList.name);
+        } catch (error) {
+            console.error("Error creating list:", error.message);
+            // Quota error is handled by setStorageWithQuotaCheck's alert
+            if (!error.message.toLowerCase().includes("quota check failed")) {
+                alert("An error occurred while creating the list: " + error.message);
+            }
+        }
+    } else {
+        // User tried to create a list with an empty name
+        console.log("Attempted to create list with empty name.");
+        alert("Please enter a name for the new list.");
+        listNameInput.focus(); // Optionally focus the input field
     }
 }
   
@@ -1840,81 +1751,67 @@ function displayLists() {
     });
 }
   
-  // Add event listeners
-  document.getElementById('createList').addEventListener('click', createList);
-  document.addEventListener('DOMContentLoaded', displayLists);
-
-  function renameList(listId) {
+async function renameList(listId) { // Make async
     const newName = prompt("Enter new name for the list:");
-    if (newName) {
-        browserAPI.storage.local.get('customLists', function(data) {
+    if (newName && newName.trim() !== "") {
+        try {
+            const data = await new Promise(resolve => browserAPI.storage.local.get('customLists', resolve));
             const customLists = data.customLists || [];
+            
+            // Check if new name conflicts with another existing list (excluding the current one being renamed)
+            if (customLists.some(list => list.id !== listId && list.name === newName.trim())) {
+                alert("Another list with this name already exists. Please choose a different name.");
+                return;
+            }
+
             const listIndex = customLists.findIndex(list => list.id === listId);
             if (listIndex !== -1) {
-                customLists[listIndex].name = newName;
-                browserAPI.storage.local.set({customLists: customLists}, function() {
-                    displayLists();
-                    updateAllListSelects();
-                });
+                customLists[listIndex].name = newName.trim();
+                
+                await setStorageWithQuotaCheck({ customLists: customLists }, 'customLists');
+
+                displayLists();
+                updateAllListSelects();
+            } else {
+                alert("List not found for renaming."); // Should not happen if UI is correct
             }
-        });
+        } catch (error) {
+            console.error("Error renaming list:", error.message);
+        }
     }
 }
 
-function deleteList(listId) {
+async function deleteList(listId) { // Make async
     if (confirm("Are you sure you want to delete this list?")) {
-        browserAPI.storage.local.get('customLists', function(data) {
-            const customLists = data.customLists || [];
+        try {
+            const data = await new Promise(resolve => browserAPI.storage.local.get('customLists', resolve));
+            let customLists = data.customLists || [];
             const updatedLists = customLists.filter(list => list.id !== listId);
-            browserAPI.storage.local.set({customLists: updatedLists}, function() {
+            
+            // Check if list was actually found and removed (i.e., length changed)
+            if (updatedLists.length < customLists.length) {
+                await setStorageWithQuotaCheck({ customLists: updatedLists }, 'customLists');
                 displayLists();
                 updateAllListSelects();
-            });
-        });
+            } else {
+                 console.warn("List not found for deletion, or list was already empty.");
+                 // Still refresh display in case of discrepancies
+                 displayLists();
+                 updateAllListSelects();
+            }
+        } catch (error) {
+            console.error("Error deleting list:", error.message);
+        }
     }
 }
   
-  // Add event listeners for rename and delete
-  document.getElementById('existingLists').addEventListener('click', function(e) {
-    if (e.target.classList.contains('viewList')) {
-        viewList(e.target.dataset.id);
-    }  else if (e.target.classList.contains('renameList')) {
-      renameList(e.target.dataset.id);
-    } else if (e.target.classList.contains('deleteList')) {
-      deleteList(e.target.dataset.id);
-    }
-  });
-
-  async function viewList(listId) {
+async function viewList(listId) {
     const url = await generateListObservationURL(listId);
     if (url) {
         window.open(url, '_blank');
     } else {
         alert('This list is empty or not found.');
     }
-}
-
-function loadOptionsPageData() {
-    browserAPI.storage.local.get(
-        ['configurationSets', 'currentOptionsPageSetName', 'observationFieldMap'],
-        function(data) {
-            configurationSets = data.configurationSets || [{ name: 'Default Set', buttons: [] }];
-            optionsPageActiveSetName = data.currentOptionsPageSetName || (configurationSets[0] ? configurationSets[0].name : '');
-            observationFieldMap = data.observationFieldMap || {};
-
-            if (!configurationSets.some(set => set.name === optionsPageActiveSetName) && configurationSets.length > 0) {
-                optionsPageActiveSetName = configurationSets[0].name;
-                if (optionsPageActiveSetName) {
-                    browserAPI.storage.local.set({ currentOptionsPageSetName: optionsPageActiveSetName });
-                }
-            }
-
-            updateSetSelector();
-            displayConfigurations();
-            updateSetManagementButtons();
-            populateFieldDatalist();
-        }
-    );
 }
 
 function updateSetSelector() {
@@ -2007,23 +1904,36 @@ function removeCurrentSet() {
     }
 }
 
-function saveConfigurationSets(callback, refreshDisplay = true) {
-    const setToPersistForOptionsPage = document.getElementById('setSelector').value || optionsPageActiveSetName;
+async function saveConfigurationSets(refreshDisplay = true) {
+    const currentSelectorValue = document.getElementById('setSelector').value;
+    const activeSetName = optionsPageActiveSetName || (configurationSets[0] ? configurationSets[0].name : '');
+    const setToPersistForOptionsPage = currentSelectorValue || activeSetName;
 
-    browserAPI.storage.local.set({
-        configurationSets: configurationSets, // Assumes global `configurationSets` is up-to-date
+    const dataToSave = {
+        configurationSets: configurationSets, // Assumes global `configurationSets` is the source of truth
         currentOptionsPageSetName: setToPersistForOptionsPage,
         lastConfigUpdate: Date.now()
-    }, function() {
-        console.log('Configuration sets and options page current set name updated');
+    };
+
+    try {
+        await setStorageWithQuotaCheck(dataToSave, 'configurationSets');
+        console.log('Configuration sets and options page current set name updated.');
+
         if (refreshDisplay) {
-            optionsPageActiveSetName = setToPersistForOptionsPage; // Update global for UI consistency
-            updateSetSelector();
-            displayConfigurations();
+            // Ensure global optionsPageActiveSetName is consistent with what was intended to be saved for the UI
+            if (optionsPageActiveSetName !== setToPersistForOptionsPage) {
+                 optionsPageActiveSetName = setToPersistForOptionsPage;
+            }
+            updateSetSelector();       // Uses global optionsPageActiveSetName
+            displayConfigurations();   // Uses global optionsPageActiveSetName
             updateSetManagementButtons();
         }
-        if (callback) callback();
-    });
+    } catch (error) {
+        console.error("Error in saveConfigurationSets:", error.message);
+        // The error (e.g., quota exceeded) would have been alerted by setStorageWithQuotaCheck.
+        // Re-throw it so the calling function (e.g., processImportChoices, deleteConfiguration) can catch it and react.
+        throw error;
+    }
 }
 
 function mergeLists(importedLists) {
@@ -2042,75 +1952,89 @@ function mergeLists(importedLists) {
     });
 }
 
-function processListImportChoices(results, existingLists) {
+async function processListImportChoices(results, existingLists) {
     let listsToAdd = [];
-    let listsToMerge = [];
-    let skippedLists = [];
+    let listsToMerge = []; // For lists chosen to be merged
+    let skippedListsCount = 0;
 
     results.forEach(result => {
         switch (result.action) {
             case 'new':
-                listsToAdd.push(result.list);
+                listsToAdd.push({
+                    ...result.list,
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9)
+                });
                 break;
             case 'rename':
-                listsToAdd.push({ 
-                    ...result.list, 
+                 listsToAdd.push({
+                    ...result.list,
                     name: result.newName,
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9)
                 });
                 break;
             case 'merge':
-                listsToMerge.push(result.list);
+                const existingListToMergeWith = existingLists.find(el => el.id === result.list.id);
+                if (existingListToMergeWith) {
+                    const combinedObservations = [
+                        ...existingListToMergeWith.observations,
+                        ...result.list.observations
+                    ];
+                    existingListToMergeWith.observations = [...new Set(combinedObservations)];
+                    // existingLists is modified in place for merges
+                } else {
+                    listsToAdd.push({
+                         ...result.list,
+                         id: Date.now().toString() + Math.random().toString(36).substr(2, 9)
+                    });
+                }
                 break;
             case 'skip':
-                skippedLists.push(result.list.name);
+                skippedListsCount++;
                 break;
         }
     });
 
-    // Handle merges first
-    listsToMerge.forEach(listToMerge => {
-        const existingList = existingLists.find(list => list.id === listToMerge.id);
-        if (existingList) {
-            // Merge observations, removing duplicates
-            existingList.observations = [...new Set([
-                ...existingList.observations,
-                ...listToMerge.observations
-            ])];
+    const finalLists = [...existingLists, ...listsToAdd];
+    const madeChanges = listsToAdd.length > 0 || results.some(r => r.action === 'merge');
+
+    if (madeChanges) {
+        try {
+            await setStorageWithQuotaCheck({ customLists: finalLists }, 'customLists');
+
+            let messageParts = [];
+            if (listsToAdd.length > 0) messageParts.push(`Added or renamed ${listsToAdd.length} new list(s).`);
+            if (results.some(r => r.action === 'merge')) messageParts.push(`Merged existing lists with imported data.`); // Or be more specific if you track merge counts
+
+            let alertMessage = "List import successful.";
+            if (messageParts.length > 0) {
+                alertMessage += `\nDetails:\n- ${messageParts.join('\n- ')}`;
+            }
+            if (skippedListsCount > 0) { // Assuming skippedListsCount is correctly calculated for lists
+                alertMessage += `\n- Skipped ${skippedListsCount} list(s) based on user choice.`;
+            }
+
+            if (messageParts.length > 0 || skippedListsCount > 0) {
+                alert(alertMessage);
+            } else {
+                console.log("List import: No new, merged, or skipped lists to report, but save was successful.");
+            }
+
+        } catch (error) {
+            console.error("Error saving imported/merged lists:", error.message);
+            // Quota error is already alerted by setStorageWithQuotaCheck.
+            if (!error.message.toLowerCase().includes("quota check failed") &&
+                !error.message.toLowerCase().includes("storage limit")) {
+                alert(`Failed to save list changes. Error: ${error.message}`);
+            }
+            throw error; // Re-throw for importConfigurations to handle flow
         }
-    });
-
-    // Add new lists
-    if (listsToAdd.length > 0) {
-        existingLists = [...existingLists, ...listsToAdd];
+    } else if (skippedListsCount > 0 && results.length === skippedListsCount) {
+         alert("List import: All lists were skipped based on user choice. No changes made.");
+    } else if (results.length === 0) {
+        console.log("List import: No lists were provided for import.");
     }
-
-    // Save changes
-    browserAPI.storage.local.set({customLists: existingLists}, function() {
-        console.log('Lists updated');
-        
-        // Show summary
-        let summary = [];
-        if (listsToAdd.length > 0) summary.push(`Added ${listsToAdd.length} new list(s)`);
-        if (listsToMerge.length > 0) summary.push(`Merged ${listsToMerge.length} list(s)`);
-        if (skippedLists.length > 0) summary.push(`Skipped ${skippedLists.length} identical list(s): ${skippedLists.join(', ')}`);
-        
-        alert(summary.join('\n'));
-        
-        // Refresh the lists display
-        displayLists();
-    });
 }
 
-function finalizeMerge(existingLists, listsToAdd) {
-    const updatedLists = [...existingLists, ...listsToAdd];
-    browserAPI.storage.local.set({customLists: updatedLists}, function() {
-        console.log('Lists merged successfully');
-        displayLists();
-        updateAllListSelects();
-        alert('Import completed successfully. Lists have been merged.');
-    });
-}
 
 function getCurrentSet() {
     // This function is used by various UI actions on the options page (delete, duplicate, edit etc.)
@@ -2183,16 +2107,37 @@ function performConfigurationAction(action) {
 
     const actionMap = {
         delete: {
-            prompt: 'Are you sure you want to delete these configurations?',
-            action: () => {
-                if (!confirm(actionMap.delete.prompt)) return;
-                currentSet.buttons = currentSet.buttons.filter(c => !selectedConfigurations.has(c.id));
-                selectedConfigurations.forEach(id => {
-                    const configDiv = document.querySelector(`.config-item[data-id="${id}"]`);
-                    if (configDiv) configDiv.remove();
-                });
-                clearSelection();
-                saveConfigurationSets();
+            // prompt: 'Are you sure you want to delete these configurations?', // prompt is now within the action
+            action: async () => { // Make the arrow function async
+                if (!confirm('Are you sure you want to delete these configurations?')) return;
+                
+                // Operate on a copy for modification, then update global if save succeeds
+                let currentSetButtons = [...currentSet.buttons];
+                const initialButtonCount = currentSetButtons.length;
+                currentSetButtons = currentSetButtons.filter(c => !selectedConfigurations.has(c.id));
+
+                if (currentSetButtons.length < initialButtonCount) { // If any configs were actually marked for deletion
+                    const originalButtons = currentSet.buttons; // Backup
+                    currentSet.buttons = currentSetButtons; // Optimistically update for save
+                    try {
+                        await saveConfigurationSets(); // Await the save. This uses the global `configurationSets`.
+                        // UI changes only after successful save
+                        selectedConfigurations.forEach(id => { 
+                            const configDiv = document.querySelector(`.config-item[data-id="${id}"]`);
+                            if (configDiv) configDiv.remove();
+                        });
+                        clearSelection(); // Clear selection checkboxes and count
+                        // displayConfigurations(); // Re-render to be safe, or rely on saveConfigurationSets
+                    } catch (error) {
+                        console.error("Failed to delete selected configurations:", error);
+                        currentSet.buttons = originalButtons; // Revert if save failed
+                        // Error already alerted. Consider reloading configurations to reflect true state.
+                        loadOptionsPageData();
+                    }
+                } else {
+                    console.log("No configurations found for deletion in the current selection.");
+                    clearSelection();
+                }
             }
         },
         hide: {
@@ -2265,17 +2210,6 @@ function performConfigurationAction(action) {
 
     actionMap[action].action();
 }
-
-// Add these event listeners in the DOMContentLoaded section
-document.getElementById('selectAllConfigs').addEventListener('click', handleSelectAll);
-document.getElementById('clearSelectionBtn').addEventListener('click', clearSelection);
-document.getElementById('deleteSelectedBtn').addEventListener('click', () => performConfigurationAction('delete'));
-document.getElementById('hideSelectedBtn').addEventListener('click', () => performConfigurationAction('hide'));
-document.getElementById('showSelectedBtn').addEventListener('click', () => performConfigurationAction('show'));
-document.getElementById('disableSelectedBtn').addEventListener('click', () => performConfigurationAction('disable'));
-document.getElementById('enableSelectedBtn').addEventListener('click', () => performConfigurationAction('enable'));
-document.getElementById('toggleAllConfigs').addEventListener('click', toggleAllConfigurations);
-let allExpanded = false;
 
 function updateToggleAllButton() {
     const configDivs = document.querySelectorAll('.config-item');
@@ -2430,10 +2364,10 @@ function createImportModal(importedSets) {
     });
 }
 
-function processImportChoices(results) {
+async function processImportChoices(results) { // For Configuration Sets
     let setsToAdd = [];
-    let setsToMerge = [];
-    let skippedSets = [];
+    let setsMarkedForMerge = [];
+    let skippedSetsCount = 0;
 
     results.forEach(result => {
         switch (result.action) {
@@ -2441,58 +2375,74 @@ function processImportChoices(results) {
                 setsToAdd.push(result.set);
                 break;
             case 'rename':
-                setsToAdd.push({ ...result.set, name: result.newName });
+                let newName = result.newName;
+                let counter = 1;
+                while (configurationSets.some(set => set.name === newName) || setsToAdd.some(s => s.name === newName)) {
+                    newName = `${result.set.name} (${counter++})`;
+                }
+                setsToAdd.push({ ...result.set, name: newName });
                 break;
             case 'merge':
-                setsToMerge.push(result.set);
+                setsMarkedForMerge.push(result.set);
                 break;
             case 'skip':
-                skippedSets.push(result.set.name);
+                skippedSetsCount++;
                 break;
         }
     });
 
-    // Handle merges first
-    setsToMerge.forEach(setToMerge => {
-        const existingSet = configurationSets.find(set => set.name === setToMerge.name);
-        if (existingSet) {
-            existingSet.buttons = [...existingSet.buttons, ...setToMerge.buttons];
-            existingSet.observationFieldMap = { 
-                ...existingSet.observationFieldMap, 
-                ...setToMerge.observationFieldMap 
-            };
-        }
-    });
+    if (setsMarkedForMerge.length > 0) {
+        mergeConfigurationSets(setsMarkedForMerge);
+    }
 
-    // Add new sets
     if (setsToAdd.length > 0) {
         configurationSets.push(...setsToAdd);
-        optionsPageActiveSetName = setsToAdd[setsToAdd.length - 1].name;
+        if (!optionsPageActiveSetName || !configurationSets.some(set => set.name === optionsPageActiveSetName)) {
+            if (setsToAdd.length > 0) {
+                 optionsPageActiveSetName = setsToAdd[setsToAdd.length - 1].name;
+            } else if (configurationSets.length > 0) {
+                 optionsPageActiveSetName = configurationSets[0].name;
+            }
+        }
     }
 
-    // Save changes
-    saveConfigurationSets();
+    if (setsToAdd.length > 0 || setsMarkedForMerge.length > 0) {
+        try {
+            await saveConfigurationSets(); // This will throw on quota error
 
-    // Show summary
-    let summary = [];
-    if (setsToAdd.length > 0) summary.push(`Added ${setsToAdd.length} new set(s)`);
-    if (setsToMerge.length > 0) summary.push(`Merged ${setsToMerge.length} set(s)`);
-    if (skippedSets.length > 0) summary.push(`Skipped ${skippedSets.length} identical set(s): ${skippedSets.join(', ')}`);
-    
-    alert(summary.join('\n'));
+            let messageParts = [];
+            if (setsToAdd.length > 0) messageParts.push(`Added or renamed ${setsToAdd.length} new configuration set(s).`);
+            if (setsMarkedForMerge.length > 0) messageParts.push(`Processed ${setsMarkedForMerge.length} configuration set(s) for merging.`);
+
+            let alertMessage = "Configuration set import successful.";
+            if (messageParts.length > 0) {
+                alertMessage += `\nDetails:\n- ${messageParts.join('\n- ')}`;
+            }
+            if (skippedSetsCount > 0) {
+                alertMessage += `\n- Skipped ${skippedSetsCount} set(s) based on user choice.`;
+            }
+            // Only alert if there's something to report beyond just "successful"
+            if (messageParts.length > 0 || skippedSetsCount > 0) {
+                alert(alertMessage);
+            } else {
+                console.log("Configuration set import: No new, merged, or skipped sets to report, but save was successful (e.g., empty import file processed).");
+            }
+
+        } catch (error) {
+            console.error("Error saving processed configuration sets:", error.message);
+            // Quota error is already alerted by setStorageWithQuotaCheck (via saveConfigurationSets)
+            if (!error.message.toLowerCase().includes("quota check failed") &&
+                !error.message.toLowerCase().includes("storage limit")) {
+                alert("Failed to save configuration set changes. Error: " + error.message);
+            }
+            throw error; // Re-throw for importConfigurations to handle flow
+        }
+    } else if (skippedSetsCount > 0 && results.length === skippedSetsCount) {
+        alert("Configuration set import: All sets were skipped based on user choice. No changes saved.");
+    } else if (results.length === 0) {
+        console.log("Configuration set import: No sets were provided for import.");
+    }
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    const importInput = document.getElementById('importInput');
-    const importButton = document.getElementById('importButton');
-    
-    if (importInput && importButton) {
-        importInput.addEventListener('change', importConfigurations);
-        importButton.addEventListener('click', () => {
-            importInput.click();
-        });
-    }
-});
 
 function createListImportModal(importedLists, existingLists) {
     const modal = document.createElement('div');
@@ -2626,38 +2576,4 @@ function saveAutoFollowSettings() {
         preventTaxonReview: document.getElementById('preventTaxonReview').checked
     };
     browserAPI.storage.local.set(settings);
-}
-
-function handleStorageChangesForOptionsPage(changes, areaName) { // Was handleStorageChangesForOptionsPage
-    if (areaName === 'local') {
-        let needsDisplayRefresh = false;
-
-        if (changes.configurationSets) {
-            console.log("options.js (storage.onChanged): configurationSets changed.");
-            configurationSets = changes.configurationSets.newValue || configurationSets;
-            needsDisplayRefresh = true;
-        }
-        // If options.js uses its own 'currentOptionsPageSetName' and multiple options tabs could be open
-        if (changes.currentOptionsPageSetName) {
-            const newOptSet = changes.currentOptionsPageSetName.newValue;
-            if (newOptSet && newOptSet !== optionsPageActiveSetName) { // optionsPageActiveSetName here is options page's
-                console.log("options.js (storage.onChanged): currentOptionsPageSetName changed by another options instance.");
-                optionsPageActiveSetName = newOptSet; // Update options page's current set
-                needsDisplayRefresh = true;
-            }
-        }
-
-        // NO REACTION TO 'optionsPageActiveSetName' (the content.js one)
-
-        if (changes.customLists) { /* ... as before ... */ }
-        if (changes.observationFieldMap) { /* ... as before ... */ }
-
-        if (needsDisplayRefresh) {
-            // `optionsPageActiveSetName` for options.js is already set (either from its own UI or another options tab)
-            updateSetSelector(); // Ensures selector matches options.js's `optionsPageActiveSetName`
-            displayConfigurations(); // Uses options.js's `optionsPageActiveSetName`
-            updateSetManagementButtons();
-            // ... edit form staleness check ...
-        }
-    }
 }
