@@ -113,7 +113,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('showSelectedBtn').addEventListener('click', () => performConfigurationAction('show'));
     document.getElementById('disableSelectedBtn').addEventListener('click', () => performConfigurationAction('disable'));
     document.getElementById('enableSelectedBtn').addEventListener('click', () => performConfigurationAction('enable'));
-    document.getElementById('toggleAllConfigs').addEventListener('click', toggleAllConfigurations);
+    document.getElementById('expandSelectedConfigsBtn').addEventListener('click', expandSelectedConfigurations);
+    document.getElementById('collapseSelectedConfigsBtn').addEventListener('click', collapseSelectedConfigurations);
 
     // UI Toggles for collapsible sections
     const shortcutsToggle = document.getElementById('hardcoded-shortcuts-toggle');
@@ -1157,34 +1158,87 @@ function loadOptionsPageData() {
 
 async function displayConfigurations() {
     const container = document.getElementById('buttonConfigs');
-    container.innerHTML = '';
+    const previouslyExpandedIds = new Set();
 
-    const currentSet = getCurrentSet();
+    // Before clearing, record which items were expanded
+    // Ensure we are querying within the correct container if it might be dynamically populated elsewhere first
+    // For this options page, 'container' should be the correct one.
+    container.querySelectorAll('.config-item').forEach(item => {
+        const details = item.querySelector('.config-details');
+        if (details && details.style.display === 'block') {
+            previouslyExpandedIds.add(item.dataset.id);
+        }
+    });
+
+    container.innerHTML = ''; // Clear existing configurations from the display
+
+    const currentSet = getCurrentSet(); // getCurrentSet() should return the set object based on optionsPageActiveSetName
     if (!currentSet) {
-        console.error('Current set not found');
+        console.error('Current set not found. Cannot display configurations.');
+        // Optionally display a message in the container
+        // container.textContent = 'No configuration set selected or an error occurred.';
         return;
     }
 
-    let buttonsToDisplay = [...currentSet.buttons];
-    
+    if (!currentSet.buttons || currentSet.buttons.length === 0) {
+        // console.log('No buttons in the current set to display.');
+        // Optionally display a message
+        // container.textContent = 'This configuration set is empty.';
+        // return; // Keep this commented if you want an empty filterable list
+    }
+
+
+    let buttonsToDisplay = [...currentSet.buttons]; // Create a new array to avoid modifying the original
+
+    // Apply sorting
     if (lastUsedSort === 'date') {
         buttonsToDisplay.sort((a, b) => {
-            return dateSortNewestFirst ? 
-                (parseInt(b.id) - parseInt(a.id)) : 
-                (parseInt(a.id) - parseInt(b.id));
+            // Assuming IDs are sortable chronologically (e.g., timestamps or incrementing numbers)
+            const idA = parseInt(a.id, 10) || 0;
+            const idB = parseInt(b.id, 10) || 0;
+            return dateSortNewestFirst ? (idB - idA) : (idA - idB);
         });
-    } else {
+    } else { // lastUsedSort === 'alpha'
         buttonsToDisplay.sort((a, b) => {
-            return alphaSortAtoZ ? 
-                a.name.localeCompare(b.name) : 
+            return alphaSortAtoZ ?
+                a.name.localeCompare(b.name) :
                 b.name.localeCompare(a.name);
         });
     }
 
-    for (const config of buttonsToDisplay.filter(config => 
-        config.name.toLowerCase().includes(searchTerm) ||
-        config.actions.some(action => formatAction(action).toLowerCase().includes(searchTerm))
-    )) {
+    // Apply filtering (if searchTerm is not empty)
+    const filteredButtons = searchTerm ? buttonsToDisplay.filter(config => {
+        const nameMatch = config.name.toLowerCase().includes(searchTerm);
+        if (nameMatch) return true;
+        // Check if any action's formatted string matches the search term
+        // This requires formatAction to be synchronous or for this filtering to handle promises.
+        // For simplicity, if formatAction is async, this part of filtering might need adjustment
+        // or formatAction needs a synchronous version for filtering.
+        // Assuming formatAction can be called and its result (even if a promise) can be eventually checked.
+        // For now, let's assume a simple check on readily available action properties for filtering if formatAction is async.
+        // A more robust way if formatAction is async would be to pre-format all actions or filter after formatting.
+        // This is a simplification for the example:
+        const actionMatch = config.actions.some(action => {
+            // Simple sync check for demonstration; real async formatAction would require different handling here.
+            if (action.type === 'addComment' && action.commentBody) return action.commentBody.toLowerCase().includes(searchTerm);
+            if (action.type === 'addTaxonId' && action.taxonName) return action.taxonName.toLowerCase().includes(searchTerm);
+            // Add more simple checks for other action types if needed for filtering
+            return false;
+        });
+        return actionMatch;
+    }) : buttonsToDisplay;
+
+
+    if (filteredButtons.length === 0 && searchTerm) {
+        container.textContent = 'No configurations match your search term.';
+    } else if (filteredButtons.length === 0 && currentSet.buttons && currentSet.buttons.length > 0) {
+        container.textContent = 'No configurations to display (they might all be filtered out).';
+    } else if (!currentSet.buttons || currentSet.buttons.length === 0) {
+        container.textContent = 'This configuration set is empty.';
+    }
+
+
+    for (const config of filteredButtons) {
         const configDiv = document.createElement('div');
         configDiv.className = 'config-item';
         configDiv.dataset.id = config.id;
@@ -1192,20 +1246,20 @@ async function displayConfigurations() {
             configDiv.classList.add('disabled-config');
         }
 
-        const actionsHtml = await Promise.all(config.actions.map(async action => {
-            const formattedAction = await formatAction(action);
-            return `<p>${formattedAction}</p>`;
-        }));
+        // Await formatted actions if formatAction is async
+        const actionsHtmlPromises = config.actions.map(action => formatAction(action));
+        const resolvedActionsHtml = await Promise.all(actionsHtmlPromises);
+        const actionsHtmlString = resolvedActionsHtml.map(formattedAction => `<p>${formattedAction}</p>`).join('');
 
         configDiv.innerHTML = `
             <div class="config-header">
                 <input type="checkbox" class="configuration-checkbox" data-config-id="${config.id}">
                 <span class="config-name">${config.name}</span>
                 <span class="config-shortcut">${formatShortcut(config.shortcut)}</span>
-                <span class="toggle-details">&#9660;</span>
+                <span class="toggle-details"></span> <!-- Placeholder, will be filled below -->
             </div>
-            <div class="config-details" style="display: none;">
-                ${actionsHtml.join('')}
+            <div class="config-details" style="display: none;"> <!-- Default to none -->
+                ${actionsHtmlString}
                 <div class="button-actions">
                     <label><input type="checkbox" class="hide-button-checkbox" ${config.buttonHidden ? 'checked' : ''}> Hide Button</label>
                     <label><input type="checkbox" class="disable-config-checkbox" ${config.configurationDisabled ? 'checked' : ''}> Disable Configuration</label>
@@ -1215,41 +1269,41 @@ async function displayConfigurations() {
                 </div>
             </div>
         `;
+
         const checkbox = configDiv.querySelector('.configuration-checkbox');
         checkbox.checked = selectedConfigurations.has(config.id);
         checkbox.addEventListener('change', handleConfigurationSelection);
-        
-        // Prevent checkbox clicks from triggering the header click event
-        checkbox.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
+        checkbox.addEventListener('click', (e) => e.stopPropagation());
 
         const header = configDiv.querySelector('.config-header');
         const detailsDiv = configDiv.querySelector('.config-details');
         const toggleSpan = configDiv.querySelector('.toggle-details');
 
+        // Restore expanded state
+        if (previouslyExpandedIds.has(config.id)) {
+            detailsDiv.style.display = 'block';
+            toggleSpan.innerHTML = '&#9650;'; // Up arrow for expanded
+        } else {
+            detailsDiv.style.display = 'none';
+            toggleSpan.innerHTML = '&#9660;'; // Down arrow for collapsed
+        }
+
         header.addEventListener('click', () => {
-            detailsDiv.style.display = detailsDiv.style.display === 'none' ? 'block' : 'none';
-            toggleSpan.innerHTML = detailsDiv.style.display === 'none' ? '&#9660;' : '&#9650;';
+            const isCurrentlyHidden = detailsDiv.style.display === 'none';
+            detailsDiv.style.display = isCurrentlyHidden ? 'block' : 'none';
+            toggleSpan.innerHTML = isCurrentlyHidden ? '&#9650;' : '&#9660;';
         });
 
+        // Attach event listeners to buttons within this config item
         const hideButtonCheckbox = configDiv.querySelector('.hide-button-checkbox');
+        hideButtonCheckbox.addEventListener('change', (event) => toggleHideButton(config.id, event.target));
+
         const disableConfigCheckbox = configDiv.querySelector('.disable-config-checkbox');
-        const editButton = configDiv.querySelector('.edit-button');
-        const deleteButton = configDiv.querySelector('.delete-button');
-        const duplicateButton = configDiv.querySelector('.duplicate-button');
+        disableConfigCheckbox.addEventListener('change', (event) => toggleDisableConfiguration(config.id, event.target));
 
-        hideButtonCheckbox.addEventListener('change', (event) => {
-            toggleHideButton(config.id, event.target);
-        });
-        
-        disableConfigCheckbox.addEventListener('change', (event) => {
-            toggleDisableConfiguration(config.id, event.target);
-        });
-
-        editButton.addEventListener('click', () => editConfiguration(config.id));
-        deleteButton.addEventListener('click', () => deleteConfiguration(config.id));
-        duplicateButton.addEventListener('click', () => duplicateConfiguration(config.id));
+        configDiv.querySelector('.edit-button').addEventListener('click', () => editConfiguration(config.id));
+        configDiv.querySelector('.delete-button').addEventListener('click', () => deleteConfiguration(config.id));
+        configDiv.querySelector('.duplicate-button').addEventListener('click', () => duplicateConfiguration(config.id));
 
         container.appendChild(configDiv);
     }
@@ -2196,139 +2250,148 @@ function updateActionButtonStates() {
 }
 
 function performConfigurationAction(action) {
-    if (selectedConfigurations.size === 0) return;
-    
+    if (selectedConfigurations.size === 0) {
+        // No action if nothing is selected, buttons should be disabled anyway by updateActionButtonStates
+        return;
+    }
+
     const currentSet = getCurrentSet();
-    if (!currentSet) return;
+    if (!currentSet) {
+        console.error("Cannot perform action: current set not found.");
+        return;
+    }
 
-    const actionMap = {
-        delete: {
-            // prompt: 'Are you sure you want to delete these configurations?', // prompt is now within the action
-            action: async () => { // Make the arrow function async
-                if (!confirm('Are you sure you want to delete these configurations?')) return;
-                
-                // Operate on a copy for modification, then update global if save succeeds
-                let currentSetButtons = [...currentSet.buttons];
-                const initialButtonCount = currentSetButtons.length;
-                currentSetButtons = currentSetButtons.filter(c => !selectedConfigurations.has(c.id));
+    let changesMade = false; // Flag to track if any actual change occurred
 
-                if (currentSetButtons.length < initialButtonCount) { // If any configs were actually marked for deletion
-                    const originalButtons = currentSet.buttons; // Backup
-                    currentSet.buttons = currentSetButtons; // Optimistically update for save
-                    try {
-                        await saveConfigurationSets(); // Await the save. This uses the global `configurationSets`.
-                        // UI changes only after successful save
-                        selectedConfigurations.forEach(id => { 
-                            const configDiv = document.querySelector(`.config-item[data-id="${id}"]`);
-                            if (configDiv) configDiv.remove();
-                        });
-                        clearSelection(); // Clear selection checkboxes and count
-                        // displayConfigurations(); // Re-render to be safe, or rely on saveConfigurationSets
-                    } catch (error) {
-                        console.error("Failed to delete selected configurations:", error);
-                        currentSet.buttons = originalButtons; // Revert if save failed
-                        // Error already alerted. Consider reloading configurations to reflect true state.
-                        loadOptionsPageData();
-                    }
-                } else {
-                    console.log("No configurations found for deletion in the current selection.");
-                    clearSelection();
+    // --- DELETE ACTION ---
+    if (action === 'delete') {
+        if (!confirm('Are you sure you want to delete these configurations?')) return;
+
+        const originalButtonCount = currentSet.buttons.length;
+        const originalButtons = JSON.parse(JSON.stringify(currentSet.buttons)); // For revert
+
+        currentSet.buttons = currentSet.buttons.filter(c => !selectedConfigurations.has(c.id));
+
+        if (currentSet.buttons.length < originalButtonCount) {
+            changesMade = true;
+            (async () => { // IIFE to use async/await
+                try {
+                    await saveConfigurationSets(false); // Save, no full refresh
+                    selectedConfigurations.forEach(id => {
+                        const configDiv = document.querySelector(`.config-item[data-id="${id}"]`);
+                        if (configDiv) configDiv.remove();
+                    });
+                    clearSelection(); // Clear selection UI
+                } catch (error) {
+                    console.error("Failed to delete selected configurations:", error);
+                    // Revert optimistic change to global `configurationSets`
+                    const setToRevert = configurationSets.find(set => set.name === currentSet.name);
+                    if (setToRevert) setToRevert.buttons = originalButtons;
+                    alert("Failed to delete configurations. Error: " + error.message);
+                    // Optionally reload all from storage to be safe: loadOptionsPageData();
                 }
-            }
-        },
-        hide: {
-            action: () => {
-                currentSet.buttons.forEach(c => {
-                    if (selectedConfigurations.has(c.id)) {
+            })();
+        } else {
+            console.log("No configurations found for deletion in the current selection.");
+            clearSelection();
+        }
+        return; // Exit after delete action
+    }
+
+    // --- OTHER BULK ACTIONS (HIDE, SHOW, ENABLE, DISABLE) ---
+    currentSet.buttons.forEach(c => {
+        if (selectedConfigurations.has(c.id)) {
+            const configDiv = document.querySelector(`.config-item[data-id="${c.id}"]`);
+            let specificChangeMadeForThisConfig = false;
+
+            switch (action) {
+                case 'hide':
+                    if (!c.buttonHidden) {
                         c.buttonHidden = true;
-                        const configDiv = document.querySelector(`.config-item[data-id="${c.id}"]`);
-                        if (configDiv) {
-                            const hideCheckbox = configDiv.querySelector('.hide-button-checkbox');
-                            if (hideCheckbox) hideCheckbox.checked = true;
-                        }
+                        if (configDiv) configDiv.querySelector('.hide-button-checkbox').checked = true;
+                        specificChangeMadeForThisConfig = true;
                     }
-                });
-                saveConfigurationSets(null, false); // Pass false to prevent refresh
-                expandConfigurations(selectedConfigurations);
-            }
-        },
-        show: {
-            action: () => {
-                currentSet.buttons.forEach(c => {
-                    if (selectedConfigurations.has(c.id)) {
+                    break;
+                case 'show':
+                    if (c.buttonHidden) {
                         c.buttonHidden = false;
-                        const configDiv = document.querySelector(`.config-item[data-id="${c.id}"]`);
-                        if (configDiv) {
-                            const hideCheckbox = configDiv.querySelector('.hide-button-checkbox');
-                            if (hideCheckbox) hideCheckbox.checked = false;
-                        }
+                        if (configDiv) configDiv.querySelector('.hide-button-checkbox').checked = false;
+                        specificChangeMadeForThisConfig = true;
                     }
-                });
-                saveConfigurationSets(null, false);
-                expandConfigurations(selectedConfigurations);
-            }
-        },
-        disable: {
-            action: () => {
-                currentSet.buttons.forEach(c => {
-                    if (selectedConfigurations.has(c.id)) {
+                    break;
+                case 'disable':
+                    if (!c.configurationDisabled) {
                         c.configurationDisabled = true;
-                        const configDiv = document.querySelector(`.config-item[data-id="${c.id}"]`);
                         if (configDiv) {
-                            const disableCheckbox = configDiv.querySelector('.disable-config-checkbox');
-                            if (disableCheckbox) disableCheckbox.checked = true;
+                            configDiv.querySelector('.disable-config-checkbox').checked = true;
                             configDiv.classList.add('disabled-config');
                         }
+                        specificChangeMadeForThisConfig = true;
                     }
-                });
-                saveConfigurationSets(null, false);
-                expandConfigurations(selectedConfigurations);
-            }
-        },
-        enable: {
-            action: () => {
-                currentSet.buttons.forEach(c => {
-                    if (selectedConfigurations.has(c.id)) {
+                    break;
+                case 'enable':
+                    if (c.configurationDisabled) {
                         c.configurationDisabled = false;
-                        const configDiv = document.querySelector(`.config-item[data-id="${c.id}"]`);
                         if (configDiv) {
-                            const disableCheckbox = configDiv.querySelector('.disable-config-checkbox');
-                            if (disableCheckbox) disableCheckbox.checked = false;
+                            configDiv.querySelector('.disable-config-checkbox').checked = false;
                             configDiv.classList.remove('disabled-config');
                         }
+                        specificChangeMadeForThisConfig = true;
                     }
-                });
-                saveConfigurationSets(null, false);
-                expandConfigurations(selectedConfigurations);
+                    break;
+            }
+            if (specificChangeMadeForThisConfig) {
+                changesMade = true;
             }
         }
-    };
+    });
 
-    actionMap[action].action();
+    if (changesMade) {
+        saveConfigurationSets(false) // Save data, no full UI refresh from this
+            .catch(error => {
+                console.error(`Error saving after bulk action '${action}':`, error.message);
+                alert(`An error occurred while performing '${action}'. Please try again.`);
+                loadOptionsPageData(); // Revert UI to last known good state from storage
+            });
+    } else {
+        console.log(`Bulk action '${action}' resulted in no changes to selected configurations.`);
+    }
+    // Do NOT call clearSelection() here for hide/show/enable/disable, user might want to perform more actions on same selection.
+    // The individual item states (checkboxes, class) are updated directly.
 }
 
-function updateToggleAllButton() {
-    const configDivs = document.querySelectorAll('.config-item');
-    const allDivsExpanded = Array.from(configDivs).every(div => 
-        div.querySelector('.config-details').style.display === 'block'
-    );
-    
-    allExpanded = allDivsExpanded;
-    const button = document.getElementById('toggleAllConfigs');
-    button.textContent = allExpanded ? 'Collapse All' : 'Expand All';
+function expandSelectedConfigurations() {
+    if (selectedConfigurations.size === 0) {
+        // alert("Please select one or more configurations to expand."); // Optional: user feedback
+        return;
+    }
+    selectedConfigurations.forEach(configId => {
+        const configDiv = document.querySelector(`.config-item[data-id="${configId}"]`);
+        if (configDiv) {
+            const detailsDiv = configDiv.querySelector('.config-details');
+            const toggleSpan = configDiv.querySelector('.toggle-details');
+            if (detailsDiv && toggleSpan) {
+                detailsDiv.style.display = 'block';
+                toggleSpan.innerHTML = '&#9650'; // Up arrow
+            }
+        }
+    });
 }
 
-function toggleAllConfigurations() {
-    allExpanded = !allExpanded;
-    const button = document.getElementById('toggleAllConfigs');
-    button.textContent = allExpanded ? 'Collapse All' : 'Expand All';
-    
-    document.querySelectorAll('.config-item').forEach(configDiv => {
-        const detailsDiv = configDiv.querySelector('.config-details');
-        const toggleSpan = configDiv.querySelector('.toggle-details');
-        if (detailsDiv && toggleSpan) {
-            detailsDiv.style.display = allExpanded ? 'block' : 'none';
-            toggleSpan.innerHTML = allExpanded ? '&#9650;' : '&#9660;';
+function collapseSelectedConfigurations() {
+    if (selectedConfigurations.size === 0) {
+        // alert("Please select one or more configurations to collapse."); // Optional: user feedback
+        return;
+    }
+    selectedConfigurations.forEach(configId => {
+        const configDiv = document.querySelector(`.config-item[data-id="${configId}"]`);
+        if (configDiv) {
+            const detailsDiv = configDiv.querySelector('.config-details');
+            const toggleSpan = configDiv.querySelector('.toggle-details');
+            if (detailsDiv && toggleSpan) {
+                detailsDiv.style.display = 'none';
+                toggleSpan.innerHTML = '&#9660'; // Down arrow
+            }
         }
     });
 }
