@@ -2617,30 +2617,39 @@ function loadButtonOrder() {
 createDynamicButtons();
 
 function createBulkActionButtons() {
-    console.log('Creating bulk action buttons');
+    console.log('Creating bulk action UI wrapper');
+    // 1. Create a single parent wrapper for all bulk UI
+    const bulkUiWrapper = document.createElement('div');
+    bulkUiWrapper.id = 'bulk-ui-wrapper'; // New ID for the wrapper
+    bulkUiWrapper.style.position = 'fixed';
+    bulkUiWrapper.style.zIndex = '10000';
+    
+    // 2. Create the container for the active bulk mode buttons (as before)
     const bulkButtonContainer = document.createElement('div');
     bulkButtonContainer.id = 'bulk-action-container';
-    bulkButtonContainer.style.position = 'fixed';
-    bulkButtonContainer.style.zIndex = '10000';
+    // No positioning needed here, it will be inside the wrapper
     bulkButtonContainer.style.backgroundColor = 'white';
     bulkButtonContainer.style.padding = '10px';
     bulkButtonContainer.style.border = '1px solid black';
-    bulkButtonContainer.style.display = 'none';
+    bulkButtonContainer.style.display = 'none'; // Initially hidden
 
-    // We'll populate this container in the updateBulkActionButtons function
-
-    document.body.appendChild(bulkButtonContainer);
-
-    // Create the "Enable Bulk Action Mode" button
+    // 3. Create the "Enable Bulk Action Mode" button (as before)
     const enableBulkModeButton = document.createElement('button');
     enableBulkModeButton.textContent = 'Enable Bulk Action Mode';
     enableBulkModeButton.id = 'enable-bulk-mode-button';
     enableBulkModeButton.classList.add('bulk-action-button');
     enableBulkModeButton.addEventListener('click', enableBulkActionMode);
-    document.body.appendChild(enableBulkModeButton);
+    // Note: The general .bulk-action-button style is fine, no fixed position needed.
 
-    console.log('Bulk action buttons created');
-    updateBulkButtonPosition();
+    // 4. Append the button and container to the new wrapper
+    bulkUiWrapper.appendChild(enableBulkModeButton);
+    bulkUiWrapper.appendChild(bulkButtonContainer);
+
+    // 5. Append the single wrapper to the body
+    document.body.appendChild(bulkUiWrapper);
+
+    console.log('Bulk action UI created');
+    updateBulkButtonPosition(); // Position the new wrapper
 }
 
 function createBulkActionButton(text, onClickFunction) {
@@ -2688,43 +2697,31 @@ function disableBulkActionMode() {
 }
 
 function updateBulkButtonPosition() {
-    console.log('Updating bulk button position');
-    const bulkButtonContainer = document.getElementById('bulk-action-container');
-    const enableBulkModeButton = document.getElementById('enable-bulk-mode-button');
-    if (!bulkButtonContainer || !enableBulkModeButton) {
-        console.log('Bulk button container or enable button not found');
-        return;
+    console.log('Updating bulk UI wrapper position');
+    // This function now ONLY positions the single parent wrapper
+    const bulkUiWrapper = document.getElementById('bulk-ui-wrapper');
+    if (!bulkUiWrapper) return;
+
+    bulkUiWrapper.style.top = bulkUiWrapper.style.left = bulkUiWrapper.style.bottom = bulkUiWrapper.style.right = 'auto';
+    
+    switch (buttonPosition) {
+        case 'top-left': // Main buttons top-left, so bulk UI goes bottom-right
+            bulkUiWrapper.style.bottom = '10px';
+            bulkUiWrapper.style.right = '10px';
+            break;
+        case 'top-right': // Main buttons top-right, so bulk UI goes bottom-left
+            bulkUiWrapper.style.bottom = '10px';
+            bulkUiWrapper.style.left = '10px';
+            break;
+        case 'bottom-left': // Main buttons bottom-left, so bulk UI goes top-right
+             bulkUiWrapper.style.top = '10px';
+             bulkUiWrapper.style.right = '10px';
+             break;
+        case 'bottom-right': // Main buttons bottom-right, so bulk UI goes top-left
+            bulkUiWrapper.style.top = '10px';
+            bulkUiWrapper.style.left = '10px';
+            break;
     }
-
-    console.log('Current button position:', buttonPosition);
-
-    const setPosition = (element) => {
-        element.style.top = element.style.left = element.style.bottom = element.style.right = 'auto';
-        switch (buttonPosition) {
-            case 'top-left':
-                element.style.bottom = '10px';
-                element.style.right = '10px';
-                break;
-            case 'top-right':
-                element.style.bottom = '10px';
-                element.style.left = '10px';
-                break;
-            case 'bottom-right':
-                element.style.top = '10px';
-                element.style.left = '10px';
-                break;
-            case 'bottom-left':
-                element.style.top = '10px';
-                element.style.right = '10px';
-                break;
-        }
-        console.log(`Set position for ${element.id}:`, element.style.cssText);
-    };
-
-    setPosition(bulkButtonContainer);
-    setPosition(enableBulkModeButton);
-
-    console.log('Enable button display after positioning:', getComputedStyle(enableBulkModeButton).display);
 }
 
 function getObservationElements() {
