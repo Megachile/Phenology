@@ -1004,6 +1004,8 @@ function addActionToForm(action = null) {
         
     });
 
+    actionType.dispatchEvent(new Event('change'));
+
     // Populate list select
     browserAPI.storage.local.get('customLists', function(data) {
     const customLists = data.customLists || [];
