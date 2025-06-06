@@ -4042,7 +4042,7 @@ function loadConfigurationSets() {
 
 
         // Update global currentAvailableActions if used by other functions
-        // currentAvailableActions = currentSet ? currentSet.buttons.filter(button => !button.configurationDisabled) : [];
+        currentAvailableActions = currentSet ? currentSet.buttons.filter(button => !button.configurationDisabled) : [];
 
         debugLog("content.js: Effective currentSet for rendering:", currentSet ? currentSet.name : "None");
         createDynamicButtons();    // Uses global currentSetName/currentSet
@@ -4204,7 +4204,7 @@ function switchConfigurationSet(setName) {
 
     currentSetName = setName;
     currentSet = newSet;
-    // currentAvailableActions = currentSet ? currentSet.buttons.filter(button => !button.configurationDisabled) : [];
+    currentAvailableActions = currentSet ? currentSet.buttons.filter(button => !button.configurationDisabled) : [];
 
     // Handle custom order update within the new currentSet if needed
     let orderChangedAndNeedsSave = false;

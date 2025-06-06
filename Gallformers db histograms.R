@@ -267,3 +267,22 @@ ggplot(state_map_data, aes(x = long, y = lat, group = group, fill = num_galls)) 
 
 write.csv(df_host_family_fixed, file = "df_host_family_fixed.csv", row.names = FALSE)
 
+ggplot(df_host_family_fixed, aes(x=reorder(family, gall_count), y=gall_count)) +
+  geom_col(fill="steelblue") +
+  coord_flip() +
+  scale_y_log10() +
+  labs(x="Plant Family", y="Log(Number of Galls)", title="Number of Galls per Host Plant Family (Log Scale)") +
+  theme_minimal()
+ggplot(df_unique_galls, aes(x=reorder(family, unique_gall_species), y=unique_gall_species)) +
+  geom_col(fill="darkorange") +
+  coord_flip() +
+  scale_y_log10() +
+  labs(x="Plant Family", y="Log(Number of Unique Gall Species)", title="Unique Gall Species per Host Plant Family (Log Scale)") +
+  theme_minimal()
+ggplot(df_inducer_family, aes(x=reorder(family, gall_count), y=gall_count)) +
+  geom_col(fill="forestgreen") +
+  coord_flip() +
+  scale_y_log10() +
+  labs(x="Inducer Family", y="Log(Number of Galls)", title="Number of Galls per Inducer Family (Log Scale)") +
+  theme_minimal()
+

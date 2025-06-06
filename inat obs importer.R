@@ -42,8 +42,8 @@ url <- urlMaker(spcode)
 # url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&user_id=", user_id, "&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775")
 
 ## create an API call for all RG cynipini marked by a given phenophase
-phenophase <- "maturing" 
-url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field%3AGall+phenophase=", phenophase)
+# phenophase <- "maturing" 
+# url <- paste0("https://api.inaturalist.org/v1/observations?quality_grade=research&identifications=any&page=1&place_id=6712%2C1&per_page=200&order=desc&order_by=created_at&taxon_id=205775&field%3AGall+phenophase=", phenophase)
 
 ## create an API call for all RG cynipini marked viable
 # Define the rearing viability as a variable
