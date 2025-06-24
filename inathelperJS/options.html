@@ -45,7 +45,7 @@ input, select {
     margin-bottom: 10px; 
     padding: 5px; 
 }
-
+/* Default button styling - keep existing green for primary actions */
 button { 
     padding: 10px; 
     background-color: #4CAF50; 
@@ -59,14 +59,142 @@ button:hover {
     background-color: #45a049; 
 }
 
+/* Add Action button - change to blue to differentiate */
+#addActionButton {
+    background-color: #2196F3; /* Blue */
+    margin-bottom: 30px; /* Add significant spacing below */
+}
+
+#addActionButton:hover {
+    background-color: #1976D2; /* Darker blue on hover */
+}
+
+/* Remove Action buttons within each action item - make them red for clarity */
+.removeActionButton {
+    background-color: #f44336; /* Red */
+    margin-bottom: 15px;
+}
+
+.removeActionButton:hover {
+    background-color: #d32f2f; /* Darker red on hover */
+}
+
+/* Save/Update and Cancel buttons container - add top margin for spacing */
 .button-container { 
     display: flex; 
     justify-content: flex-start; 
     margin-bottom: 10px; 
+    margin-top: 30px; /* Add significant spacing above save/cancel buttons */
+    padding-top: 20px; /* Additional padding */
+    border-top: 1px solid #ddd; /* Optional: subtle separator line */
 }
 
-#saveButton, #cancelButton { 
+/* Keep Save/Update button green but make it more distinct */
+#saveButton {
+    background-color: #4CAF50; /* Keep green for primary save action */
     width: 48%; 
+}
+
+#saveButton:hover {
+    background-color: #45a049;
+}
+
+/* Cancel button - make it red */
+#cancelButton { 
+    background-color: #f44336; /* Red */
+    width: 48%; 
+}
+
+#cancelButton:hover {
+    background-color: #d32f2f; /* Darker red on hover */
+}
+
+/* Configuration action buttons - different colors for different actions */
+.edit-button {
+    background-color: #FF9800; /* Orange */
+}
+
+.edit-button:hover {
+    background-color: #F57C00; /* Darker orange */
+}
+
+.duplicate-button {
+    background-color: #9C27B0; /* Purple */
+}
+
+.duplicate-button:hover {
+    background-color: #7B1FA2; /* Darker purple */
+}
+
+.delete-button {
+    background-color: #f44336; /* Red */
+}
+
+.delete-button:hover {
+    background-color: #d32f2f; /* Darker red */
+}
+
+/* List management buttons - make delete buttons red */
+.deleteList {
+    background-color: #f44336; /* Red */
+    color: white;
+}
+
+.deleteList:hover {
+    background-color: #d32f2f; /* Darker red on hover */
+}
+
+/* Configuration management buttons */
+.configuration-action-btn {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+#deleteSelectedBtn {
+    background-color: #dc3545; /* Bootstrap red */
+    color: white;
+}
+
+#deleteSelectedBtn:hover {
+    background-color: #c82333;
+}
+
+#hideSelectedBtn, #showSelectedBtn {
+    background-color: #007bff; /* Bootstrap blue */
+    color: white;
+}
+
+#hideSelectedBtn:hover, #showSelectedBtn:hover {
+    background-color: #0056b3;
+}
+
+#disableSelectedBtn, #enableSelectedBtn {
+    background-color: #ffc107; /* Bootstrap yellow */
+    color: black;
+}
+
+#disableSelectedBtn:hover, #enableSelectedBtn:hover {
+    background-color: #e0a800;
+}
+
+/* Set management buttons - keep them neutral */
+.set-management-button {
+    background-color: #6c757d; /* Bootstrap secondary gray */
+    color: white;
+}
+
+.set-management-button:hover {
+    background-color: #5a6268;
+}
+
+/* Export/Import buttons */
+#exportButton, #importButton {
+    background-color: #17a2b8; /* Bootstrap info cyan */
+    color: white;
+}
+
+#exportButton:hover, #importButton:hover {
+    background-color: #138496;
 }
 
 .hidden { 
