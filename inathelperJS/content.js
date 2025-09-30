@@ -1,4 +1,15 @@
 console.log("Content script loaded. URL:", window.location.href);
+
+browserAPI.storage.local.get(['highlightColor'], function(data) {
+    const color = data.highlightColor || '#FF6600';
+    document.documentElement.style.setProperty('--highlight-color', color);
+});
+
+browserAPI.storage.onChanged.addListener(function(changes) {
+    if (changes.highlightColor) {
+        document.documentElement.style.setProperty('--highlight-color', changes.highlightColor.newValue);
+    }
+});
 let buttonPosition = 'bottom-right'; // Default position
 let idDisplay;
 let refreshEnabled = true;
@@ -1178,7 +1189,7 @@ style.textContent += `
         padding: 10px 20px;
     }
     .ObservationsGridItem.selected {
-        box-shadow: 0 0 0 6px #FF6600;
+        box-shadow: 0 0 0 6px var(--highlight-color, #FF6600);
     }
     #enable-bulk-mode-button {
         position: fixed;

@@ -668,6 +668,31 @@ button:hover {
         Storage Usage: Loading...
     </div>    
     <div class="hardcoded-shortcuts">
+        <h2 id="selection-highlight-toggle">Selection Highlight Color [+]</h2>
+        <div id="selection-highlight-settings" style="display: none; margin-top: 10px;">
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
+                <label style="margin-bottom: 10px;">Choose highlight color for selected observations:</label>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                    <button class="color-preset" data-color="#FF6600" style="background-color: #FF6600; width: 60px; height: 40px; border: 2px solid #ccc; cursor: pointer; border-radius: 4px;" title="Bright Orange"></button>
+                    <button class="color-preset" data-color="#FF9800" style="background-color: #FF9800; width: 60px; height: 40px; border: 2px solid #ccc; cursor: pointer; border-radius: 4px;" title="Orange"></button>
+                    <button class="color-preset" data-color="#E91E63" style="background-color: #E91E63; width: 60px; height: 40px; border: 2px solid #ccc; cursor: pointer; border-radius: 4px;" title="Hot Pink"></button>
+                    <button class="color-preset" data-color="#00D9FF" style="background-color: #00D9FF; width: 60px; height: 40px; border: 2px solid #ccc; cursor: pointer; border-radius: 4px;" title="Cyan"></button>
+                    <button class="color-preset" data-color="#9C27B0" style="background-color: #9C27B0; width: 60px; height: 40px; border: 2px solid #ccc; cursor: pointer; border-radius: 4px;" title="Purple"></button>
+                    <button class="color-preset" data-color="#F44336" style="background-color: #F44336; width: 60px; height: 40px; border: 2px solid #ccc; cursor: pointer; border-radius: 4px;" title="Red"></button>
+                    <button class="color-preset" data-color="#2196F3" style="background-color: #2196F3; width: 60px; height: 40px; border: 2px solid #ccc; cursor: pointer; border-radius: 4px;" title="Blue"></button>
+                    <button class="color-preset" data-color="#4CAF50" style="background-color: #4CAF50; width: 60px; height: 40px; border: 2px solid #ccc; cursor: pointer; border-radius: 4px;" title="Green (Original)"></button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label for="customHighlightColor">Custom color:</label>
+                    <input type="color" id="customHighlightColor" value="#FF6600" style="width: 60px; height: 40px; border: 2px solid #ccc; cursor: pointer;">
+                </div>
+                <div style="margin-top: 10px; padding: 10px; background-color: #f5f5f5; border-radius: 4px;">
+                    <strong>Preview:</strong> <span id="highlightPreview" style="display: inline-block; width: 100px; height: 30px; border: 6px solid #FF6600; border-radius: 4px;"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="hardcoded-shortcuts">
         <h2 id="auto-prevention-toggle">Prevent Auto-reviewed/Followed [+]</h2>
         <div id="auto-prevention-settings" style="display: none; margin-top: 10px;">          <div class="setting-item">
                 <input type="checkbox" id="preventTaxonFollow">

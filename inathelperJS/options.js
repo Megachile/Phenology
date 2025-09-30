@@ -136,6 +136,30 @@ document.addEventListener('DOMContentLoaded', function() {
             preventionToggle.textContent = isHidden ? 'Prevent Auto-reviewed/Followed [-]' : 'Prevent Auto-reviewed/Followed [+]';
         });
     }
+
+    const highlightToggle = document.getElementById('selection-highlight-toggle');
+    const highlightSettings = document.getElementById('selection-highlight-settings');
+    if (highlightToggle && highlightSettings) {
+        highlightToggle.addEventListener('click', function() {
+            const isHidden = highlightSettings.style.display === 'none';
+            highlightSettings.style.display = isHidden ? 'block' : 'none';
+            highlightToggle.textContent = isHidden ? 'Selection Highlight Color [-]' : 'Selection Highlight Color [+]';
+        });
+    }
+
+    loadHighlightColor();
+
+    document.getElementById('customHighlightColor').addEventListener('change', function(e) {
+        saveHighlightColor(e.target.value);
+    });
+
+    document.querySelectorAll('.color-preset').forEach(button => {
+        button.addEventListener('click', function() {
+            const color = this.dataset.color;
+            document.getElementById('customHighlightColor').value = color;
+            saveHighlightColor(color);
+        });
+    });
     
     // Modal related (if applicable)
     const showUndoRecordsButton = document.getElementById('showUndoRecordsButton');
@@ -2721,7 +2745,7 @@ function createListImportModal(importedLists, existingLists) {
 
 function loadAutoFollowSettings() {
     browserAPI.storage.local.get(
-        ['preventTaxonFollow', 'preventFieldFollow', 'preventTaxonReview'], 
+        ['preventTaxonFollow', 'preventFieldFollow', 'preventTaxonReview'],
         function(data) {
             document.getElementById('preventTaxonFollow').checked = !!data.preventTaxonFollow;
             document.getElementById('preventFieldFollow').checked = !!data.preventFieldFollow;
@@ -2737,4 +2761,21 @@ function saveAutoFollowSettings() {
         preventTaxonReview: document.getElementById('preventTaxonReview').checked
     };
     browserAPI.storage.local.set(settings);
+}
+
+function loadHighlightColor() {
+    browserAPI.storage.local.get(['highlightColor'], function(data) {
+        const color = data.highlightColor || '#FF6600';
+        document.getElementById('customHighlightColor').value = color;
+        updateHighlightPreview(color);
+    });
+}
+
+function saveHighlightColor(color) {
+    browserAPI.storage.local.set({ highlightColor: color });
+    updateHighlightPreview(color);
+}
+
+function updateHighlightPreview(color) {
+    document.getElementById('highlightPreview').style.borderColor = color;
 }
