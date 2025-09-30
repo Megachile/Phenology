@@ -1,5 +1,16 @@
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
+function safeErrorString(error) {
+    if (!error) return 'Unknown error';
+    if (typeof error === 'string') return error;
+    if (error.message) return error.message;
+    try {
+        const str = safeErrorString(error);
+        if (str && str !== '[object Object]') return str;
+    } catch (e) {}
+    return 'Unknown error';
+}
+
 const controlledTerms = {
     "Alive or Dead": {
       id: 17,
@@ -674,7 +685,7 @@ async function performUndoActions(undoRecord, progressFill) {
             } catch (error) {
                 console.error('Error performing undo action:', undoAction, 'Error:', error);
                 allActionsSuccessful = false;
-                results.push({ observationId, action: undoAction.type, error: error.toString() });
+                results.push({ observationId, action: undoAction.type, error: safeErrorString(error) });
             }
 
             completedActions++;
@@ -717,7 +728,7 @@ async function performSingleUndoAction(observationId, undoAction) {
                     };
                 } catch (error) {
                     console.error('Error restoring follow state:', error);
-                    return { success: false, error: error.toString() };
+                    return { success: false, error: safeErrorString(error) };
                 }
             case 'reviewed':
                 console.log('Undo action for review:', {
@@ -739,7 +750,7 @@ async function performSingleUndoAction(observationId, undoAction) {
                 };
             } catch (error) {
                 console.error('Error restoring reviewed state for undo:', error);
-                return { success: false, error: error.toString() };
+                return { success: false, error: safeErrorString(error) };
             }    
             case 'removeAnnotation':
                 if (undoAction.uuid) {
@@ -753,7 +764,7 @@ async function performSingleUndoAction(observationId, undoAction) {
                             console.log('Annotation not found (404). It may have been already deleted.');
                             return { success: true, action: 'removeAnnotation', message: 'Annotation already removed or not found' };
                         }
-                        return { success: false, error: error.toString() };
+                        return { success: false, error: safeErrorString(error) };
                     }
                 } else {
                     console.error('Annotation UUID not found for undo action');
@@ -840,7 +851,7 @@ async function performSingleUndoAction(observationId, undoAction) {
                     console.error('Error in project undo action:', error);
                     return {
                         success: false,
-                        error: error.toString(),
+                        error: safeErrorString(error),
                         projectId: undoAction.projectId,
                         projectName: undoAction.projectName
                     };
@@ -859,7 +870,7 @@ async function performSingleUndoAction(observationId, undoAction) {
                             console.log('Comment not found (404). It may have been already deleted.');
                             return { success: true, action: 'removeComment', message: 'Comment already removed or not found' };
                         }
-                        return { success: false, error: error.toString() };
+                        return { success: false, error: safeErrorString(error) };
                     }
                 } else {
                     console.error('Comment UUID not found for undo action:', undoAction);
@@ -888,7 +899,7 @@ async function performSingleUndoAction(observationId, undoAction) {
                         };
                     } catch (error) {
                         console.error('Error in removeIdentification action:', error);
-                        return { success: false, error: error.toString() };
+                        return { success: false, error: safeErrorString(error) };
                     }
                 } else {
                     console.error('Identification UUID not found for undo action');
@@ -909,7 +920,7 @@ async function performSingleUndoAction(observationId, undoAction) {
                         };
                     } catch (error) {
                         console.error('Error in restoreIdentification action:', error);
-                        return { success: false, error: error.toString() };
+                        return { success: false, error: safeErrorString(error) };
                     }
                 } else {
                     console.error('Identification UUID not found for undo action');
@@ -937,7 +948,7 @@ async function performSingleUndoAction(observationId, undoAction) {
                     };
                 } catch (error) {
                     console.error(`Error in quality metric undo action for ${undoAction.metric}:`, error);
-                    return { success: false, error: error.toString() };
+                    return { success: false, error: safeErrorString(error) };
                 }
             case 'addToList':
                 try {
@@ -950,7 +961,7 @@ async function performSingleUndoAction(observationId, undoAction) {
                     };
                 } catch (error) {
                     console.error('Error in undo addToList action:', error);
-                    return { success: false, error: error.toString() };
+                    return { success: false, error: safeErrorString(error) };
             }
             default:
                 console.warn(`Unknown undo action type: ${undoAction.type}`);
@@ -1410,7 +1421,7 @@ async function toggleFollowObservation(observationId) {
         return { success: true };
     } catch (error) {
         console.error(`Error toggling follow state for observation ${observationId}:`, error);
-        return { success: false, error: error.toString() };
+        return { success: false, error: safeErrorString(error) };
     }
 }
 
@@ -1528,7 +1539,7 @@ async function performProjectAction(observationId, projectId, remove = false) {
                     };
                 }
             } catch (error) { // Catches network errors or errors thrown from !response.ok
-                return { success: false, message: error.message || error.toString(), reason: 'addition_failed_network_or_http', action: actionType, projectId };
+                return { success: false, message: error.message || safeErrorString(error), reason: 'addition_failed_network_or_http', action: actionType, projectId };
             }
         } else { // Removing from project (can continue to use makeAPIRequest for DELETE)
             if (!isExplicitlyInProject) {
@@ -1573,14 +1584,14 @@ async function performProjectAction(observationId, projectId, remove = false) {
                         action: actionType, projectId
                     };
                 }
-                return { success: false, message: error.toString(), reason: 'removal_failed', action: actionType, projectId };
+                return { success: false, message: safeErrorString(error), reason: 'removal_failed', action: actionType, projectId };
             }
         }
     } catch (error) {
         console.error('Unexpected error in performProjectAction (outer try):', error);
         return { 
             success: false, 
-            message: error.message || error.toString(), 
+            message: error.message || safeErrorString(error), 
             reason: 'unexpected_error_outer',
             action: actionType, projectId
         };
@@ -1826,24 +1837,14 @@ function generateObservationList(observationIds) {
 }
 
 function getCleanErrorMessage(error) {
-    if (typeof error === 'string') {
-        const match = error.match(/Didn't pass rule: (.+?)"/);
-        if (match && match[1]) {
-            return match[1];
-        }
-        // If no specific pattern match, return the original string error
-        // or a part of it if it's too long.
-        return error.length > 150 ? error.substring(0, 147) + "..." : error;
-    } else if (error && typeof error.toString === 'function') {
-        // If it's not a string but can be converted, try that
-        const errorString = error.toString();
-         const match = errorString.match(/Didn't pass rule: (.+?)"/);
-        if (match && match[1]) {
-            return match[1];
-        }
-        return errorString.length > 150 ? errorString.substring(0, 147) + "..." : errorString;
+    const errorString = safeErrorString(error);
+
+    const match = errorString.match(/Didn't pass rule: (.+?)"/);
+    if (match && match[1]) {
+        return match[1];
     }
-    return 'Unknown error (malformed error object)';
+
+    return errorString.length > 150 ? errorString.substring(0, 147) + "..." : errorString;
 }
 
 // New function to summarize outcomes by action type

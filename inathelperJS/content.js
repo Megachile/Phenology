@@ -1,5 +1,16 @@
 console.log("Content script loaded. URL:", window.location.href);
 
+function safeErrorString(error) {
+    if (!error) return 'Unknown error';
+    if (typeof error === 'string') return error;
+    if (error.message) return error.message;
+    try {
+        const str = safeErrorString(error);
+        if (str && str !== '[object Object]') return str;
+    } catch (e) {}
+    return 'Unknown error';
+}
+
 browserAPI.storage.local.get(['highlightColor', 'buttonMinWidth', 'verticalButtonLayout', 'buttonContainerMaxWidth'], function(data) {
     const color = data.highlightColor || '#FF6600';
     document.documentElement.style.setProperty('--highlight-color', color);
@@ -752,7 +763,7 @@ async function addAnnotation(observationId, attributeId, valueId) {
         }
     } catch (error) {
         console.error('Error adding annotation:', error);
-        return { success: false, error: error.toString() };
+        return { success: false, error: safeErrorString(error) };
     }
 }
 
@@ -795,7 +806,7 @@ async function addObservationToProject(observationId, projectId) {
         }
     } catch (error) {
         console.error('Error adding observation to project:', error);
-        return { success: false, error: error.toString() };
+        return { success: false, error: safeErrorString(error) };
     }
 }
 
@@ -839,7 +850,7 @@ async function addComment(observationId, commentBody) {
         }
     } catch (error) {
         console.error('Error adding comment:', error);
-        return { success: false, error: error.toString() };
+        return { success: false, error: safeErrorString(error) };
     }
 }
 
@@ -884,7 +895,7 @@ async function addTaxonId(observationId, taxonId, comment = '', disagreement = f
         }
     } catch (error) {
         console.error('Error adding Taxon ID:', error);
-        return { success: false, error: error.toString() };
+        return { success: false, error: safeErrorString(error) };
     }
 }
 
@@ -938,7 +949,7 @@ async function handleQualityMetricAPI(observationId, metric, vote) {
         return { success: true, data: responseData };
     } catch (error) {
         console.error(`Error in quality metric ${metric} ${vote}:`, error);
-        return { success: false, error: error.toString() };
+        return { success: false, error: safeErrorString(error) };
     }
 }
 
@@ -1076,7 +1087,7 @@ async function copyObservationField(observationId, sourceFieldId, targetFieldId)
         return { success: true, data: postResponse };
     } catch (error) {
         console.error('Error in copyObservationField:', error);
-        return { success: false, error: error.toString() };
+        return { success: false, error: safeErrorString(error) };
     }
 }
 
@@ -1521,7 +1532,7 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
                 };
             } catch (error) {
                 console.error('Error withdrawing identification:', error);
-                return { success: false, error: error.toString() };
+                return { success: false, error: safeErrorString(error) };
             }
             case 'observationField':
                 // Check if value is identical before calling addObservationField ---
@@ -1588,7 +1599,7 @@ async function performSingleAction(action, observationId, isIdentifyPage) {
                 return result;
             } catch (error) {
                 console.error('Error in project action:', error);
-                return { success: false, error: error.toString() };
+                return { success: false, error: safeErrorString(error) };
             }
         case 'addComment':
             const commentResult = await addComment(observationId, action.commentBody);
@@ -2277,8 +2288,8 @@ function createButton(config) {
                             } else if (result.reason === 'already_member' && currentButtonConfig.actions.some(a => a.type === 'addToProject' && !a.remove && a.projectId === result.projectId)) {
                                 warningsToShow.push(`Observation ${result.observationId || currentObservationId}: Already a member of project "${displayProjectName}".`);
                             }
-                        } else if (result.error) { 
-                             warningsToShow.push(`Action failed: ${getCleanErrorMessage(result.error.toString())}`);
+                        } else if (result.error) {
+                             warningsToShow.push(`Action failed: ${getCleanErrorMessage(result.error)}`);
                         }
                     }
                 });
@@ -3110,6 +3121,22 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
                 break;
             }
 
+            // Skip observations that don't have pre-action states (failed to fetch)
+            if (!preActionStates[observationId]) {
+                console.error(`Skipping observation ${observationId} - pre-action state not available`);
+                allActionResults.push({
+                    observationId,
+                    action: 'fetch',
+                    success: false,
+                    message: 'Failed to fetch observation data from API',
+                    error: 'Pre-action state unavailable'
+                });
+                processedObservations++;
+                if (progressFill) await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
+                if (statusElement) statusElement.textContent = `Processing observation ${processedObservations}/${totalObservations}...`;
+                continue;
+            }
+
             let observationSkippedThisIterationDueToSafeMode = false;
             const actualOverwritesForThisObs = {}; // Stores actual overwrites for *this* observation
 
@@ -3143,6 +3170,7 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
                      console.log(`Obs ${observationId} skipped entirely due to Safe Mode and existing OF values.`);
                      processedObservations++;
                      if (progressFill) await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
+                     if (statusElement) statusElement.textContent = `Processing observation ${processedObservations}/${totalObservations}...`;
                      continue; // Move to the next observationId
                  }
             }
@@ -3191,6 +3219,10 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
                     if (action.type === 'observationField') resultForSummary.fieldId = action.fieldId;
                     // Add other potential differentiators if actions of same type can vary (e.g. annotation field ID)
                     if (action.type === 'annotation') resultForSummary.annotationField = action.annotationField;
+                    // Ensure error is also stored as message for consistency with display code
+                    if (!actionResult.success && actionResult.error && !actionResult.message) {
+                        resultForSummary.message = actionResult.error;
+                    }
 
 
                     currentObservationResults.push(resultForSummary);
@@ -3211,12 +3243,14 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
 
                 } catch (error) {
                     console.error(`Error executing action ${action.type} for observation ${observationId}:`, error);
-                    errorMessages.push(`Error processing observation ${observationId} (action: ${action.type}): ${error.message}`);
-                    currentObservationResults.push({ 
-                        success: false, 
-                        error: error.toString(), 
-                        observationId, 
-                        action: action.type, 
+                    const errorMessage = error?.message || (typeof error === 'string' ? error : 'Unknown error');
+                    errorMessages.push(`Error processing observation ${observationId} (action: ${action.type}): ${errorMessage}`);
+                    currentObservationResults.push({
+                        success: false,
+                        error: errorMessage,
+                        message: errorMessage,
+                        observationId,
+                        action: action.type,
                         fieldId: action.type === 'observationField' ? action.fieldId : undefined,
                         annotationField: action.type === 'annotation' ? action.annotationField : undefined
                     });
@@ -3241,9 +3275,10 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
                 );
             }
             allActionResults.push(...currentObservationResults);
-            
+
             processedObservations++;
             if (progressFill) await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
+            if (statusElement) statusElement.textContent = `Processing observation ${processedObservations}/${totalObservations}...`;
         } // End of for...of observationIds loop
 
         // DEBUG: Comprehensive logging for issue #27
@@ -3328,7 +3363,7 @@ async function executeAction(action, observationId, preActionStates, preliminary
         }
     } catch (error) {
         console.error(`Failed to perform action ${action.type} for observation ${observationId}:`, error);
-        results.push({ observationId, action: action.type, success: false, error: error.toString() });
+        results.push({ observationId, action: action.type, success: false, error: safeErrorString(error) });
     }
 }
 
@@ -3709,7 +3744,7 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
                         console.error('Error generating undo record for project action:', error);
                         undoAction = { 
                             success: false, 
-                            error: error.toString(),
+                            error: safeErrorString(error),
                             projectId: actionItem.projectId,
                             projectName: actionItem.projectName,
                             type: 'removeFromProject'
