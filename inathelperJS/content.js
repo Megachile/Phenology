@@ -3512,8 +3512,9 @@ async function generatePreActionStates(observationIds, checkCancelled, modal) {
         }
     }
 
-    // Process observations sequentially to avoid rate limiting and CORS issues
-    for (let i = 0; i < observationIds.length; i++) {
+    // Fetch observations in batches using the API's multi-ID support
+    const batchSize = 30; // API supports up to 30 IDs per request
+    for (let i = 0; i < observationIds.length; i += batchSize) {
         // Check for cancellation
         if (checkCancelled && checkCancelled()) {
             console.log('Pre-action state fetch cancelled by user');
@@ -3521,36 +3522,55 @@ async function generatePreActionStates(observationIds, checkCancelled, modal) {
             break;
         }
 
-        const id = observationIds[i];
+        const batch = observationIds.slice(i, i + batchSize);
+        const idsParam = batch.join(',');
 
         if (statusElement) {
-            statusElement.textContent = `Fetching observation data (${i + 1}/${observationIds.length})...`;
+            statusElement.textContent = `Fetching observation data (${Math.min(i + batchSize, observationIds.length)}/${observationIds.length})...`;
         }
 
         try {
-            const obsData = await fetchWithRetry(`https://api.inaturalist.org/v1/observations/${id}`);
-            preActionStates[id] = obsData.results[0];
+            // Fetch all observations in this batch with a single API call
+            const obsData = await fetchWithRetry(`https://api.inaturalist.org/v1/observations/${idsParam}`);
 
-            try {
-                const subscriptionData = await makeAPIRequest(`/observations/${id}/subscriptions`);
-                preActionStates[id].isSubscribed = subscriptionData.results &&
-                    subscriptionData.results.length > 0;
-            } catch (error) {
-                console.error(`Error fetching subscription data for observation ${id}:`, error);
-                preActionStates[id].isSubscribed = false;
+            // Store each observation's data
+            for (const obs of obsData.results) {
+                preActionStates[obs.id] = obs;
+            }
+
+            // Now fetch subscription data for each observation in this batch
+            for (const id of batch) {
+                if (preActionStates[id]) {
+                    try {
+                        const subscriptionData = await makeAPIRequest(`/observations/${id}/subscriptions`);
+                        preActionStates[id].isSubscribed = subscriptionData.results &&
+                            subscriptionData.results.length > 0;
+                    } catch (error) {
+                        console.error(`Error fetching subscription data for observation ${id}:`, error);
+                        preActionStates[id].isSubscribed = false;
+                    }
+                }
+            }
+
+            // Check if any IDs from this batch weren't returned
+            const returnedIds = obsData.results.map(obs => obs.id.toString());
+            const missingIds = batch.filter(id => !returnedIds.includes(id));
+            if (missingIds.length > 0) {
+                console.error(`⚠️ DEBUG ISSUE #27: Observations not returned by API:`, missingIds);
+                failedFetches.push(...missingIds);
             }
         } catch (error) {
-            console.error(`⚠️ DEBUG ISSUE #27: Failed to fetch pre-action state for observation ${id}:`, error);
-            failedFetches.push(id);
+            console.error(`⚠️ DEBUG ISSUE #27: Failed to fetch batch starting at ${batch[0]}:`, error);
+            failedFetches.push(...batch);
         }
 
         // Update progress
-        const progress = Math.min(100, ((i + 1) / observationIds.length) * 100);
+        const progress = Math.min(100, ((i + batchSize) / observationIds.length) * 100);
         updateProgressBar(document.querySelector('.progress-fill'), progress);
 
-        // Add delay between requests to respect rate limits (except for last observation)
-        if (i < observationIds.length - 1) {
-            await delay(200); // 200ms delay = max 5 requests/second (more conservative to avoid rate limits)
+        // Add delay between batches (not needed as much with batch fetching, but still good practice)
+        if (i + batchSize < observationIds.length) {
+            await delay(500); // 500ms between batches of 30
         }
     }
 
