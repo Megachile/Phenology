@@ -131,6 +131,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    const advancedSettingsToggle = document.getElementById('advanced-settings-toggle');
+    const advancedSettingsContainer = document.getElementById('advanced-settings-container');
+    if (advancedSettingsToggle && advancedSettingsContainer) {
+        advancedSettingsToggle.addEventListener('click', function() {
+            const isHidden = advancedSettingsContainer.style.display === 'none';
+            advancedSettingsContainer.style.display = isHidden ? 'block' : 'none';
+            advancedSettingsToggle.textContent = isHidden ? 'Advanced Settings [-]' : 'Advanced Settings [+]';
+        });
+    }
+
     const preventionToggle = document.getElementById('auto-prevention-toggle');
     const preventionSettings = document.getElementById('auto-prevention-settings');
     if (preventionToggle && preventionSettings) {
