@@ -160,6 +160,7 @@ function createShortcutList() {
         <li>Alt + S: Cycle through button sets</li>
         <li>Alt + M: Toggle bulk action mode</li>
         <li>Ctrl + A: Select all observations (in bulk mode)</li>
+        <li>Ctrl + Shift + A: Clear all selections (in bulk mode)</li>
     `;
 
     // Add custom shortcuts
@@ -284,6 +285,13 @@ function handleAllShortcuts(event) {
             if (bulkActionModeEnabled) {
                 event.preventDefault();
                 selectAllObservations();
+                return;
+            }
+        }
+        if ((event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && event.key.toLowerCase() === 'a') {
+            if (bulkActionModeEnabled) {
+                event.preventDefault();
+                clearSelection();
                 return;
             }
         }
