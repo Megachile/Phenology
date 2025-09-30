@@ -159,6 +159,7 @@ function createShortcutList() {
         <li>Alt + H: Toggle this shortcut list</li>
         <li>Alt + S: Cycle through button sets</li>
         <li>Alt + M: Toggle bulk action mode</li>
+        <li>Ctrl + A: Select all observations (in bulk mode)</li>
     `;
 
     // Add custom shortcuts
@@ -278,6 +279,13 @@ function handleAllShortcuts(event) {
              event.preventDefault();
              cycleConfigurationSet();
              return;
+        }
+        if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'a') {
+            if (bulkActionModeEnabled) {
+                event.preventDefault();
+                selectAllObservations();
+                return;
+            }
         }
 
         // Process custom shortcuts for individual observation actions (when bulk mode is NOT enabled)
