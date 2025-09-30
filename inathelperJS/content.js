@@ -3234,7 +3234,44 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
             if (progressFill) await updateProgressBar(progressFill, (processedObservations / totalObservations) * 100);
         } // End of for...of observationIds loop
 
+        // DEBUG: Comprehensive logging for issue #27
+        console.log('=== UNDO RECORD DEBUG START ===');
+        console.log('Total observations processed:', observationIds.length);
+        console.log('Total action results:', allActionResults.length);
+
+        const successfulResults = allActionResults.filter(r => r.success);
+        console.log('Successful action results:', successfulResults.length);
+
+        const uniqueSuccessfulObsIds = [...new Set(successfulResults.map(r => r.observationId))];
+        console.log('Unique successful observation IDs:', uniqueSuccessfulObsIds.length);
+        console.log('Unique successful IDs:', uniqueSuccessfulObsIds);
+
+        const prelimObsIds = Object.keys(preliminaryUndoRecord.observations);
+        console.log('Preliminary undo record observation count:', prelimObsIds.length);
+        console.log('Preliminary undo record IDs:', prelimObsIds);
+
+        // Find observations that succeeded but are not in preliminary record
+        const missingFromPrelim = uniqueSuccessfulObsIds.filter(id => !prelimObsIds.includes(id));
+        if (missingFromPrelim.length > 0) {
+            console.error('⚠️ OBSERVATIONS MISSING FROM PRELIMINARY UNDO RECORD:', missingFromPrelim);
+            console.error('These observations had successful actions but won\'t be in undo record!');
+        }
+
         const finalUndoRecord = generateUndoRecord(preliminaryUndoRecord, allActionResults, overwrittenValues);
+
+        const finalObsIds = Object.keys(finalUndoRecord.observations);
+        console.log('Final undo record observation count:', finalObsIds.length);
+        console.log('Final undo record IDs:', finalObsIds);
+
+        // Find observations that succeeded but are not in final record
+        const missingFromFinal = uniqueSuccessfulObsIds.filter(id => !finalObsIds.includes(id));
+        if (missingFromFinal.length > 0) {
+            console.error('⚠️ OBSERVATIONS MISSING FROM FINAL UNDO RECORD:', missingFromFinal);
+            console.error('Count discrepancy: Successful =', uniqueSuccessfulObsIds.length, 'vs Undo Record =', finalObsIds.length);
+        }
+
+        console.log('=== UNDO RECORD DEBUG END ===');
+
         await storeUndoRecord(finalUndoRecord);
 
         if (modal.parentNode) document.body.removeChild(modal); // remove progress modal
@@ -3432,7 +3469,10 @@ function downloadTextFile(content, filename) {
 }
 
 async function generatePreActionStates(observationIds) {
+    console.log('=== PRE-ACTION STATES DEBUG START ===');
+    console.log('Fetching pre-action states for', observationIds.length, 'observations');
     const preActionStates = {};
+    const failedFetches = [];
     const batchSize = 20;
     const maxRetries = 3;
     const baseDelay = 200;
@@ -3478,7 +3518,8 @@ async function generatePreActionStates(observationIds) {
                     preActionStates[id].isSubscribed = false;
                 }
             } catch (error) {
-                console.error(`Failed to fetch pre-action state for observation ${id}:`, error);
+                console.error(`⚠️ DEBUG ISSUE #27: Failed to fetch pre-action state for observation ${id}:`, error);
+                failedFetches.push(id);
             }
         }));
 
@@ -3490,7 +3531,15 @@ async function generatePreActionStates(observationIds) {
             await delay(1000 - batchDuration);
         }
     }
-    
+
+    console.log('Pre-action states fetched for', Object.keys(preActionStates).length, 'observations');
+    if (failedFetches.length > 0) {
+        console.error(`⚠️ DEBUG ISSUE #27: Failed to fetch ${failedFetches.length} pre-action states`);
+        console.error('Failed observation IDs:', failedFetches);
+        console.error('These observations will NOT be in the undo record!');
+    }
+    console.log('=== PRE-ACTION STATES DEBUG END ===');
+
     return preActionStates;
 }
 
@@ -3500,6 +3549,9 @@ function generateUniqueId() {
 
 async function generatePreliminaryUndoRecord(action, observationIds, preActionStates) {
     console.log('Generating preliminary undo record for action:', action.name);
+    console.log('Total observation IDs to process:', observationIds.length);
+    console.log('Pre-action states available:', Object.keys(preActionStates).length);
+
     let undoRecord = {
         id: generateUniqueId(),
         timestamp: new Date().toISOString(),
@@ -3510,9 +3562,12 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
     const currentUserId = await getCurrentUserId();
     console.log('Current user ID:', currentUserId);
 
+    const missingPreActionStates = [];
+
     for (const observationId of observationIds) {
         if (!preActionStates[observationId]) {
-            console.warn(`No pre-action state found for observation ${observationId}`);
+            console.error(`⚠️ DEBUG ISSUE #27: No pre-action state found for observation ${observationId} - WILL NOT BE IN UNDO RECORD`);
+            missingPreActionStates.push(observationId);
             continue;
         }
 
@@ -3665,6 +3720,12 @@ async function generatePreliminaryUndoRecord(action, observationIds, preActionSt
         }
     }
 
+    if (missingPreActionStates.length > 0) {
+        console.error(`⚠️ DEBUG ISSUE #27: ${missingPreActionStates.length} observations missing from pre-action states!`);
+        console.error('Missing observation IDs:', missingPreActionStates);
+    }
+
+    console.log('Generated preliminary undo record with', Object.keys(undoRecord.observations).length, 'observations');
     console.log('Generated preliminary undo record:', undoRecord);
     return undoRecord;
 }
