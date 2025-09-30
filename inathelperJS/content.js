@@ -1,13 +1,30 @@
 console.log("Content script loaded. URL:", window.location.href);
 
-browserAPI.storage.local.get(['highlightColor'], function(data) {
+browserAPI.storage.local.get(['highlightColor', 'buttonMinWidth', 'verticalButtonLayout', 'buttonContainerMaxWidth'], function(data) {
     const color = data.highlightColor || '#FF6600';
     document.documentElement.style.setProperty('--highlight-color', color);
+
+    const minWidth = data.buttonMinWidth || 100;
+    const maxWidth = data.buttonContainerMaxWidth || 600;
+    const isVertical = data.verticalButtonLayout || false;
+
+    document.documentElement.style.setProperty('--button-min-width', minWidth + 'px');
+    document.documentElement.style.setProperty('--button-container-max-width', maxWidth + 'px');
+    document.documentElement.style.setProperty('--button-flex-direction', isVertical ? 'column' : 'row');
 });
 
 browserAPI.storage.onChanged.addListener(function(changes) {
     if (changes.highlightColor) {
         document.documentElement.style.setProperty('--highlight-color', changes.highlightColor.newValue);
+    }
+    if (changes.buttonMinWidth) {
+        document.documentElement.style.setProperty('--button-min-width', changes.buttonMinWidth.newValue + 'px');
+    }
+    if (changes.buttonContainerMaxWidth) {
+        document.documentElement.style.setProperty('--button-container-max-width', changes.buttonContainerMaxWidth.newValue + 'px');
+    }
+    if (changes.verticalButtonLayout) {
+        document.documentElement.style.setProperty('--button-flex-direction', changes.verticalButtonLayout.newValue ? 'column' : 'row');
     }
 });
 let buttonPosition = 'bottom-right'; // Default position
@@ -1134,9 +1151,10 @@ style.textContent += `
   }
   #custom-extension-container {
       display: flex;
+      flex-direction: var(--button-flex-direction, row);
       flex-wrap: wrap;
       gap: 5px;
-      max-width: 600px;
+      max-width: var(--button-container-max-width, 600px);
   }
     #custom-extension-container.dragging {
     height: var(--original-height);
@@ -1146,7 +1164,7 @@ style.textContent += `
         position: relative;
         margin: 3px;
         flex-grow: 1;
-        min-width: 100px;
+        min-width: var(--button-min-width, 100px);
     }
     .button-ph button:hover {
         background-color: rgba(0, 0, 0, 0.7) !important;

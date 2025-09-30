@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadUndoRecords(); // For the modal, if it's present or built dynamically
     loadAutoFollowSettings();
     loadBulkActionSettings();
+    loadButtonLayoutSettings();
     updateSortButtons();
 
     // Event Listeners for main configuration form
@@ -90,6 +91,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Event Listener for bulk action settings
     document.getElementById('autoRefreshAfterBulk').addEventListener('change', saveBulkActionSettings);
+
+    // Event Listeners for button layout settings
+    document.getElementById('buttonMinWidth').addEventListener('change', saveButtonLayoutSettings);
+    document.getElementById('verticalButtonLayout').addEventListener('change', saveButtonLayoutSettings);
+    document.getElementById('buttonContainerMaxWidth').addEventListener('change', saveButtonLayoutSettings);
 
     // Event Listeners for custom list management
     const createListButton = document.getElementById('createList');
@@ -168,6 +174,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const isHidden = bulkRefreshSettings.style.display === 'none';
             bulkRefreshSettings.style.display = isHidden ? 'block' : 'none';
             bulkRefreshToggle.textContent = isHidden ? 'Bulk Action Settings [-]' : 'Bulk Action Settings [+]';
+        });
+    }
+
+    const buttonLayoutToggle = document.getElementById('button-layout-toggle');
+    const buttonLayoutSettings = document.getElementById('button-layout-settings');
+    if (buttonLayoutToggle && buttonLayoutSettings) {
+        buttonLayoutToggle.addEventListener('click', function() {
+            const isHidden = buttonLayoutSettings.style.display === 'none';
+            buttonLayoutSettings.style.display = isHidden ? 'block' : 'none';
+            buttonLayoutToggle.textContent = isHidden ? 'Button Layout [-]' : 'Button Layout [+]';
         });
     }
 
@@ -2796,6 +2812,23 @@ function loadBulkActionSettings() {
 function saveBulkActionSettings() {
     const settings = {
         autoRefreshAfterBulk: document.getElementById('autoRefreshAfterBulk').checked
+    };
+    browserAPI.storage.local.set(settings);
+}
+
+function loadButtonLayoutSettings() {
+    browserAPI.storage.local.get(['buttonMinWidth', 'verticalButtonLayout', 'buttonContainerMaxWidth'], function(data) {
+        document.getElementById('buttonMinWidth').value = data.buttonMinWidth || 100;
+        document.getElementById('verticalButtonLayout').checked = !!data.verticalButtonLayout;
+        document.getElementById('buttonContainerMaxWidth').value = data.buttonContainerMaxWidth || 600;
+    });
+}
+
+function saveButtonLayoutSettings() {
+    const settings = {
+        buttonMinWidth: parseInt(document.getElementById('buttonMinWidth').value) || 100,
+        verticalButtonLayout: document.getElementById('verticalButtonLayout').checked,
+        buttonContainerMaxWidth: parseInt(document.getElementById('buttonContainerMaxWidth').value) || 600
     };
     browserAPI.storage.local.set(settings);
 }

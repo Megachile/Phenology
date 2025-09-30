@@ -722,6 +722,25 @@ button:hover {
                 </div>
             </div>
             <div class="hardcoded-shortcuts">
+                <h3 id="button-layout-toggle" style="cursor: pointer; font-size: 1.1em;">Button Layout [+]</h3>
+                <div id="button-layout-settings" style="display: none; margin-top: 10px;">
+                    <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
+                        <label for="buttonMinWidth" style="margin-bottom: 5px;">Minimum button width (px):</label>
+                        <input type="number" id="buttonMinWidth" min="50" max="300" value="100" style="width: 100px; padding: 5px;">
+                        <small style="color: #666; margin-top: 5px;">Default: 100px</small>
+                    </div>
+                    <div class="setting-item" style="margin-top: 10px;">
+                        <input type="checkbox" id="verticalButtonLayout">
+                        <label for="verticalButtonLayout">Use vertical button layout</label>
+                    </div>
+                    <div class="setting-item" style="flex-direction: column; align-items: flex-start; margin-top: 10px;">
+                        <label for="buttonContainerMaxWidth" style="margin-bottom: 5px;">Container max width (px):</label>
+                        <input type="number" id="buttonContainerMaxWidth" min="200" max="1000" value="600" style="width: 100px; padding: 5px;">
+                        <small style="color: #666; margin-top: 5px;">Default: 600px</small>
+                    </div>
+                </div>
+            </div>
+            <div class="hardcoded-shortcuts">
                 <h3 id="hardcoded-shortcuts-toggle" style="cursor: pointer; font-size: 1.1em;">General Shortcuts [+]</h3>
                 <ul id="hardcoded-shortcuts-list" style="display: none;">
                     <li>Shift + B: Toggle button visibility</li>
