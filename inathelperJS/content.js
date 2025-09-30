@@ -2967,7 +2967,25 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
     const overwrittenValues = {}; // This will store actual overwrites { obsId: { fieldName: { oldValue, newValue } } }
     const errorMessages = [];
 
-    const { safeMode = true } = await new Promise(resolve => 
+    let backgroundWarningShown = false;
+    const visibilityHandler = () => {
+        if (document.hidden && !backgroundWarningShown) {
+            const statusElement = modal.querySelector('#bulk-action-status');
+            if (statusElement) {
+                const originalText = statusElement.textContent;
+                statusElement.textContent = 'Tab backgrounded - processing continues but may be slower';
+                statusElement.style.color = '#ff9800';
+                setTimeout(() => {
+                    statusElement.textContent = originalText;
+                    statusElement.style.color = '';
+                }, 3000);
+            }
+            backgroundWarningShown = true;
+        }
+    };
+    document.addEventListener('visibilitychange', visibilityHandler);
+
+    const { safeMode = true } = await new Promise(resolve =>
         browserAPI.storage.local.get('safeMode', resolve)
     );
 
@@ -3159,11 +3177,13 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
             }, 2000);
         }
 
+        document.removeEventListener('visibilitychange', visibilityHandler);
         return { results: allActionResults, skippedObservations: skippedObservationsDueToSafeMode, overwrittenValues, errorMessages };
     } catch (error) {
         console.error('Error in bulk action execution:', error);
         if(statusElement) statusElement.textContent = `Error: ${error.message}`;
         if (modal.parentNode) document.body.removeChild(modal); // ensure progress modal is removed on error too
+        document.removeEventListener('visibilitychange', visibilityHandler);
         throw error;
     }
 }
