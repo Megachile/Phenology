@@ -2969,21 +2969,29 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
 
     let backgroundWarningShown = false;
     const visibilityHandler = () => {
+        console.log('Visibility changed. Hidden:', document.hidden);
         if (document.hidden && !backgroundWarningShown) {
             const statusElement = modal.querySelector('#bulk-action-status');
+            console.log('Status element found:', !!statusElement);
             if (statusElement) {
                 const originalText = statusElement.textContent;
-                statusElement.textContent = 'Tab backgrounded - processing continues but may be slower';
+                statusElement.textContent = '⚠️ Tab backgrounded - processing continues but may be slower';
                 statusElement.style.color = '#ff9800';
+                statusElement.style.fontWeight = 'bold';
+                statusElement.style.fontSize = '16px';
+                console.log('Warning displayed');
                 setTimeout(() => {
                     statusElement.textContent = originalText;
                     statusElement.style.color = '';
-                }, 3000);
+                    statusElement.style.fontWeight = '';
+                    statusElement.style.fontSize = '';
+                }, 5000);
             }
             backgroundWarningShown = true;
         }
     };
     document.addEventListener('visibilitychange', visibilityHandler);
+    console.log('Visibility handler registered for bulk action');
 
     const { safeMode = true } = await new Promise(resolve =>
         browserAPI.storage.local.get('safeMode', resolve)
