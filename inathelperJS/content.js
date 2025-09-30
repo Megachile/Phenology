@@ -3500,35 +3500,34 @@ async function generatePreActionStates(observationIds) {
         }
     }
 
-    for (let i = 0; i < observationIds.length; i += batchSize) {
-        const batchStart = Date.now(); // Added this line
-        const batch = observationIds.slice(i, i + batchSize);
-        
-        await Promise.all(batch.map(async (id) => {
-            try {
-                const obsData = await fetchWithRetry(`https://api.inaturalist.org/v1/observations/${id}`);
-                preActionStates[id] = obsData.results[0];
-                
-                try {
-                    const subscriptionData = await makeAPIRequest(`/observations/${id}/subscriptions`);
-                    preActionStates[id].isSubscribed = subscriptionData.results && 
-                        subscriptionData.results.length > 0;
-                } catch (error) {
-                    console.error(`Error fetching subscription data for observation ${id}:`, error);
-                    preActionStates[id].isSubscribed = false;
-                }
-            } catch (error) {
-                console.error(`⚠️ DEBUG ISSUE #27: Failed to fetch pre-action state for observation ${id}:`, error);
-                failedFetches.push(id);
-            }
-        }));
+    // Process observations sequentially to avoid rate limiting and CORS issues
+    for (let i = 0; i < observationIds.length; i++) {
+        const id = observationIds[i];
 
-        const batchDuration = Date.now() - batchStart;
-        const progress = Math.min(100, ((i + batchSize) / observationIds.length) * 100);
+        try {
+            const obsData = await fetchWithRetry(`https://api.inaturalist.org/v1/observations/${id}`);
+            preActionStates[id] = obsData.results[0];
+
+            try {
+                const subscriptionData = await makeAPIRequest(`/observations/${id}/subscriptions`);
+                preActionStates[id].isSubscribed = subscriptionData.results &&
+                    subscriptionData.results.length > 0;
+            } catch (error) {
+                console.error(`Error fetching subscription data for observation ${id}:`, error);
+                preActionStates[id].isSubscribed = false;
+            }
+        } catch (error) {
+            console.error(`⚠️ DEBUG ISSUE #27: Failed to fetch pre-action state for observation ${id}:`, error);
+            failedFetches.push(id);
+        }
+
+        // Update progress
+        const progress = Math.min(100, ((i + 1) / observationIds.length) * 100);
         updateProgressBar(document.querySelector('.progress-fill'), progress);
 
-        if (batchDuration < 1000 && i + batchSize < observationIds.length) {
-            await delay(1000 - batchDuration);
+        // Add delay between requests to respect rate limits (except for last observation)
+        if (i < observationIds.length - 1) {
+            await delay(100); // 100ms delay = max 10 requests/second
         }
     }
 
