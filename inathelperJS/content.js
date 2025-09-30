@@ -1364,6 +1364,8 @@ window.addEventListener('load', () => {
         console.log('Observation ID from URL:', observationId);
         currentObservationId = observationId;
         createOrUpdateIdDisplay(observationId);
+        createBulkActionButtons();
+        loadCSVStateFromStorage();
     }
     if (!currentObservationId) {
         createOrUpdateIdDisplay('None');
@@ -2686,15 +2688,185 @@ function createBulkActionButtons() {
     enableBulkModeButton.addEventListener('click', enableBulkActionMode);
     // Note: The general .bulk-action-button style is fine, no fixed position needed.
 
-    // 4. Append the button and container to the new wrapper
+    // 4. Create CSV loader UI
+    const csvLoaderContainer = createCSVLoaderUI();
+
+    // 5. Append the button and containers to the new wrapper
     bulkUiWrapper.appendChild(enableBulkModeButton);
     bulkUiWrapper.appendChild(bulkButtonContainer);
+    bulkUiWrapper.appendChild(csvLoaderContainer);
 
-    // 5. Append the single wrapper to the body
+    // 6. Append the single wrapper to the body
     document.body.appendChild(bulkUiWrapper);
 
     console.log('Bulk action UI created');
     updateBulkButtonPosition(); // Position the new wrapper
+}
+
+let csvObservationIds = [];
+let csvCurrentIndex = 0;
+
+function createCSVLoaderUI() {
+    const container = document.createElement('div');
+    container.id = 'csv-loader-container';
+    container.style.backgroundColor = 'white';
+    container.style.padding = '10px';
+    container.style.border = '1px solid black';
+    container.style.marginTop = '10px';
+    container.style.display = 'none';
+
+    const title = document.createElement('h3');
+    title.textContent = 'Load Observations from CSV';
+    title.style.margin = '0 0 10px 0';
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv';
+    fileInput.id = 'csv-file-input';
+
+    const loadButton = createBulkActionButton('Load CSV', () => {
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('Please select a CSV file');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            parseCSVObservations(text);
+        };
+        reader.readAsText(file);
+    });
+
+    const navContainer = document.createElement('div');
+    navContainer.id = 'csv-nav-container';
+    navContainer.style.marginTop = '10px';
+    navContainer.style.display = 'none';
+
+    const statusText = document.createElement('span');
+    statusText.id = 'csv-status';
+    statusText.style.marginRight = '10px';
+
+    const prevButton = createBulkActionButton('← Previous', navigateToPreviousCSVObs);
+    const nextButton = createBulkActionButton('Next →', navigateToNextCSVObs);
+
+    navContainer.appendChild(statusText);
+    navContainer.appendChild(prevButton);
+    navContainer.appendChild(nextButton);
+
+    container.appendChild(title);
+    container.appendChild(fileInput);
+    container.appendChild(loadButton);
+    container.appendChild(navContainer);
+
+    const toggleButton = document.createElement('button');
+    toggleButton.textContent = 'CSV Loader';
+    toggleButton.id = 'csv-loader-toggle';
+    toggleButton.classList.add('bulk-action-button');
+    toggleButton.addEventListener('click', () => {
+        const isHidden = container.style.display === 'none';
+        container.style.display = isHidden ? 'block' : 'none';
+    });
+
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(toggleButton);
+    wrapper.appendChild(container);
+
+    return wrapper;
+}
+
+function parseCSVObservations(csvText) {
+    const lines = csvText.split('\n');
+    const ids = [];
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        const parts = trimmed.split(',');
+        for (const part of parts) {
+            const cleaned = part.trim().replace(/['"]/g, '');
+            if (/^\d+$/.test(cleaned)) {
+                ids.push(cleaned);
+            }
+        }
+    }
+
+    if (ids.length === 0) {
+        alert('No observation IDs found in CSV');
+        return;
+    }
+
+    csvObservationIds = ids;
+    csvCurrentIndex = 0;
+
+    browserAPI.storage.local.set({
+        csvObservationIds: ids,
+        csvCurrentIndex: 0
+    });
+
+    document.getElementById('csv-nav-container').style.display = 'block';
+    updateCSVStatus();
+
+    alert(`Loaded ${ids.length} observation IDs. Click "Next" to start.`);
+}
+
+function loadCSVStateFromStorage() {
+    browserAPI.storage.local.get(['csvObservationIds', 'csvCurrentIndex'], (data) => {
+        if (data.csvObservationIds && data.csvObservationIds.length > 0) {
+            csvObservationIds = data.csvObservationIds;
+            csvCurrentIndex = data.csvCurrentIndex || 0;
+
+            const currentObsId = window.location.pathname.match(/\/observations\/(\d+)/)?.[1];
+            if (currentObsId && csvObservationIds.includes(currentObsId)) {
+                csvCurrentIndex = csvObservationIds.indexOf(currentObsId);
+                browserAPI.storage.local.set({ csvCurrentIndex: csvCurrentIndex });
+            }
+
+            const navContainer = document.getElementById('csv-nav-container');
+            if (navContainer) {
+                navContainer.style.display = 'block';
+                updateCSVStatus();
+            }
+        }
+    });
+}
+
+function updateCSVStatus() {
+    const statusText = document.getElementById('csv-status');
+    if (statusText) {
+        statusText.textContent = `${csvCurrentIndex + 1} / ${csvObservationIds.length}`;
+    }
+}
+
+function navigateToNextCSVObs() {
+    if (csvObservationIds.length === 0) return;
+
+    if (csvCurrentIndex < csvObservationIds.length - 1) {
+        csvCurrentIndex++;
+    } else {
+        csvCurrentIndex = 0;
+    }
+
+    browserAPI.storage.local.set({ csvCurrentIndex: csvCurrentIndex });
+
+    const obsId = csvObservationIds[csvCurrentIndex];
+    window.location.href = `https://www.inaturalist.org/observations/${obsId}`;
+}
+
+function navigateToPreviousCSVObs() {
+    if (csvObservationIds.length === 0) return;
+
+    if (csvCurrentIndex > 0) {
+        csvCurrentIndex--;
+    } else {
+        csvCurrentIndex = csvObservationIds.length - 1;
+    }
+
+    browserAPI.storage.local.set({ csvCurrentIndex: csvCurrentIndex });
+
+    const obsId = csvObservationIds[csvCurrentIndex];
+    window.location.href = `https://www.inaturalist.org/observations/${obsId}`;
 }
 
 function createBulkActionButton(text, onClickFunction) {
