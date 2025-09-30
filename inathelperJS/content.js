@@ -1210,7 +1210,7 @@ style.textContent += `
       display: block;
   }
  .bulk-action-button {
-        background-color: #4CAF50;
+        background-color: #FF9800;
         border: none;
         color: white;
         text-align: center;
