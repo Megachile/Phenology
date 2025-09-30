@@ -29,7 +29,7 @@ eas <- read.csv(paste0(wd, "/phenogrid.csv" ))
 ann <- get_annotation_codes()
 
 ## input iNat code or GF code for a taxon you want to pull data for
-spcode <- "495742"
+spcode <- "1389506"
 # 
 # #generate an API call URL for that code, after last fetched date for that code
 url <- urlMaker(spcode)
@@ -87,7 +87,7 @@ for (i in 1:20){
 # some code to help manually correct issues that can't be fixed or it isn't convenient to fix on the iNat side. 
 # inat observation ID of a problematic record
 # Remove rows with IDs in the first `prob` vector
-prob <- c("28249543", "205006449", "225820488", "240327885", "242148314", "242691014", "247268515", "249448738")
+prob <- c("253239916", "246026382", "60433495", "31495254")
 new <- new[!(new$id %in% prob), ]
 
 # Update Gall_generation to "bisexual" for IDs in the second `prob` vector
@@ -130,12 +130,27 @@ for (i in 121:134){
 new = new[!(new$id %in% missing$id), ]
 # drop rows specifically missing gall generation
 new <- new[!(new$Gall_generation==""),]
+# filter to "developing" or "dormant" phenophases
+dev <- subset(new, Gall_phenophase %in% c("developing", "dormant"))
+
+# sort by day-of-year descending
+dev <- dev[order(dev$doy, decreasing = TRUE), ]
+
+# open the first 20 URIs in order
+for (uri in head(dev$uri, 20)) {
+  browseURL(uri)
+}
+
+for (uri in dev$uri[21:min(40, nrow(dev))]) {
+  browseURL(uri)
+}
+
 
 # In case you want to just print the new records and edit them manually in a csv (then you can use the lit import function to add them to the db)
 # write.csv(new, file = "newrecords.csv", row.names = FALSE)
 
 #remove and add columns to match database table
-toappend <- new
+toappend <- dev
 toappend <- clean_and_transform(toappend)
 toappend <- separate_taxon_name(toappend)
 

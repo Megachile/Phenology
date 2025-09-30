@@ -42,5 +42,19 @@ data <- dbGetQuery(gallphen, select)
 # delete <- paste0("DELETE FROM observations ", query)
 # dbExecute(gallphen, delete)
 
+dbExecute(gallphen, "
+  UPDATE observations
+     SET phenophase = 'dormant'
+   WHERE rowid = 15188
+")
+
+# verify it worked
+dbGetQuery(gallphen, "
+  SELECT rowid, phenophase, doy
+    FROM observations
+   WHERE rowid = 15188
+")
+
+
 # Don't forget to close the database connection when you're done
 dbDisconnect(gallphen)
