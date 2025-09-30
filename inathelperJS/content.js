@@ -1210,7 +1210,7 @@ style.textContent += `
       display: block;
   }
  .bulk-action-button {
-        background-color: #FF9800;
+        background-color: #4CAF50;
         border: none;
         color: white;
         text-align: center;
@@ -2967,33 +2967,7 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
     const overwrittenValues = {}; // This will store actual overwrites { obsId: { fieldName: { oldValue, newValue } } }
     const errorMessages = [];
 
-    let backgroundWarningShown = false;
-    const visibilityHandler = () => {
-        console.log('Visibility changed. Hidden:', document.hidden);
-        if (document.hidden && !backgroundWarningShown) {
-            const statusElement = modal.querySelector('#bulk-action-status');
-            console.log('Status element found:', !!statusElement);
-            if (statusElement) {
-                const originalText = statusElement.textContent;
-                statusElement.textContent = '⚠️ Tab backgrounded - processing continues but may be slower';
-                statusElement.style.color = '#ff9800';
-                statusElement.style.fontWeight = 'bold';
-                statusElement.style.fontSize = '16px';
-                console.log('Warning displayed');
-                setTimeout(() => {
-                    statusElement.textContent = originalText;
-                    statusElement.style.color = '';
-                    statusElement.style.fontWeight = '';
-                    statusElement.style.fontSize = '';
-                }, 5000);
-            }
-            backgroundWarningShown = true;
-        }
-    };
-    document.addEventListener('visibilitychange', visibilityHandler);
-    console.log('Visibility handler registered for bulk action');
-
-    const { safeMode = true } = await new Promise(resolve =>
+    const { safeMode = true } = await new Promise(resolve => 
         browserAPI.storage.local.get('safeMode', resolve)
     );
 
@@ -3185,13 +3159,11 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
             }, 2000);
         }
 
-        document.removeEventListener('visibilitychange', visibilityHandler);
         return { results: allActionResults, skippedObservations: skippedObservationsDueToSafeMode, overwrittenValues, errorMessages };
     } catch (error) {
         console.error('Error in bulk action execution:', error);
         if(statusElement) statusElement.textContent = `Error: ${error.message}`;
         if (modal.parentNode) document.body.removeChild(modal); // ensure progress modal is removed on error too
-        document.removeEventListener('visibilitychange', visibilityHandler);
         throw error;
     }
 }
