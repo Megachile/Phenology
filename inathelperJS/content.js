@@ -3067,7 +3067,12 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
     const overwrittenValues = {}; // This will store actual overwrites { obsId: { fieldName: { oldValue, newValue } } }
     const errorMessages = [];
 
-    const { safeMode = true } = await new Promise(resolve => 
+    // Enhanced cancellation check that looks at modal state
+    const checkCancelled = () => {
+        return isCancelledFunc() || modal.dataset.cancelled === 'true';
+    };
+
+    const { safeMode = true } = await new Promise(resolve =>
         browserAPI.storage.local.get('safeMode', resolve)
     );
 
@@ -3083,7 +3088,14 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
 
 
     try {
-        const preActionStates = await generatePreActionStates(observationIds);
+        const preActionStates = await generatePreActionStates(observationIds, checkCancelled, modal);
+
+        // Check if cancelled during pre-action state fetch
+        if (checkCancelled()) {
+            if (modal.parentNode) document.body.removeChild(modal);
+            return { results: [], skippedObservations: [], overwrittenValues: {}, errorMessages: [] };
+        }
+
         console.log('Pre-action states:', preActionStates);
 
         const preliminaryUndoRecord = await generatePreliminaryUndoRecord(selectedActionConfig, observationIds, preActionStates);
@@ -3093,7 +3105,7 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
         }
 
         for (const observationId of observationIds) {
-            if (isCancelledFunc()) {
+            if (checkCancelled()) {
                 if(statusElement) statusElement.textContent = 'Action cancelled. Processing completed actions...';
                 break;
             }
@@ -3468,14 +3480,14 @@ function downloadTextFile(content, filename) {
     URL.revokeObjectURL(url);
 }
 
-async function generatePreActionStates(observationIds) {
+async function generatePreActionStates(observationIds, checkCancelled, modal) {
     console.log('=== PRE-ACTION STATES DEBUG START ===');
     console.log('Fetching pre-action states for', observationIds.length, 'observations');
     const preActionStates = {};
     const failedFetches = [];
-    const batchSize = 20;
     const maxRetries = 3;
     const baseDelay = 200;
+    const statusElement = modal ? modal.querySelector('#bulk-action-status') : null;
 
     async function fetchWithRetry(url, retries = 0) {
         try {
@@ -3502,7 +3514,18 @@ async function generatePreActionStates(observationIds) {
 
     // Process observations sequentially to avoid rate limiting and CORS issues
     for (let i = 0; i < observationIds.length; i++) {
+        // Check for cancellation
+        if (checkCancelled && checkCancelled()) {
+            console.log('Pre-action state fetch cancelled by user');
+            if (statusElement) statusElement.textContent = 'Cancelled';
+            break;
+        }
+
         const id = observationIds[i];
+
+        if (statusElement) {
+            statusElement.textContent = `Fetching observation data (${i + 1}/${observationIds.length})...`;
+        }
 
         try {
             const obsData = await fetchWithRetry(`https://api.inaturalist.org/v1/observations/${id}`);
@@ -3527,7 +3550,7 @@ async function generatePreActionStates(observationIds) {
 
         // Add delay between requests to respect rate limits (except for last observation)
         if (i < observationIds.length - 1) {
-            await delay(100); // 100ms delay = max 10 requests/second
+            await delay(200); // 200ms delay = max 5 requests/second (more conservative to avoid rate limits)
         }
     }
 
@@ -5992,10 +6015,32 @@ function createProgressModal() {
     status.id = 'bulk-action-status';
     status.style.textAlign = 'center';
 
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.className = 'bulk-action-button';
+    cancelButton.style.cssText = `
+        margin-top: 10px;
+        padding: 10px 20px;
+        background-color: #f44336;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    `;
+    cancelButton.onclick = () => {
+        if (confirm('Are you sure you want to cancel? Actions already performed cannot be undone by canceling.')) {
+            modal.dataset.cancelled = 'true';
+            cancelButton.disabled = true;
+            cancelButton.textContent = 'Cancelling...';
+            status.textContent = 'Cancelling - waiting for current action to complete...';
+        }
+    };
+
     progressContainer.appendChild(progressFill);
     content.appendChild(title);
     content.appendChild(progressContainer);
     content.appendChild(status);
+    content.appendChild(cancelButton);
     modal.appendChild(content);
 
     return modal;
