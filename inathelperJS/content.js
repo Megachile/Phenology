@@ -1364,8 +1364,6 @@ window.addEventListener('load', () => {
         console.log('Observation ID from URL:', observationId);
         currentObservationId = observationId;
         createOrUpdateIdDisplay(observationId);
-        createBulkActionButtons();
-        loadCSVStateFromStorage();
     }
     if (!currentObservationId) {
         createOrUpdateIdDisplay('None');
@@ -2703,9 +2701,6 @@ function createBulkActionButtons() {
     updateBulkButtonPosition(); // Position the new wrapper
 }
 
-let csvObservationIds = [];
-let csvCurrentIndex = 0;
-
 function createCSVLoaderUI() {
     const container = document.createElement('div');
     container.id = 'csv-loader-container';
@@ -2719,12 +2714,18 @@ function createCSVLoaderUI() {
     title.textContent = 'Load Observations from CSV';
     title.style.margin = '0 0 10px 0';
 
+    const helpText = document.createElement('p');
+    helpText.textContent = 'Upload a CSV with observation IDs or URLs (one per line or comma-separated)';
+    helpText.style.fontSize = '12px';
+    helpText.style.color = '#666';
+    helpText.style.margin = '0 0 10px 0';
+
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = '.csv';
+    fileInput.accept = '.csv,.txt';
     fileInput.id = 'csv-file-input';
 
-    const loadButton = createBulkActionButton('Load CSV', () => {
+    const loadButton = createBulkActionButton('Load & Open in Identify', () => {
         const file = fileInput.files[0];
         if (!file) {
             alert('Please select a CSV file');
@@ -2738,26 +2739,10 @@ function createCSVLoaderUI() {
         reader.readAsText(file);
     });
 
-    const navContainer = document.createElement('div');
-    navContainer.id = 'csv-nav-container';
-    navContainer.style.marginTop = '10px';
-    navContainer.style.display = 'none';
-
-    const statusText = document.createElement('span');
-    statusText.id = 'csv-status';
-    statusText.style.marginRight = '10px';
-
-    const prevButton = createBulkActionButton('← Previous', navigateToPreviousCSVObs);
-    const nextButton = createBulkActionButton('Next →', navigateToNextCSVObs);
-
-    navContainer.appendChild(statusText);
-    navContainer.appendChild(prevButton);
-    navContainer.appendChild(nextButton);
-
     container.appendChild(title);
+    container.appendChild(helpText);
     container.appendChild(fileInput);
     container.appendChild(loadButton);
-    container.appendChild(navContainer);
 
     const toggleButton = document.createElement('button');
     toggleButton.textContent = 'CSV Loader';
@@ -2783,10 +2768,17 @@ function parseCSVObservations(csvText) {
         const trimmed = line.trim();
         if (!trimmed) continue;
 
-        const parts = trimmed.split(',');
+        const parts = trimmed.split(/[,\s]+/);
         for (const part of parts) {
             const cleaned = part.trim().replace(/['"]/g, '');
-            if (/^\d+$/.test(cleaned)) {
+
+            // Extract ID from full URL like https://www.inaturalist.org/observations/208103778
+            const urlMatch = cleaned.match(/inaturalist\.org\/observations\/(\d+)/);
+            if (urlMatch) {
+                ids.push(urlMatch[1]);
+            }
+            // Or just a plain number
+            else if (/^\d+$/.test(cleaned)) {
                 ids.push(cleaned);
             }
         }
@@ -2797,76 +2789,12 @@ function parseCSVObservations(csvText) {
         return;
     }
 
-    csvObservationIds = ids;
-    csvCurrentIndex = 0;
+    // Remove duplicates
+    const uniqueIds = [...new Set(ids)];
 
-    browserAPI.storage.local.set({
-        csvObservationIds: ids,
-        csvCurrentIndex: 0
-    });
+    const identifyUrl = `https://www.inaturalist.org/observations/identify?quality_grade=casual,needs_id,research&reviewed=any&verifiable=any&place_id=any&per_page=${uniqueIds.length}&id=${uniqueIds.join(',')}`;
 
-    document.getElementById('csv-nav-container').style.display = 'block';
-    updateCSVStatus();
-
-    alert(`Loaded ${ids.length} observation IDs. Click "Next" to start.`);
-}
-
-function loadCSVStateFromStorage() {
-    browserAPI.storage.local.get(['csvObservationIds', 'csvCurrentIndex'], (data) => {
-        if (data.csvObservationIds && data.csvObservationIds.length > 0) {
-            csvObservationIds = data.csvObservationIds;
-            csvCurrentIndex = data.csvCurrentIndex || 0;
-
-            const currentObsId = window.location.pathname.match(/\/observations\/(\d+)/)?.[1];
-            if (currentObsId && csvObservationIds.includes(currentObsId)) {
-                csvCurrentIndex = csvObservationIds.indexOf(currentObsId);
-                browserAPI.storage.local.set({ csvCurrentIndex: csvCurrentIndex });
-            }
-
-            const navContainer = document.getElementById('csv-nav-container');
-            if (navContainer) {
-                navContainer.style.display = 'block';
-                updateCSVStatus();
-            }
-        }
-    });
-}
-
-function updateCSVStatus() {
-    const statusText = document.getElementById('csv-status');
-    if (statusText) {
-        statusText.textContent = `${csvCurrentIndex + 1} / ${csvObservationIds.length}`;
-    }
-}
-
-function navigateToNextCSVObs() {
-    if (csvObservationIds.length === 0) return;
-
-    if (csvCurrentIndex < csvObservationIds.length - 1) {
-        csvCurrentIndex++;
-    } else {
-        csvCurrentIndex = 0;
-    }
-
-    browserAPI.storage.local.set({ csvCurrentIndex: csvCurrentIndex });
-
-    const obsId = csvObservationIds[csvCurrentIndex];
-    window.location.href = `https://www.inaturalist.org/observations/${obsId}`;
-}
-
-function navigateToPreviousCSVObs() {
-    if (csvObservationIds.length === 0) return;
-
-    if (csvCurrentIndex > 0) {
-        csvCurrentIndex--;
-    } else {
-        csvCurrentIndex = csvObservationIds.length - 1;
-    }
-
-    browserAPI.storage.local.set({ csvCurrentIndex: csvCurrentIndex });
-
-    const obsId = csvObservationIds[csvCurrentIndex];
-    window.location.href = `https://www.inaturalist.org/observations/${obsId}`;
+    window.location.href = identifyUrl;
 }
 
 function createBulkActionButton(text, onClickFunction) {
