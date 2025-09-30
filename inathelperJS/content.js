@@ -1178,7 +1178,7 @@ style.textContent += `
         padding: 10px 20px;
     }
     .ObservationsGridItem.selected {
-        box-shadow: 0 0 0 4px #4CAF50;
+        box-shadow: 0 0 0 6px #FF6600;
     }
     #enable-bulk-mode-button {
         position: fixed;
