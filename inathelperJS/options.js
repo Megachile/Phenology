@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
     displayLists();
     loadUndoRecords(); // For the modal, if it's present or built dynamically
     loadAutoFollowSettings();
+    loadBulkActionSettings();
     updateSortButtons();
 
     // Event Listeners for main configuration form
@@ -86,6 +87,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('preventTaxonFollow').addEventListener('change', saveAutoFollowSettings);
     document.getElementById('preventFieldFollow').addEventListener('change', saveAutoFollowSettings);
     document.getElementById('preventTaxonReview').addEventListener('change', saveAutoFollowSettings);
+
+    // Event Listener for bulk action settings
+    document.getElementById('autoRefreshAfterBulk').addEventListener('change', saveBulkActionSettings);
 
     // Event Listeners for custom list management
     const createListButton = document.getElementById('createList');
@@ -144,6 +148,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const isHidden = highlightSettings.style.display === 'none';
             highlightSettings.style.display = isHidden ? 'block' : 'none';
             highlightToggle.textContent = isHidden ? 'Selection Highlight Color [-]' : 'Selection Highlight Color [+]';
+        });
+    }
+
+    const bulkRefreshToggle = document.getElementById('bulk-refresh-toggle');
+    const bulkRefreshSettings = document.getElementById('bulk-refresh-settings');
+    if (bulkRefreshToggle && bulkRefreshSettings) {
+        bulkRefreshToggle.addEventListener('click', function() {
+            const isHidden = bulkRefreshSettings.style.display === 'none';
+            bulkRefreshSettings.style.display = isHidden ? 'block' : 'none';
+            bulkRefreshToggle.textContent = isHidden ? 'Bulk Action Settings [-]' : 'Bulk Action Settings [+]';
         });
     }
 
@@ -2759,6 +2773,19 @@ function saveAutoFollowSettings() {
         preventTaxonFollow: document.getElementById('preventTaxonFollow').checked,
         preventFieldFollow: document.getElementById('preventFieldFollow').checked,
         preventTaxonReview: document.getElementById('preventTaxonReview').checked
+    };
+    browserAPI.storage.local.set(settings);
+}
+
+function loadBulkActionSettings() {
+    browserAPI.storage.local.get(['autoRefreshAfterBulk'], function(data) {
+        document.getElementById('autoRefreshAfterBulk').checked = !!data.autoRefreshAfterBulk;
+    });
+}
+
+function saveBulkActionSettings() {
+    const settings = {
+        autoRefreshAfterBulk: document.getElementById('autoRefreshAfterBulk').checked
     };
     browserAPI.storage.local.set(settings);
 }

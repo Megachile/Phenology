@@ -3131,6 +3131,16 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
         );
         document.body.appendChild(resultsModal);
 
+        const { autoRefreshAfterBulk = false } = await new Promise(resolve =>
+            browserAPI.storage.local.get('autoRefreshAfterBulk', resolve)
+        );
+
+        if (autoRefreshAfterBulk) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+
         return { results: allActionResults, skippedObservations: skippedObservationsDueToSafeMode, overwrittenValues, errorMessages };
     } catch (error) {
         console.error('Error in bulk action execution:', error);
