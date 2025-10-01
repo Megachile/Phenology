@@ -217,6 +217,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clear saved URL if disabling comparison mode
             savedPhenoUrl = null;
             phenoUrlStorage.style.display = 'none';
+            // Reset body padding
+            document.body.style.paddingBottom = '200px';
         }
     });
 
@@ -239,6 +241,9 @@ document.addEventListener('DOMContentLoaded', function() {
         phenoUrlStorage.style.display = 'block';
         saveForComparisonButton.style.display = 'none';
 
+        // Increase body padding to accommodate comparison box
+        document.body.style.paddingBottom = '350px';
+
         // Scroll to show the comparison box
         setTimeout(() => {
             phenoUrlStorage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -257,6 +262,9 @@ document.addEventListener('DOMContentLoaded', function() {
         savedPhenoUrl = null;
         phenoUrlStorage.style.display = 'none';
         saveForComparisonButton.style.display = 'none';
+
+        // Reset body padding
+        document.body.style.paddingBottom = '200px';
     });
 
     function openPhenoComparison(url1, url2) {
