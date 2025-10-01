@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 20px auto;
             padding: 20px;
             background-color: #f5f5f5;
@@ -37,11 +37,28 @@
             border-radius: 5px;
         }
 
+        .url-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
         label {
             display: block;
             margin-bottom: 8px;
             font-weight: bold;
             color: #333;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: monospace;
+            min-height: 100px;
+            resize: vertical;
         }
 
         input, select {
@@ -72,6 +89,14 @@
         button:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
+        }
+
+        .urlgen-button {
+            background-color: #2196F3;
+        }
+
+        .urlgen-button:hover {
+            background-color: #1976D2;
         }
 
         #status {
@@ -207,35 +232,19 @@
         <p class="subtitle">Predict phenological events by latitude using iNaturalist observations</p>
 
         <div class="input-section">
-            <h2>iNaturalist Query Parameters</h2>
+            <h2>iNaturalist Query URL</h2>
+            <p style="color: #666; margin-bottom: 15px;">
+                Paste a URL from the <a href="#" id="openUrlGenLink" style="color: #2196F3;">Advanced Filters URL Generator</a>,
+                or any iNaturalist observations URL.
+            </p>
 
-            <label for="taxonId">Taxon ID:</label>
-            <input type="number" id="taxonId" placeholder="e.g., 495742" value="495742">
-
-            <label for="phenophase">Observation Field (Phenophase):</label>
-            <input type="text" id="phenophase" placeholder="e.g., Gall phenophase" value="Gall phenophase">
-
-            <label for="phenophaseValue">Phenophase Value:</label>
-            <input type="text" id="phenophaseValue" placeholder="e.g., maturing" value="maturing">
-
-            <label for="qualityGrade">Quality Grade:</label>
-            <select id="qualityGrade">
-                <option value="research" selected>Research</option>
-                <option value="needs_id">Needs ID</option>
-                <option value="casual">Casual</option>
-                <option value="any">Any</option>
-            </select>
-
-            <label for="placeId">Place ID (comma-separated for multiple):</label>
-            <input type="text" id="placeId" placeholder="e.g., 6712,1" value="6712,1">
-
-            <label for="dateStart">Start Date (optional):</label>
-            <input type="date" id="dateStart" value="2023-01-01">
-
-            <label for="dateEnd">End Date (optional):</label>
-            <input type="date" id="dateEnd" value="2023-12-31">
+            <label for="inatUrl">iNaturalist Observations URL:</label>
+            <div class="url-input-container">
+                <textarea id="inatUrl" placeholder="https://www.inaturalist.org/observations?taxon_id=495742&field:Gall%20phenophase=maturing&place_id=6712,1&d1=2023-01-01&d2=2023-12-31">https://www.inaturalist.org/observations?taxon_id=495742&field:Gall%20phenophase=maturing&quality_grade=research&place_id=6712,1&d1=2023-01-01&d2=2023-12-31</textarea>
+            </div>
 
             <button id="fetchButton" onclick="fetchObservations()">Fetch & Analyze Observations</button>
+            <button class="urlgen-button" onclick="openUrlGen()">Open URL Generator</button>
         </div>
 
         <div id="status"></div>
@@ -260,10 +269,35 @@
         let currentParams = {};
         let totalResults = 0;
 
+        function openUrlGen() {
+            window.open('URLgen.html', '_blank');
+        }
+
+        document.getElementById('openUrlGenLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            openUrlGen();
+        });
+
         function showStatus(message, type = 'info') {
             const statusDiv = document.getElementById('status');
             statusDiv.textContent = message;
             statusDiv.className = type;
+        }
+
+        function parseInatUrl(url) {
+            try {
+                const urlObj = new URL(url);
+                const params = {};
+
+                for (const [key, value] of urlObj.searchParams) {
+                    params[key] = value;
+                }
+
+                return params;
+            } catch (error) {
+                showStatus('Invalid URL format. Please check the URL and try again.', 'error');
+                return null;
+            }
         }
 
         async function fetchObservations() {
@@ -272,18 +306,18 @@
             document.getElementById('summary').style.display = 'none';
             document.getElementById('paginationWarning').style.display = 'none';
 
-            const params = {
-                taxon_id: document.getElementById('taxonId').value,
-                quality_grade: document.getElementById('qualityGrade').value,
-                place_id: document.getElementById('placeId').value,
-                d1: document.getElementById('dateStart').value,
-                d2: document.getElementById('dateEnd').value
-            };
+            const urlInput = document.getElementById('inatUrl').value.trim();
 
-            const phenophaseField = document.getElementById('phenophase').value;
-            const phenophaseValue = document.getElementById('phenophaseValue').value;
-            if (phenophaseField && phenophaseValue) {
-                params[`field:${phenophaseField}`] = phenophaseValue;
+            if (!urlInput) {
+                showStatus('Please enter an iNaturalist URL', 'warning');
+                document.getElementById('fetchButton').disabled = false;
+                return;
+            }
+
+            const params = parseInatUrl(urlInput);
+            if (!params) {
+                document.getElementById('fetchButton').disabled = false;
+                return;
             }
 
             currentParams = params;
