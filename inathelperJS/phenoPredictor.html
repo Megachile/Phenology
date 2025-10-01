@@ -232,15 +232,31 @@
         <p class="subtitle">Predict phenological events by latitude using iNaturalist observations</p>
 
         <div class="input-section">
-            <h2>iNaturalist Query URL</h2>
+            <h2 id="queryTitle">iNaturalist Query URL</h2>
             <p style="color: #666; margin-bottom: 15px;">
                 Paste a URL from the <a href="#" id="openUrlGenLink" style="color: #2196F3;">Advanced Filters URL Generator</a>,
                 or any iNaturalist observations URL.
             </p>
 
-            <label for="inatUrl">iNaturalist Observations URL:</label>
-            <div class="url-input-container">
-                <textarea id="inatUrl" placeholder="https://www.inaturalist.org/observations?taxon_id=495742&field:Gall%20phenophase=maturing&place_id=6712,1&d1=2023-01-01&d2=2023-12-31">https://www.inaturalist.org/observations?taxon_id=495742&field:Gall%20phenophase=maturing&quality_grade=research&place_id=6712,1&d1=2023-01-01&d2=2023-12-31</textarea>
+            <div id="singleUrlMode">
+                <label for="inatUrl">iNaturalist Observations URL:</label>
+                <div class="url-input-container">
+                    <textarea id="inatUrl" placeholder="https://www.inaturalist.org/observations?taxon_id=495742&field:Gall%20phenophase=maturing&place_id=6712,1&d1=2023-01-01&d2=2023-12-31">https://www.inaturalist.org/observations?taxon_id=495742&field:Gall%20phenophase=maturing&quality_grade=research&place_id=6712,1&d1=2023-01-01&d2=2023-12-31</textarea>
+                </div>
+            </div>
+
+            <div id="comparisonUrlMode" style="display: none;">
+                <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                    <strong>Comparison Mode:</strong> Analyzing transition between two phenophases
+                </div>
+                <label for="inatUrl1">URL 1 (Before state):</label>
+                <div class="url-input-container">
+                    <textarea id="inatUrl1" rows="3" style="margin-bottom: 15px;"></textarea>
+                </div>
+                <label for="inatUrl2">URL 2 (After state):</label>
+                <div class="url-input-container">
+                    <textarea id="inatUrl2" rows="3"></textarea>
+                </div>
             </div>
 
             <button id="fetchButton" onclick="fetchObservations()">Fetch & Analyze Observations</button>
@@ -279,12 +295,17 @@
             const url2 = urlParams.get('url2');
 
             if (url1) {
-                document.getElementById('inatUrl').value = url1;
                 if (url2) {
+                    // Comparison mode
                     comparisonMode = true;
-                    document.getElementById('inatUrl').value = url1 + '\n\n--- URL 2 (for comparison) ---\n' + url2;
-                    // Auto-fetch if both URLs provided
-                    fetchObservations();
+                    document.getElementById('singleUrlMode').style.display = 'none';
+                    document.getElementById('comparisonUrlMode').style.display = 'block';
+                    document.getElementById('inatUrl1').value = url1;
+                    document.getElementById('inatUrl2').value = url2;
+                    document.getElementById('queryTitle').textContent = 'Phenophase Transition Analysis';
+                } else {
+                    // Single URL mode
+                    document.getElementById('inatUrl').value = url1;
                 }
             }
         });
@@ -326,18 +347,42 @@
             document.getElementById('summary').style.display = 'none';
             document.getElementById('paginationWarning').style.display = 'none';
 
-            const urlInput = document.getElementById('inatUrl').value.trim();
+            let params;
 
-            if (!urlInput) {
-                showStatus('Please enter an iNaturalist URL', 'warning');
-                document.getElementById('fetchButton').disabled = false;
-                return;
-            }
+            if (comparisonMode) {
+                const url1Input = document.getElementById('inatUrl1').value.trim();
+                const url2Input = document.getElementById('inatUrl2').value.trim();
 
-            const params = parseInatUrl(urlInput);
-            if (!params) {
-                document.getElementById('fetchButton').disabled = false;
-                return;
+                if (!url1Input || !url2Input) {
+                    showStatus('Please enter both URLs for comparison mode', 'warning');
+                    document.getElementById('fetchButton').disabled = false;
+                    return;
+                }
+
+                url1Params = parseInatUrl(url1Input);
+                url2Params = parseInatUrl(url2Input);
+
+                if (!url1Params || !url2Params) {
+                    document.getElementById('fetchButton').disabled = false;
+                    return;
+                }
+
+                showStatus('Comparison mode: Fetching both URL datasets separately (not yet implemented - showing URL 1 for now)', 'warning');
+                params = url1Params; // For now, just show first URL
+            } else {
+                const urlInput = document.getElementById('inatUrl').value.trim();
+
+                if (!urlInput) {
+                    showStatus('Please enter an iNaturalist URL', 'warning');
+                    document.getElementById('fetchButton').disabled = false;
+                    return;
+                }
+
+                params = parseInatUrl(urlInput);
+                if (!params) {
+                    document.getElementById('fetchButton').disabled = false;
+                    return;
+                }
             }
 
             currentParams = params;
