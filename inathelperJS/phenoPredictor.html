@@ -268,6 +268,26 @@
         let currentObservations = [];
         let currentParams = {};
         let totalResults = 0;
+        let comparisonMode = false;
+        let url1Params = null;
+        let url2Params = null;
+
+        // Check if we were passed URLs from URLgen
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const url1 = urlParams.get('url1');
+            const url2 = urlParams.get('url2');
+
+            if (url1) {
+                document.getElementById('inatUrl').value = url1;
+                if (url2) {
+                    comparisonMode = true;
+                    document.getElementById('inatUrl').value = url1 + '\n\n--- URL 2 (for comparison) ---\n' + url2;
+                    // Auto-fetch if both URLs provided
+                    fetchObservations();
+                }
+            }
+        });
 
         function openUrlGen() {
             window.open('URLgen.html', '_blank');
