@@ -259,8 +259,8 @@
                 </div>
             </div>
 
-            <button id="fetchButton" onclick="fetchObservations()">Fetch & Analyze Observations</button>
-            <button class="urlgen-button" onclick="openUrlGen()">Open URL Generator</button>
+            <button id="fetchButton">Fetch & Analyze Observations</button>
+            <button id="openUrlGenButton" class="urlgen-button">Open URL Generator</button>
         </div>
 
         <div id="status"></div>
@@ -294,14 +294,29 @@
             const url1 = urlParams.get('url1');
             const url2 = urlParams.get('url2');
 
+            console.log('URL1:', url1);
+            console.log('URL2:', url2);
+
             if (url1) {
                 if (url2) {
                     // Comparison mode
                     comparisonMode = true;
                     document.getElementById('singleUrlMode').style.display = 'none';
                     document.getElementById('comparisonUrlMode').style.display = 'block';
-                    document.getElementById('inatUrl1').value = url1;
-                    document.getElementById('inatUrl2').value = url2;
+
+                    // Set textareas
+                    const textarea1 = document.getElementById('inatUrl1');
+                    const textarea2 = document.getElementById('inatUrl2');
+
+                    if (textarea1 && textarea2) {
+                        textarea1.value = url1;
+                        textarea2.value = url2;
+                        console.log('Set textarea1 to:', textarea1.value);
+                        console.log('Set textarea2 to:', textarea2.value);
+                    } else {
+                        console.error('Textareas not found!', textarea1, textarea2);
+                    }
+
                     document.getElementById('queryTitle').textContent = 'Phenophase Transition Analysis';
                 } else {
                     // Single URL mode
@@ -318,6 +333,13 @@
             e.preventDefault();
             openUrlGen();
         });
+
+        document.getElementById('openUrlGenButton').addEventListener('click', (e) => {
+            e.preventDefault();
+            openUrlGen();
+        });
+
+        document.getElementById('fetchButton').addEventListener('click', fetchObservations);
 
         function showStatus(message, type = 'info') {
             const statusDiv = document.getElementById('status');
