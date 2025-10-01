@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phenology Predictor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        #status.info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            display: block;
+        }
+
+        #status.warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            display: block;
+        }
+
+        #status.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+
+        #status.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+
+        #summary {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .summary-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .summary-card .subvalue {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .prediction-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 5px;
+        }
+
+        .prediction-section h2 {
+            margin-top: 0;
+            color: #2e7d32;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .pagination-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .pagination-warning h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+
+        .pagination-buttons {
+            margin-top: 15px;
+        }
+
+        .pagination-buttons button {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Phenology Predictor</h1>
+        <p class="subtitle">Predict phenological events by latitude using iNaturalist observations</p>
+
+        <div class="input-section">
+            <h2>iNaturalist Query Parameters</h2>
+
+            <label for="taxonId">Taxon ID:</label>
+            <input type="number" id="taxonId" placeholder="e.g., 495742" value="495742">
+
+            <label for="phenophase">Observation Field (Phenophase):</label>
+            <input type="text" id="phenophase" placeholder="e.g., Gall phenophase" value="Gall phenophase">
+
+            <label for="phenophaseValue">Phenophase Value:</label>
+            <input type="text" id="phenophaseValue" placeholder="e.g., maturing" value="maturing">
+
+            <label for="qualityGrade">Quality Grade:</label>
+            <select id="qualityGrade">
+                <option value="research" selected>Research</option>
+                <option value="needs_id">Needs ID</option>
+                <option value="casual">Casual</option>
+                <option value="any">Any</option>
+            </select>
+
+            <label for="placeId">Place ID (comma-separated for multiple):</label>
+            <input type="text" id="placeId" placeholder="e.g., 6712,1" value="6712,1">
+
+            <label for="dateStart">Start Date (optional):</label>
+            <input type="date" id="dateStart" value="2023-01-01">
+
+            <label for="dateEnd">End Date (optional):</label>
+            <input type="date" id="dateEnd" value="2023-12-31">
+
+            <button id="fetchButton" onclick="fetchObservations()">Fetch & Analyze Observations</button>
+        </div>
+
+        <div id="status"></div>
+
+        <div id="paginationWarning" class="pagination-warning" style="display: none;">
+            <h3>⚠️ Multiple Pages Available</h3>
+            <p>There are <strong id="totalCount">0</strong> total observations available, but only <strong>200</strong> were fetched.</p>
+            <p>Fetching all observations may take a while. What would you like to do?</p>
+            <div class="pagination-buttons">
+                <button onclick="fetchAllPages()">Fetch All (may take time)</button>
+                <button onclick="useCurrentData()">Use First 200</button>
+                <button onclick="refineParameters()">Change Parameters</button>
+            </div>
+        </div>
+
+        <div id="summary"></div>
+    </div>
+
+    <script src="phenoPredictor.js"></script>
+    <script>
+        let currentObservations = [];
+        let currentParams = {};
+        let totalResults = 0;
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+        }
+
+        async function fetchObservations() {
+            showStatus('Fetching observations from iNaturalist...', 'info');
+            document.getElementById('fetchButton').disabled = true;
+            document.getElementById('summary').style.display = 'none';
+            document.getElementById('paginationWarning').style.display = 'none';
+
+            const params = {
+                taxon_id: document.getElementById('taxonId').value,
+                quality_grade: document.getElementById('qualityGrade').value,
+                place_id: document.getElementById('placeId').value,
+                d1: document.getElementById('dateStart').value,
+                d2: document.getElementById('dateEnd').value
+            };
+
+            const phenophaseField = document.getElementById('phenophase').value;
+            const phenophaseValue = document.getElementById('phenophaseValue').value;
+            if (phenophaseField && phenophaseValue) {
+                params[`field:${phenophaseField}`] = phenophaseValue;
+            }
+
+            currentParams = params;
+
+            try {
+                const data = await fetchInatObservations(params, 1);
+                totalResults = data.totalResults;
+
+                showStatus(`Fetched ${data.results.length} observations`, 'success');
+
+                if (data.results.length === 0) {
+                    showStatus('No observations found. Try adjusting your parameters.', 'warning');
+                    document.getElementById('fetchButton').disabled = false;
+                    return;
+                }
+
+                const processed = processObservations(data.results);
+                currentObservations = processed;
+
+                if (totalResults > 200) {
+                    document.getElementById('totalCount').textContent = totalResults;
+                    document.getElementById('paginationWarning').style.display = 'block';
+                } else {
+                    displayResults(processed);
+                }
+
+            } catch (error) {
+                showStatus('Error fetching observations: ' + error.message, 'error');
+            }
+
+            document.getElementById('fetchButton').disabled = false;
+        }
+
+        async function fetchAllPages() {
+            showStatus('Fetching all pages... This may take a while.', 'info');
+            document.getElementById('paginationWarning').style.display = 'none';
+
+            const maxPages = Math.ceil(totalResults / 200);
+
+            try {
+                const data = await fetchInatObservations(currentParams, maxPages);
+                const processed = processObservations(data.results);
+                currentObservations = processed;
+
+                showStatus(`Fetched all ${processed.length} observations`, 'success');
+                displayResults(processed);
+
+            } catch (error) {
+                showStatus('Error fetching all pages: ' + error.message, 'error');
+            }
+        }
+
+        function useCurrentData() {
+            document.getElementById('paginationWarning').style.display = 'none';
+            displayResults(currentObservations);
+        }
+
+        function refineParameters() {
+            document.getElementById('paginationWarning').style.display = 'none';
+            showStatus('Please adjust your parameters and try again.', 'info');
+        }
+
+        function displayResults(observations) {
+            const summary = summarizeObservations(observations);
+            if (!summary) {
+                showStatus('No valid observations to analyze.', 'warning');
+                return;
+            }
+
+            const summaryDiv = document.getElementById('summary');
+            summaryDiv.style.display = 'block';
+
+            const minDate = doyToDate(summary.doy.min);
+            const maxDate = doyToDate(summary.doy.max);
+
+            summaryDiv.innerHTML = `
+                <h2>Observation Summary</h2>
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <h3>Total Observations</h3>
+                        <div class="value">${summary.count}</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Day of Year Range</h3>
+                        <div class="value">${summary.doy.min} - ${summary.doy.max}</div>
+                        <div class="subvalue">${formatDate(minDate)} to ${formatDate(maxDate)}</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Latitude Range</h3>
+                        <div class="value">${summary.latitude.min.toFixed(2)}° - ${summary.latitude.max.toFixed(2)}°</div>
+                        <div class="subvalue">Mean: ${summary.latitude.mean.toFixed(2)}°</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Longitude Range</h3>
+                        <div class="value">${summary.longitude.min.toFixed(2)}° - ${summary.longitude.max.toFixed(2)}°</div>
+                        <div class="subvalue">Mean: ${summary.longitude.mean.toFixed(2)}°</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Season Index Range</h3>
+                        <div class="value">${summary.seasind.min.toFixed(4)} - ${summary.seasind.max.toFixed(4)}</div>
+                        <div class="subvalue">Mean: ${summary.seasind.mean.toFixed(4)} ± ${summary.seasind.std.toFixed(4)}</div>
+                    </div>
+                </div>
+
+                <div class="prediction-section">
+                    <h2>Phenology Predictions by Latitude</h2>
+                    <p>Using ${summary.count < 10 ? 'min/max' : 'mean ± 1.64 SD'} threshold method</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Latitude</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>DOY Range</th>
+                                <th>Season Index Range</th>
+                            </tr>
+                        </thead>
+                        <tbody id="predictionTable">
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            const predictionTable = document.getElementById('predictionTable');
+            const thresholdMethod = summary.count < 10 ? 'minmax' : 'stdev';
+
+            for (let lat = 25; lat <= 50; lat += 5) {
+                const prediction = predictPhenologyDates(observations, lat, thresholdMethod);
+                if (prediction) {
+                    const row = predictionTable.insertRow();
+                    row.innerHTML = `
+                        <td>${prediction.targetLatitude}°N</td>
+                        <td>${formatDate(prediction.startDate)}</td>
+                        <td>${formatDate(prediction.endDate)}</td>
+                        <td>${prediction.startDoy} - ${prediction.endDoy}</td>
+                        <td>${prediction.minSeasind.toFixed(4)} - ${prediction.maxSeasind.toFixed(4)}</td>
+                    `;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
