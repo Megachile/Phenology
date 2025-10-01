@@ -212,6 +212,8 @@ document.addEventListener('DOMContentLoaded', function() {
     comparisonModeToggle.addEventListener('change', function() {
         if (this.checked) {
             saveForComparisonButton.style.display = 'block';
+            // Increase padding for comparison mode UI
+            document.body.style.paddingBottom = '450px';
         } else {
             saveForComparisonButton.style.display = 'none';
             // Clear saved URL if disabling comparison mode
@@ -230,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.open('phenoPredictor.html?url1=' + encodeURIComponent(fullUrl), '_blank');
     });
 
-    // Save for comparison button: Shows up as a 4th button when you want comparison mode
+    // Save for comparison button: Saves URL 1 for comparison
     saveForComparisonButton.addEventListener('click', async function(e) {
         e.preventDefault();
         const queryString = await generateURL();
@@ -239,10 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
         savedPhenoUrl = fullUrl;
         savedUrl1Display.textContent = queryString.substring(0, 100) + '...';
         phenoUrlStorage.style.display = 'block';
-        saveForComparisonButton.style.display = 'none';
-
-        // Increase body padding to accommodate comparison box
-        document.body.style.paddingBottom = '350px';
+        // Don't hide the button - keep it visible so user can save a new URL 1
 
         // Scroll to show the comparison box
         setTimeout(() => {
