@@ -238,6 +238,11 @@ document.addEventListener('DOMContentLoaded', function() {
         savedUrl1Display.textContent = queryString.substring(0, 100) + '...';
         phenoUrlStorage.style.display = 'block';
         saveForComparisonButton.style.display = 'none';
+
+        // Scroll to show the comparison box
+        setTimeout(() => {
+            phenoUrlStorage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
     });
 
     compareButton.addEventListener('click', async function(e) {
