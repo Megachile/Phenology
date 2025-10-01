@@ -201,28 +201,43 @@ document.addEventListener('DOMContentLoaded', function() {
     // Phenology prediction button handler
     let savedPhenoUrl = null;
     const phenoPredictButton = document.getElementById('phenoPredictButton');
+    const saveForComparisonButton = document.getElementById('saveForComparisonButton');
+    const comparisonModeToggle = document.getElementById('comparisonModeToggle');
     const phenoUrlStorage = document.getElementById('phenoUrlStorage');
     const savedUrl1Display = document.getElementById('savedUrl1Display');
     const compareButton = document.getElementById('compareWithCurrentButton');
     const clearButton = document.getElementById('clearSavedUrlButton');
 
+    // Toggle comparison mode
+    comparisonModeToggle.addEventListener('change', function() {
+        if (this.checked) {
+            saveForComparisonButton.style.display = 'block';
+        } else {
+            saveForComparisonButton.style.display = 'none';
+            // Clear saved URL if disabling comparison mode
+            savedPhenoUrl = null;
+            phenoUrlStorage.style.display = 'none';
+        }
+    });
+
+    // Main button: Always predicts phenology with current URL
     phenoPredictButton.addEventListener('click', async function(e) {
         e.preventDefault();
         const queryString = await generateURL();
         const fullUrl = 'https://api.inaturalist.org/v1/observations?' + queryString;
+        window.open('phenoPredictor.html?url1=' + encodeURIComponent(fullUrl), '_blank');
+    });
 
-        if (!savedPhenoUrl) {
-            // First click: save this URL
-            savedPhenoUrl = fullUrl;
-            savedUrl1Display.textContent = queryString.substring(0, 100) + '...';
-            phenoUrlStorage.style.display = 'block';
-            phenoPredictButton.textContent = 'Save as URL 2 & Compare';
-            phenoPredictButton.style.background = '#FF9800';
-        } else {
-            // Second click: compare two URLs
-            const url2 = fullUrl;
-            openPhenoComparison(savedPhenoUrl, url2);
-        }
+    // Save for comparison button: Shows up as a 4th button when you want comparison mode
+    saveForComparisonButton.addEventListener('click', async function(e) {
+        e.preventDefault();
+        const queryString = await generateURL();
+        const fullUrl = 'https://api.inaturalist.org/v1/observations?' + queryString;
+
+        savedPhenoUrl = fullUrl;
+        savedUrl1Display.textContent = queryString.substring(0, 100) + '...';
+        phenoUrlStorage.style.display = 'block';
+        saveForComparisonButton.style.display = 'none';
     });
 
     compareButton.addEventListener('click', async function(e) {
@@ -236,8 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         savedPhenoUrl = null;
         phenoUrlStorage.style.display = 'none';
-        phenoPredictButton.textContent = 'Predict Phenology';
-        phenoPredictButton.style.background = '';
+        saveForComparisonButton.style.display = 'none';
     });
 
     function openPhenoComparison(url1, url2) {
