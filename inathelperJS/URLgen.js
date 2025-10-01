@@ -198,6 +198,58 @@ document.addEventListener('DOMContentLoaded', function() {
         window.open('https://www.inaturalist.org/observations/identify?' + queryString, '_blank');
     });
 
+    // Phenology prediction button handler
+    let savedPhenoUrl = null;
+    const phenoPredictButton = document.getElementById('phenoPredictButton');
+    const phenoUrlStorage = document.getElementById('phenoUrlStorage');
+    const savedUrl1Display = document.getElementById('savedUrl1Display');
+    const compareButton = document.getElementById('compareWithCurrentButton');
+    const clearButton = document.getElementById('clearSavedUrlButton');
+
+    phenoPredictButton.addEventListener('click', async function(e) {
+        e.preventDefault();
+        const queryString = await generateURL();
+        const fullUrl = 'https://api.inaturalist.org/v1/observations?' + queryString;
+
+        if (!savedPhenoUrl) {
+            // First click: save this URL
+            savedPhenoUrl = fullUrl;
+            savedUrl1Display.textContent = queryString.substring(0, 100) + '...';
+            phenoUrlStorage.style.display = 'block';
+            phenoPredictButton.textContent = 'Save as URL 2 & Compare';
+            phenoPredictButton.style.background = '#FF9800';
+        } else {
+            // Second click: compare two URLs
+            const url2 = fullUrl;
+            openPhenoComparison(savedPhenoUrl, url2);
+        }
+    });
+
+    compareButton.addEventListener('click', async function(e) {
+        e.preventDefault();
+        const queryString = await generateURL();
+        const url2 = 'https://api.inaturalist.org/v1/observations?' + queryString;
+        openPhenoComparison(savedPhenoUrl, url2);
+    });
+
+    clearButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        savedPhenoUrl = null;
+        phenoUrlStorage.style.display = 'none';
+        phenoPredictButton.textContent = 'Predict Phenology';
+        phenoPredictButton.style.background = '';
+    });
+
+    function openPhenoComparison(url1, url2) {
+        const phenoUrl = `phenoPredictor.html?url1=${encodeURIComponent(url1)}&url2=${encodeURIComponent(url2)}`;
+        window.open(phenoUrl, '_blank');
+        // Clear saved state after comparison
+        savedPhenoUrl = null;
+        phenoUrlStorage.style.display = 'none';
+        phenoPredictButton.textContent = 'Predict Phenology';
+        phenoPredictButton.style.background = '';
+    }
+
     const actionsContainer = document.getElementById('actionsContainer');
     const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
