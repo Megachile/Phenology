@@ -1934,7 +1934,7 @@ function summarizeBulkActionOutcomes(allActionResults, configuredActions) {
     return summaryByActionType;
 }
 
-function createDetailedActionResultsModal(summaryByActionType, actionSetName, skippedSafeModeObsIds, overwrittenValues, generalErrorMessages) {
+function createDetailedActionResultsModal(summaryByActionType, actionSetName, skippedSafeModeObsIds, overwrittenValues, generalErrorMessages, autoRefreshAfterBulk = false) {
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -2104,6 +2104,10 @@ function createDetailedActionResultsModal(summaryByActionType, actionSetName, sk
             document.removeEventListener('keydown', handleModalKeyPress); // --- NEW: Remove listener ---
             if (modal.parentNode) {
                 modal.parentNode.removeChild(modal);
+            }
+            // Refresh the page after closing if the setting is enabled
+            if (autoRefreshAfterBulk) {
+                window.location.reload();
             }
         });
     }

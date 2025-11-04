@@ -189,6 +189,7 @@ function createShortcutList() {
         <li>Alt + M: Toggle bulk action mode</li>
         <li>Ctrl + A: Select all observations (in bulk mode)</li>
         <li>Ctrl + Shift + A: Clear all selections (in bulk mode)</li>
+        <li>Ctrl + Click: Open identify modal for observation (in bulk mode)</li>
     `;
 
     // Add custom shortcuts
@@ -2947,6 +2948,12 @@ document.body.addEventListener('click', (e) => {
     if (bulkActionModeEnabled) {
         const clickedObsElement = e.target.closest('.ObservationsGridItem');
         if (clickedObsElement) {
+            // Allow Ctrl+click to open the identify modal even in bulk mode
+            if (e.ctrlKey) {
+                // Don't prevent default - let the normal click behavior open the modal
+                return;
+            }
+
             // Prevent default navigation/action if clicking within the item,
             // as we are capturing the click for selection purposes.
             e.preventDefault();
@@ -3323,25 +3330,20 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
 
         if (modal.parentNode) document.body.removeChild(modal); // remove progress modal
 
+        const { autoRefreshAfterBulk = false } = await new Promise(resolve =>
+            browserAPI.storage.local.get('autoRefreshAfterBulk', resolve)
+        );
+
         const actionSpecificSummary = summarizeBulkActionOutcomes(allActionResults, selectedActionConfig.actions);
         const resultsModal = createDetailedActionResultsModal(
             actionSpecificSummary,
             selectedActionConfig.name,
             skippedObservationsDueToSafeMode, // Pass the array of IDs skipped by safe mode
             overwrittenValues,
-            errorMessages
+            errorMessages,
+            autoRefreshAfterBulk // Pass the refresh setting to the modal
         );
         document.body.appendChild(resultsModal);
-
-        const { autoRefreshAfterBulk = false } = await new Promise(resolve =>
-            browserAPI.storage.local.get('autoRefreshAfterBulk', resolve)
-        );
-
-        if (autoRefreshAfterBulk) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-        }
 
         return { results: allActionResults, skippedObservations: skippedObservationsDueToSafeMode, overwrittenValues, errorMessages };
     } catch (error) {
