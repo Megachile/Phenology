@@ -2081,13 +2081,25 @@ function createDetailedActionResultsModal(summaryByActionType, actionSetName, sk
             </div>`;
     }
 
-    contentHTML += `<button id="detailed-results-close-button" class="modal-button" style="margin-top:15px;">Close</button>`;
-    
+    // Add buttons based on auto-refresh setting
+    if (autoRefreshAfterBulk) {
+        // Auto-refresh is ON - show only Close button (refresh happens automatically via timer)
+        contentHTML += `<button id="detailed-results-close-button" class="modal-button" style="margin-top:15px;">Close</button>`;
+    } else {
+        // Auto-refresh is OFF - show both Close and Close & Refresh buttons
+        contentHTML += `
+            <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end;">
+                <button id="detailed-results-close-button" class="modal-button">Close</button>
+                <button id="detailed-results-close-refresh-button" class="modal-button" style="background-color: #4caf50; color: white;">Close and Refresh</button>
+            </div>`;
+    }
+
     content.innerHTML = contentHTML;
     modal.appendChild(content);
     document.body.appendChild(modal);
 
     const closeButton = content.querySelector('#detailed-results-close-button');
+    const closeRefreshButton = content.querySelector('#detailed-results-close-refresh-button');
 
     // --- NEW: Keydown event listener for Enter/Escape ---
     const handleModalKeyPress = (event) => {
@@ -2101,14 +2113,20 @@ function createDetailedActionResultsModal(summaryByActionType, actionSetName, sk
 
     if (closeButton) {
         closeButton.addEventListener('click', function() {
-            document.removeEventListener('keydown', handleModalKeyPress); // --- NEW: Remove listener ---
+            document.removeEventListener('keydown', handleModalKeyPress);
             if (modal.parentNode) {
                 modal.parentNode.removeChild(modal);
             }
-            // Refresh the page after closing if the setting is enabled
-            if (autoRefreshAfterBulk) {
-                window.location.reload();
+        });
+    }
+
+    if (closeRefreshButton) {
+        closeRefreshButton.addEventListener('click', function() {
+            document.removeEventListener('keydown', handleModalKeyPress);
+            if (modal.parentNode) {
+                modal.parentNode.removeChild(modal);
             }
+            window.location.reload();
         });
     }
 

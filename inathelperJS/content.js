@@ -3345,6 +3345,13 @@ async function executeBulkAction(selectedActionConfig, modal, isCancelledFunc) {
         );
         document.body.appendChild(resultsModal);
 
+        // If auto-refresh is enabled, refresh after 2 seconds
+        if (autoRefreshAfterBulk) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+
         return { results: allActionResults, skippedObservations: skippedObservationsDueToSafeMode, overwrittenValues, errorMessages };
     } catch (error) {
         console.error('Error in bulk action execution:', error);
