@@ -343,23 +343,11 @@ function handleAllShortcuts(event) {
                     event.altKey === !!shortcut.altKey) {
                     
                     event.preventDefault();
-                    if (bulkActionModeEnabled && selectedObservations.size > 0) {
-                        // Directly trigger this action for the selected bulk observations
-                        console.log(`Bulk action shortcut triggered for: ${item.name}`);
-                        // We need to simulate the modal flow: validate then execute.
-                        // This is complex. For now, let's just log.
-                        // A simpler approach might be for the shortcut to *open* the modal
-                        // and pre-select this action.
-                        // For now, let's focus on selecting in the OPEN modal.
-                        // Direct execution via shortcut in bulk mode without modal is a larger feature.
-                         if (item.id && document.getElementById('bulk-action-container')?.style.display === 'block') {
-                            // If bulk action container is visible, this shortcut could directly trigger
-                            // the full bulk process for THIS action (selectedAction = item).
-                            // This would bypass the dropdown selection.
-                            // applyBulkActionFromShortcut(item); // Hypothetical function
-                            console.log(`TODO: Implement direct bulk execution for shortcut: ${item.name}`);
+                    if (bulkActionModeEnabled) {
+                        // Open the modal with this action pre-selected
+                        if (item.id && document.getElementById('bulk-action-container')?.style.display === 'block') {
+                            applyBulkActionFromShortcut(item);
                         }
-
                     } else if (!bulkActionModeEnabled && buttonToClick && buttonToClick.isConnected) {
                         buttonToClick.click(); // Click the single observation button
                     }
@@ -5732,7 +5720,54 @@ async function createActionModal() {
         removeThisModal(true);
     };
 
-    return modal; 
+    return modal;
+}
+
+/**
+ * Apply bulk action from keyboard shortcut
+ * Opens the action modal with the specified action pre-selected
+ * @param {Object} buttonConfig - The button configuration for the action to apply
+ */
+async function applyBulkActionFromShortcut(buttonConfig) {
+    console.log(`Bulk action shortcut triggered for: ${buttonConfig.name}`);
+
+    // Check if observations are selected
+    if (selectedObservations.size === 0) {
+        alert('Please select at least one observation first.');
+        return;
+    }
+
+    // Check if a modal is already open
+    if (window.isBulkActionSelectionModalOpen === true) {
+        console.warn("A modal is already open. Ignoring shortcut.");
+        return;
+    }
+
+    try {
+        // Create and open the modal
+        const modalNode = await createActionModal();
+
+        if (modalNode && document.body.contains(modalNode)) {
+            // Pre-select the action in the dropdown
+            const actionSelect = document.getElementById('bulk-action-select');
+            if (actionSelect && buttonConfig.id) {
+                // Set the value to the button's ID
+                actionSelect.value = buttonConfig.id;
+                // Trigger the change event to update the description and enable the Apply button
+                actionSelect.dispatchEvent(new Event('change'));
+                console.log(`Action pre-selected: ${buttonConfig.name}`);
+            } else {
+                console.warn("Could not find action select element or button ID is missing");
+            }
+        } else {
+            console.error("Modal creation failed");
+            window.isBulkActionSelectionModalOpen = false;
+        }
+    } catch (error) {
+        console.error("Error opening modal from shortcut:", error);
+        window.isBulkActionSelectionModalOpen = false;
+        alert("An error occurred while trying to open the action dialog. Please check the console.");
+    }
 }
 
 async function createValidationModal(validationResults, selectedAction, onConfirm, onCancel) {
