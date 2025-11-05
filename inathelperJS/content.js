@@ -5041,7 +5041,7 @@ async function createValidationSummary(validationResults) {
     return summary;
 }
 
-async function createActionModal() {
+async function createActionModal(preSelectedActionId = null) {
     let isActionCancelled = false;
     window.isBulkActionSelectionModalOpen = true; 
 
@@ -5234,12 +5234,17 @@ async function createActionModal() {
     (async () => {
         const storedSortPrefData = await browserAPI.storage.local.get('bulkActionDropdownSortPreference');
         currentSortMethod = storedSortPrefData.bulkActionDropdownSortPreference || 'default';
-        populateDropdownWithOptions(currentSortMethod); 
-        
-        if(actionSelect.value) {
+        populateDropdownWithOptions(currentSortMethod);
+
+        // If a pre-selected action was specified, select it now
+        if (preSelectedActionId) {
+            actionSelect.value = preSelectedActionId;
+            actionSelect.dispatchEvent(new Event('change'));
+            console.log(`Pre-selected action in dropdown: ${preSelectedActionId}`);
+        } else if(actionSelect.value) {
             actionSelect.dispatchEvent(new Event('change'));
         } else {
-            descriptionArea.innerHTML = 'No action selected.'; 
+            descriptionArea.innerHTML = 'No action selected.';
             applyButtonElement.disabled = true;
         }
     })();
@@ -5442,21 +5447,11 @@ async function applyBulkActionFromShortcut(buttonConfig) {
     }
 
     try {
-        // Create and open the modal
-        const modalNode = await createActionModal();
+        // Create and open the modal with the action pre-selected
+        const modalNode = await createActionModal(buttonConfig.id);
 
         if (modalNode && document.body.contains(modalNode)) {
-            // Pre-select the action in the dropdown
-            const actionSelect = document.getElementById('bulk-action-select');
-            if (actionSelect && buttonConfig.id) {
-                // Set the value to the button's ID
-                actionSelect.value = buttonConfig.id;
-                // Trigger the change event to update the description and enable the Apply button
-                actionSelect.dispatchEvent(new Event('change'));
-                console.log(`Action pre-selected: ${buttonConfig.name}`);
-            } else {
-                console.warn("Could not find action select element or button ID is missing");
-            }
+            console.log(`Modal opened with pre-selected action: ${buttonConfig.name}`);
         } else {
             console.error("Modal creation failed");
             window.isBulkActionSelectionModalOpen = false;
