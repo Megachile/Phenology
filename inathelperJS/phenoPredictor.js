@@ -324,7 +324,24 @@ function predictPhenologyDates(observations, targetLatitude, thresholdMethod = '
                     const data1 = await fetchInatObservations(url1Params, 1);
 
                     if (data1.results.length === 0) {
-                        showStatus('No observations found for URL 1. Try adjusting your parameters.', 'warning');
+                        const summaryDiv = document.getElementById('summary');
+                        summaryDiv.style.display = 'block';
+                        summaryDiv.innerHTML = `
+                            <h2>No Observations Found (Phenophase 1)</h2>
+                            <div class="validation-errors" style="background: #ffebee; border-left: 4px solid #c62828; padding: 15px; margin: 15px 0; border-radius: 4px;">
+                                <h4 style="color: #c62828; margin-top: 0;">⚠ No Results</h4>
+                                <p style="color: #c62828;">Your query for Phenophase 1 returned no observations from iNaturalist.</p>
+                                <p style="color: #666;"><strong>Suggestions:</strong></p>
+                                <ul style="margin: 5px 0; padding-left: 20px; color: #666;">
+                                    <li>Expand the geographic area (use a larger place or remove place filters)</li>
+                                    <li>Broaden the date range</li>
+                                    <li>Check taxon filters - make sure the taxon exists and has observations</li>
+                                    <li>Remove or relax observation field filters</li>
+                                    <li>Try with "research grade" filter disabled</li>
+                                </ul>
+                            </div>
+                        `;
+                        showStatus('No observations found for Phenophase 1. See suggestions above.', 'warning');
                         document.getElementById('fetchButton').disabled = false;
                         return;
                     }
@@ -336,7 +353,26 @@ function predictPhenologyDates(observations, targetLatitude, thresholdMethod = '
                     const data2 = await fetchInatObservations(url2Params, 1);
 
                     if (data2.results.length === 0) {
-                        showStatus('No observations found for URL 2. Try adjusting your parameters.', 'warning');
+                        const summaryDiv = document.getElementById('summary');
+                        summaryDiv.style.display = 'block';
+                        summaryDiv.innerHTML = `
+                            <h2>No Observations Found (Phenophase 2)</h2>
+                            <div style="background: #e3f2fd; padding: 15px; margin: 15px 0; border-radius: 4px;">
+                                <p><strong>Phenophase 1:</strong> Found ${url1Observations.length} observations ✓</p>
+                            </div>
+                            <div class="validation-errors" style="background: #ffebee; border-left: 4px solid #c62828; padding: 15px; margin: 15px 0; border-radius: 4px;">
+                                <h4 style="color: #c62828; margin-top: 0;">⚠ No Results</h4>
+                                <p style="color: #c62828;">Your query for Phenophase 2 returned no observations from iNaturalist.</p>
+                                <p style="color: #666;"><strong>Suggestions:</strong></p>
+                                <ul style="margin: 5px 0; padding-left: 20px; color: #666;">
+                                    <li>Expand the geographic area</li>
+                                    <li>Broaden the date range</li>
+                                    <li>Check observation field filters for the second phenophase</li>
+                                    <li>Verify the phenophase distinction exists in your taxon</li>
+                                </ul>
+                            </div>
+                        `;
+                        showStatus('No observations found for Phenophase 2. See suggestions above.', 'warning');
                         document.getElementById('fetchButton').disabled = false;
                         return;
                     }
@@ -379,7 +415,30 @@ function predictPhenologyDates(observations, targetLatitude, thresholdMethod = '
                 showStatus(`Fetched ${data.results.length} observations`, 'success');
 
                 if (data.results.length === 0) {
-                    showStatus('No observations found. Try adjusting your parameters.', 'warning');
+                    const summaryDiv = document.getElementById('summary');
+                    summaryDiv.style.display = 'block';
+                    summaryDiv.innerHTML = `
+                        <h2>No Observations Found</h2>
+                        <div class="validation-errors" style="background: #ffebee; border-left: 4px solid #c62828; padding: 15px; margin: 15px 0; border-radius: 4px;">
+                            <h4 style="color: #c62828; margin-top: 0;">⚠ No Results</h4>
+                            <p style="color: #c62828;">Your query returned no observations from iNaturalist.</p>
+                            <p style="color: #666;"><strong>Common causes:</strong></p>
+                            <ul style="margin: 5px 0; padding-left: 20px; color: #666;">
+                                <li>Geographic area is too restrictive or has no observations</li>
+                                <li>Date range doesn't match when this species is active</li>
+                                <li>Taxon name is misspelled or doesn't exist</li>
+                                <li>Observation field filters are too strict</li>
+                                <li>Quality filters (research grade, etc.) exclude all results</li>
+                            </ul>
+                            <p style="color: #666;"><strong>Suggestions:</strong></p>
+                            <ul style="margin: 5px 0; padding-left: 20px; color: #666;">
+                                <li>Try removing some filters and search again</li>
+                                <li>Check the URL works in a browser by visiting iNaturalist directly</li>
+                                <li>Start with just a taxon and broad date/place, then add filters</li>
+                            </ul>
+                        </div>
+                    `;
+                    showStatus('No observations found. See suggestions above.', 'warning');
                     document.getElementById('fetchButton').disabled = false;
                     return;
                 }
@@ -428,6 +487,81 @@ function predictPhenologyDates(observations, targetLatitude, thresholdMethod = '
         function refineParameters() {
             document.getElementById('paginationWarning').style.display = 'none';
             showStatus('Please adjust your parameters and try again.', 'info');
+        }
+
+        function validateObservations(observations, datasetName = 'dataset') {
+            const warnings = [];
+            const errors = [];
+
+            // Check if we have any observations
+            if (!observations || observations.length === 0) {
+                errors.push(`No observations found in ${datasetName}. The query returned no results from iNaturalist.`);
+                return { valid: false, warnings, errors };
+            }
+
+            const summary = summarizeObservations(observations);
+            if (!summary) {
+                errors.push(`No valid observations with location data in ${datasetName}.`);
+                return { valid: false, warnings, errors };
+            }
+
+            // Warning for very small sample size
+            if (observations.length < 5) {
+                warnings.push(`Very small sample size (${observations.length} observations) in ${datasetName}. Predictions may be unreliable. Consider expanding your search criteria.`);
+            } else if (observations.length < 10) {
+                warnings.push(`Small sample size (${observations.length} observations) in ${datasetName}. Using min/max method. More observations would improve reliability.`);
+            }
+
+            // Check latitude range
+            const latRange = summary.latitude.max - summary.latitude.min;
+            if (latRange < 0.1) {
+                errors.push(`All observations in ${datasetName} are at essentially the same latitude (${summary.latitude.mean.toFixed(2)}°). Cannot predict phenology across latitudes. Try expanding the geographic area of your search.`);
+                return { valid: false, warnings, errors };
+            } else if (latRange < 2) {
+                warnings.push(`Narrow latitude range (${latRange.toFixed(1)}°) in ${datasetName}. Predictions for distant latitudes will be extrapolations and less reliable.`);
+            }
+
+            // Check seasind range
+            const seasindRange = summary.seasind.max - summary.seasind.min;
+            if (seasindRange < 0.01) {
+                warnings.push(`Very narrow season index range (${seasindRange.toFixed(4)}) in ${datasetName}. All observations occur at nearly the same phenological timing. Predictions may be overly precise.`);
+            }
+
+            // Check DOY range
+            const doyRange = summary.doy.max - summary.doy.min;
+            if (doyRange < 7) {
+                warnings.push(`Observations in ${datasetName} span only ${doyRange} days. Consider a wider date range for more robust predictions.`);
+            }
+
+            return { valid: true, warnings, errors };
+        }
+
+        function displayValidationMessages(validation, containerId = 'validationMessages') {
+            let messagesHtml = '';
+
+            if (validation.errors.length > 0) {
+                messagesHtml += '<div class="validation-errors" style="background: #ffebee; border-left: 4px solid #c62828; padding: 15px; margin: 15px 0; border-radius: 4px;">';
+                messagesHtml += '<h4 style="color: #c62828; margin-top: 0;">⚠ Errors</h4>';
+                messagesHtml += '<ul style="margin: 5px 0; padding-left: 20px;">';
+                validation.errors.forEach(err => {
+                    messagesHtml += `<li style="color: #c62828;">${err}</li>`;
+                });
+                messagesHtml += '</ul></div>';
+            }
+
+            if (validation.warnings.length > 0) {
+                messagesHtml += '<div class="validation-warnings" style="background: #fff3e0; border-left: 4px solid #f57c00; padding: 15px; margin: 15px 0; border-radius: 4px;">';
+                messagesHtml += '<h4 style="color: #e65100; margin-top: 0;">⚠ Warnings</h4>';
+                messagesHtml += '<ul style="margin: 5px 0; padding-left: 20px;">';
+                validation.warnings.forEach(warn => {
+                    messagesHtml += `<li style="color: #e65100;">${warn}</li>`;
+                });
+                messagesHtml += '</ul>';
+                messagesHtml += '<p style="margin-bottom: 0; font-size: 0.9em; color: #666;"><strong>Suggestions:</strong> Expand geographic area, broaden date range, or include more taxa/observation fields.</p>';
+                messagesHtml += '</div>';
+            }
+
+            return messagesHtml;
         }
 
         function comparePhases(obs1, obs2) {
@@ -493,6 +627,23 @@ function predictPhenologyDates(observations, targetLatitude, thresholdMethod = '
         }
 
         function displayComparisonResults(obs1, obs2) {
+            // Validate both datasets
+            const validation1 = validateObservations(obs1, 'Phenophase 1 (URL 1)');
+            const validation2 = validateObservations(obs2, 'Phenophase 2 (URL 2)');
+
+            // Check for critical errors
+            if (!validation1.valid || !validation2.valid) {
+                const summaryDiv = document.getElementById('summary');
+                summaryDiv.style.display = 'block';
+                summaryDiv.innerHTML = `
+                    <h2>Phenophase Comparison Analysis</h2>
+                    ${displayValidationMessages(validation1)}
+                    ${displayValidationMessages(validation2)}
+                `;
+                showStatus('Cannot proceed with comparison due to data quality issues.', 'error');
+                return;
+            }
+
             const comparison = comparePhases(obs1, obs2);
             if (!comparison) {
                 showStatus('Unable to analyze comparison data.', 'warning');
@@ -507,8 +658,13 @@ function predictPhenologyDates(observations, targetLatitude, thresholdMethod = '
             const minDate2 = doyToDate(comparison.summary2.doy.min);
             const maxDate2 = doyToDate(comparison.summary2.doy.max);
 
+            // Combine warnings from both validations
+            const allWarnings = [...validation1.warnings, ...validation2.warnings];
+            const validationHtml = allWarnings.length > 0 ? displayValidationMessages({ warnings: allWarnings, errors: [] }) : '';
+
             summaryDiv.innerHTML = `
                 <h2>Phenophase Comparison Analysis</h2>
+                ${validationHtml}
 
                 <div class="comparison-section">
                     <h3 style="color: #1976d2;">Phenophase 1 (URL 1)</h3>
@@ -624,6 +780,21 @@ function predictPhenologyDates(observations, targetLatitude, thresholdMethod = '
         }
 
         function displayResults(observations) {
+            // Validate observations
+            const validation = validateObservations(observations, 'this dataset');
+
+            // Check for critical errors
+            if (!validation.valid) {
+                const summaryDiv = document.getElementById('summary');
+                summaryDiv.style.display = 'block';
+                summaryDiv.innerHTML = `
+                    <h2>Observation Summary</h2>
+                    ${displayValidationMessages(validation)}
+                `;
+                showStatus('Cannot generate predictions due to data quality issues.', 'error');
+                return;
+            }
+
             const summary = summarizeObservations(observations);
             if (!summary) {
                 showStatus('No valid observations to analyze.', 'warning');
@@ -636,8 +807,11 @@ function predictPhenologyDates(observations, targetLatitude, thresholdMethod = '
             const minDate = doyToDate(summary.doy.min);
             const maxDate = doyToDate(summary.doy.max);
 
+            const validationHtml = validation.warnings.length > 0 ? displayValidationMessages(validation) : '';
+
             summaryDiv.innerHTML = `
                 <h2>Observation Summary</h2>
+                ${validationHtml}
                 <div class="summary-grid">
                     <div class="summary-card">
                         <h3>Total Observations</h3>
