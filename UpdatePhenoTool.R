@@ -24,6 +24,7 @@ dbDisconnect(gallphen)
 write.csv(observations, file = paste0(wd, "/doyCalc/observations.csv"), row.names = FALSE)
 # beep()
 #connect to the hosting service and upload the new info. 
-rsconnect::setAccountInfo(name='megachile', token='E0503725A47C8E1AA250F80A49C2A015', secret='vqQZJcHij1sJHt+8LtDwrCfLZURzoiSDyqzmXNdT')
+readRenviron(".env")
+rsconnect::setAccountInfo(name='megachile', token=Sys.getenv("RSCONNECT_TOKEN"), secret=Sys.getenv("RSCONNECT_SECRET"))
 rsconnect::deployApp(paste0(wd, '/doyCalc'))
 

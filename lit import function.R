@@ -13,7 +13,8 @@ wd <- "C:/Users/adam/Documents/GitHub/Phenology"
 setwd(wd)
 gallphen <- dbConnect(RSQLite::SQLite(), "gallphenReset.sqlite")
 
-register_google(key = "AIzaSyDoIENLQOpwK4CumSUREYM3vWyEwq3LgKg")
+readRenviron(".env")
+register_google(key = Sys.getenv("GOOGLE_MAPS_API_KEY"))
 
 lit <- read.csv(paste0(wd,"/litimport11.csv"))
 lit <- lit[!is.na(lit$gf_id),]

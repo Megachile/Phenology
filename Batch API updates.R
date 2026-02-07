@@ -21,7 +21,8 @@ ann <- do.call("rbind", l)
 ann
 
 #not clear if this stored API token will expire or not? If it does you'll need to use one of the auth flows which I'm having trouble getting to work without my password right now
-token <- "nxZOyguyMyTGYC19gGbfnGAKbgP2CgWgCeqQ12U_fno"
+readRenviron(".env")
+token <- Sys.getenv("INAT_API_TOKEN")
 
 
 
